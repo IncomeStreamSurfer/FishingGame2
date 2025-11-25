@@ -8,13 +8,14 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed = 10f;
 
     [Header("Jump")]
-    public float jumpForce = 7f;
+    public float jumpForce = 12f;  // Higher jump!
     public LayerMask groundLayer;
     private bool isGrounded = true;
 
     [Header("Water Death")]
     public float waterDeathHeight = 0.3f;
     private bool isDead = false;
+    private bool showDeathScreen = false;
 
     private Vector3 moveDirection;
     private Rigidbody rb;
@@ -107,7 +108,14 @@ public class PlayerController : MonoBehaviour
     IEnumerator Die()
     {
         isDead = true;
+        showDeathScreen = true;
         Debug.Log("THE FISHERMAN DROWNED! He couldn't swim...");
+
+        // Reset player's gold and fish - PERMANENT LOSS
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.ResetOnDeath();
+        }
 
         // Disable movement
         if (rb != null)
@@ -138,8 +146,8 @@ public class PlayerController : MonoBehaviour
             yield return null;
         }
 
-        // Wait a moment
-        yield return new WaitForSeconds(1f);
+        // Show death screen for 3 seconds
+        yield return new WaitForSeconds(3f);
 
         // Respawn
         Respawn();
@@ -148,7 +156,8 @@ public class PlayerController : MonoBehaviour
     void Respawn()
     {
         isDead = false;
-        transform.position = new Vector3(0, 2f, 5f); // Back on dock
+        showDeathScreen = false;
+        transform.position = new Vector3(0, 2f, -5f); // Back on dock, on beach side
         transform.rotation = Quaternion.identity;
 
         if (rb != null)
@@ -157,7 +166,43 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
         }
 
-        Debug.Log("Fisherman respawned! Be more careful near the water!");
+        Debug.Log("Fisherman respawned! Your gold and fish are gone forever!");
+    }
+
+    void OnGUI()
+    {
+        if (showDeathScreen)
+        {
+            // Red overlay
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), MakeTexture(2, 2, new Color(0.6f, 0, 0, 0.7f)));
+
+            // Death message
+            GUIStyle deathStyle = new GUIStyle();
+            deathStyle.fontSize = 48;
+            deathStyle.fontStyle = FontStyle.Bold;
+            deathStyle.alignment = TextAnchor.MiddleCenter;
+            deathStyle.normal.textColor = Color.white;
+
+            GUI.Label(new Rect(0, Screen.height / 2 - 80, Screen.width, 60), "YOU CAN'T SWIM!", deathStyle);
+
+            deathStyle.fontSize = 36;
+            deathStyle.normal.textColor = new Color(1f, 0.8f, 0.8f);
+            GUI.Label(new Rect(0, Screen.height / 2 - 20, Screen.width, 50), "You're Dead!", deathStyle);
+
+            deathStyle.fontSize = 20;
+            deathStyle.normal.textColor = new Color(1f, 0.6f, 0.6f);
+            GUI.Label(new Rect(0, Screen.height / 2 + 40, Screen.width, 30), "Your gold and fish have been lost forever...", deathStyle);
+        }
+    }
+
+    Texture2D MakeTexture(int width, int height, Color color)
+    {
+        Color[] pixels = new Color[width * height];
+        for (int i = 0; i < pixels.Length; i++) pixels[i] = color;
+        Texture2D tex = new Texture2D(width, height);
+        tex.SetPixels(pixels);
+        tex.Apply();
+        return tex;
     }
 
     public bool IsDead()
