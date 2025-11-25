@@ -38,33 +38,61 @@ public class LevelingSystem : MonoBehaviour
     void GenerateXPTable()
     {
         // Proper leveling: Level 1 at 0 XP, Level 399 at 100,000,000 XP
-        // Each level requires progressively more XP (exponential growth)
+        // KEY REQUIREMENT: Level 320 should be at 50,000,000 XP (halfway)
+        // This means XP scales exponentially, heavily back-loaded
         xpTable = new long[MAX_LEVEL + 2]; // +2 for safety
         xpTable[1] = 0; // Level 1 starts at 0 XP
 
-        // Calculate XP thresholds for each level using smooth exponential curve
-        // Formula: XP for level L = base * (growth^(L-1) - 1) / (growth - 1)
-        // We want level 2 to be achievable quickly, level 399 to require 100M total
+        // Two-phase exponential curve to ensure level 320 is at 50M XP
+        // Phase 1: Levels 1-320 = 0 to 50M XP
+        // Phase 2: Levels 320-399 = 50M to 100M XP
 
-        // Using a curve where early levels are fast, later levels are slow
-        // Level 2: ~83 XP, Level 10: ~2,500 XP, Level 50: ~125,000 XP, Level 399: 100,000,000 XP
+        const int MIDPOINT_LEVEL = 320;
+        const long MIDPOINT_XP = 50000000; // 50M XP at level 320
 
-        double baseXP = 83.0; // XP needed for level 2
-        double growthRate = 1.0175; // ~1.75% more XP per level
+        // Phase 1: Levels 2-320 (0 to 50M XP)
+        // Use exponential curve that reaches 50M at level 320
+        double phase1Base = 50.0;
+        double phase1Growth = 1.025; // Higher growth for steeper curve
 
-        // Calculate the scale factor to hit exactly 100M at level 399
-        double rawTotal = 0;
-        for (int i = 2; i <= MAX_LEVEL; i++)
+        // Calculate scale factor for phase 1
+        double phase1Raw = 0;
+        for (int i = 2; i <= MIDPOINT_LEVEL; i++)
         {
-            rawTotal += baseXP * Math.Pow(growthRate, i - 2);
+            phase1Raw += phase1Base * Math.Pow(phase1Growth, i - 2);
         }
-        double scaleFactor = MAX_XP / rawTotal;
+        double phase1Scale = MIDPOINT_XP / phase1Raw;
 
-        // Now build the actual XP table
+        // Build phase 1 table
         long cumulativeXP = 0;
-        for (int level = 2; level <= MAX_LEVEL; level++)
+        for (int level = 2; level <= MIDPOINT_LEVEL; level++)
         {
-            double xpForThisLevel = baseXP * Math.Pow(growthRate, level - 2) * scaleFactor;
+            double xpForThisLevel = phase1Base * Math.Pow(phase1Growth, level - 2) * phase1Scale;
+            cumulativeXP += (long)Math.Ceiling(xpForThisLevel);
+            xpTable[level] = cumulativeXP;
+        }
+
+        // Ensure level 320 is exactly 50M
+        xpTable[MIDPOINT_LEVEL] = MIDPOINT_XP;
+
+        // Phase 2: Levels 321-399 (50M to 100M XP)
+        // Much steeper curve - need to gain 50M XP in only 79 levels
+        double phase2Base = 100000.0; // Start high since we're in endgame
+        double phase2Growth = 1.045; // Very steep growth
+
+        // Calculate scale factor for phase 2
+        double phase2Raw = 0;
+        for (int i = MIDPOINT_LEVEL + 1; i <= MAX_LEVEL; i++)
+        {
+            phase2Raw += phase2Base * Math.Pow(phase2Growth, i - MIDPOINT_LEVEL - 1);
+        }
+        double phase2Scale = (MAX_XP - MIDPOINT_XP) / phase2Raw;
+
+        // Build phase 2 table
+        cumulativeXP = MIDPOINT_XP;
+        for (int level = MIDPOINT_LEVEL + 1; level <= MAX_LEVEL; level++)
+        {
+            double xpForThisLevel = phase2Base * Math.Pow(phase2Growth, level - MIDPOINT_LEVEL - 1) * phase2Scale;
             cumulativeXP += (long)Math.Ceiling(xpForThisLevel);
             xpTable[level] = cumulativeXP;
         }
@@ -72,8 +100,8 @@ public class LevelingSystem : MonoBehaviour
         // Ensure max level is exactly MAX_XP
         xpTable[MAX_LEVEL] = MAX_XP;
 
-        // Debug: Log some milestone levels
-        Debug.Log($"XP Table Generated - Lvl 2: {xpTable[2]}, Lvl 10: {xpTable[10]}, Lvl 50: {xpTable[50]}, Lvl 100: {xpTable[100]}, Lvl 399: {xpTable[399]}");
+        // Debug: Log milestone levels
+        Debug.Log($"XP Table - Lvl 2: {xpTable[2]:N0}, Lvl 50: {xpTable[50]:N0}, Lvl 100: {xpTable[100]:N0}, Lvl 320: {xpTable[320]:N0}, Lvl 399: {xpTable[399]:N0}");
     }
 
     public void AddXP(long amount)

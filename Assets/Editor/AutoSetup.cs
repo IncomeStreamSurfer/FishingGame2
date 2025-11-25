@@ -68,13 +68,16 @@ public class AutoSetup
         // Create realistic trees in background
         CreateTreesAroundScene();
 
+        // Create 4 mystical portals on the beach
+        CreatePortals();
+
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         Debug.Log("=== FISHING GAME READY! Press PLAY, WASD to move, LEFT CLICK to fish, SPACE to jump! ===");
     }
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
@@ -275,7 +278,7 @@ public class AutoSetup
     static void CreatePlayer()
     {
         GameObject player = new GameObject("Player");
-        player.transform.position = new Vector3(0, 2f, 8);  // Start on dock over water
+        player.transform.position = new Vector3(0, 2f, -5f);  // Start on beach side of dock (facing water)
         player.transform.rotation = Quaternion.Euler(0, 0, 0);
         player.AddComponent<PlayerController>();
         player.AddComponent<FishingRodAnimator>();
@@ -387,39 +390,49 @@ public class AutoSetup
 
     static void CreateArm(GameObject player, Material skinMat, Material shirtMat, float xOffset)
     {
-        // Shoulder
+        // Both arms reach forward to hold the fishing rod with two hands
+        bool isRightArm = xOffset > 0;
+
+        // Shoulder - at body sides
         GameObject shoulder = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        shoulder.name = "Shoulder";
+        shoulder.name = isRightArm ? "RightShoulder" : "LeftShoulder";
         shoulder.transform.SetParent(player.transform);
-        shoulder.transform.localPosition = new Vector3(xOffset, 0.35f, 0);
-        shoulder.transform.localScale = new Vector3(0.12f, 0.10f, 0.10f);
+        shoulder.transform.localPosition = new Vector3(xOffset * 0.8f, 0.35f, 0.02f);
+        shoulder.transform.localScale = new Vector3(0.13f, 0.11f, 0.11f);
         shoulder.GetComponent<Renderer>().sharedMaterial = shirtMat;
         Object.DestroyImmediate(shoulder.GetComponent<Collider>());
 
-        // Upper arm (with sleeve)
+        // Upper arm - angled forward and inward toward center where rod is held
         GameObject upperArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        upperArm.name = "UpperArm";
+        upperArm.name = isRightArm ? "RightUpperArm" : "LeftUpperArm";
         upperArm.transform.SetParent(player.transform);
-        upperArm.transform.localPosition = new Vector3(xOffset * 1.15f, 0.18f, 0);
-        upperArm.transform.localScale = new Vector3(0.09f, 0.15f, 0.09f);
+        // Both arms angle forward and slightly down, converging toward rod
+        upperArm.transform.localPosition = new Vector3(xOffset * 0.55f, 0.18f, 0.15f);
+        upperArm.transform.localRotation = Quaternion.Euler(60, isRightArm ? -15 : 15, isRightArm ? -20 : 20);
+        upperArm.transform.localScale = new Vector3(0.09f, 0.16f, 0.09f);
         upperArm.GetComponent<Renderer>().sharedMaterial = shirtMat;
         Object.DestroyImmediate(upperArm.GetComponent<Collider>());
 
-        // Lower arm (skin)
+        // Lower arm - extends forward to rod, both arms parallel
         GameObject lowerArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        lowerArm.name = "LowerArm";
+        lowerArm.name = isRightArm ? "RightLowerArm" : "LeftLowerArm";
         lowerArm.transform.SetParent(player.transform);
-        lowerArm.transform.localPosition = new Vector3(xOffset * 1.2f, -0.02f, 0);
+        // Forearms reach forward to grip rod - right hand lower, left hand higher on rod
+        float handHeight = isRightArm ? -0.02f : 0.04f;
+        float handForward = isRightArm ? 0.30f : 0.38f;
+        lowerArm.transform.localPosition = new Vector3(xOffset * 0.25f, handHeight, handForward - 0.08f);
+        lowerArm.transform.localRotation = Quaternion.Euler(75, 0, isRightArm ? 5 : -5);
         lowerArm.transform.localScale = new Vector3(0.07f, 0.14f, 0.07f);
         lowerArm.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(lowerArm.GetComponent<Collider>());
 
-        // Hand
+        // Hand - gripping the rod (positioned on the rod pivot area)
         GameObject hand = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        hand.name = "Hand";
+        hand.name = isRightArm ? "RightHand" : "LeftHand";
         hand.transform.SetParent(player.transform);
-        hand.transform.localPosition = new Vector3(xOffset * 1.25f, -0.18f, 0);
-        hand.transform.localScale = new Vector3(0.08f, 0.10f, 0.05f);
+        // Right hand on lower handle, left hand on upper grip
+        hand.transform.localPosition = new Vector3(xOffset * 0.08f, handHeight, handForward);
+        hand.transform.localScale = new Vector3(0.09f, 0.06f, 0.10f);
         hand.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(hand.GetComponent<Collider>());
     }
@@ -524,59 +537,131 @@ public class AutoSetup
 
     static void CreateFishingRod(GameObject player)
     {
-        // Rod pivot centered in front of player (held with both hands)
+        // Rod pivot - positioned at where hands grip, angled naturally
         GameObject rodPivot = new GameObject("RodPivot");
         rodPivot.transform.SetParent(player.transform);
-        rodPivot.transform.localPosition = new Vector3(0, 0.1f, 0.3f);
+        rodPivot.transform.localPosition = new Vector3(0, 0.02f, 0.37f);
 
         Material rodMat = new Material(Shader.Find("Standard"));
         rodMat.color = new Color(0.35f, 0.22f, 0.12f);
         rodMat.SetFloat("_Glossiness", 0.5f);
 
-        // Handle (cork) - longer for two-handed grip
+        // Handle (cork grip) - where right hand grips
         GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         handle.name = "RodHandle";
         handle.transform.SetParent(rodPivot.transform);
-        handle.transform.localPosition = new Vector3(0, 0, 0);
+        handle.transform.localPosition = new Vector3(0, -0.12f, 0);
         handle.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        handle.transform.localScale = new Vector3(0.06f, 0.25f, 0.06f);
+        handle.transform.localScale = new Vector3(0.055f, 0.18f, 0.055f);
         Material corkMat = new Material(Shader.Find("Standard"));
-        corkMat.color = new Color(0.65f, 0.50f, 0.35f);
+        corkMat.color = new Color(0.70f, 0.55f, 0.40f);
         handle.GetComponent<Renderer>().sharedMaterial = corkMat;
         Object.DestroyImmediate(handle.GetComponent<Collider>());
 
-        // Rod shaft - extends forward from handle
+        // Handle grip texture (cork rings)
+        GameObject corkRing1 = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        corkRing1.name = "CorkRing";
+        corkRing1.transform.SetParent(rodPivot.transform);
+        corkRing1.transform.localPosition = new Vector3(0, -0.05f, 0);
+        corkRing1.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        corkRing1.transform.localScale = new Vector3(0.06f, 0.015f, 0.06f);
+        Material ringMat = new Material(Shader.Find("Standard"));
+        ringMat.color = new Color(0.50f, 0.40f, 0.30f);
+        corkRing1.GetComponent<Renderer>().sharedMaterial = ringMat;
+        Object.DestroyImmediate(corkRing1.GetComponent<Collider>());
+
+        // Rod butt (end cap)
+        GameObject buttCap = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        buttCap.name = "RodButt";
+        buttCap.transform.SetParent(rodPivot.transform);
+        buttCap.transform.localPosition = new Vector3(0, -0.28f, 0);
+        buttCap.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        buttCap.transform.localScale = new Vector3(0.045f, 0.03f, 0.045f);
+        Material buttMat = new Material(Shader.Find("Standard"));
+        buttMat.color = new Color(0.2f, 0.2f, 0.2f);
+        buttCap.GetComponent<Renderer>().sharedMaterial = buttMat;
+        Object.DestroyImmediate(buttCap.GetComponent<Collider>());
+
+        // Reel seat (where reel mounts) - right below where left hand grips
+        GameObject reelSeat = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        reelSeat.name = "ReelSeat";
+        reelSeat.transform.SetParent(rodPivot.transform);
+        reelSeat.transform.localPosition = new Vector3(0, 0.05f, 0);
+        reelSeat.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        reelSeat.transform.localScale = new Vector3(0.045f, 0.08f, 0.045f);
+        reelSeat.GetComponent<Renderer>().sharedMaterial = buttMat;
+        Object.DestroyImmediate(reelSeat.GetComponent<Collider>());
+
+        // Upper grip area (where left hand goes)
+        GameObject upperGrip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        upperGrip.name = "UpperGrip";
+        upperGrip.transform.SetParent(rodPivot.transform);
+        upperGrip.transform.localPosition = new Vector3(0, 0.18f, 0);
+        upperGrip.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        upperGrip.transform.localScale = new Vector3(0.04f, 0.10f, 0.04f);
+        upperGrip.GetComponent<Renderer>().sharedMaterial = corkMat;
+        Object.DestroyImmediate(upperGrip.GetComponent<Collider>());
+
+        // Rod shaft - main blank extending forward
         GameObject rod = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         rod.name = "FishingRod";
         rod.transform.SetParent(rodPivot.transform);
-        rod.transform.localPosition = new Vector3(0, 0.9f, 0);
+        rod.transform.localPosition = new Vector3(0, 0.75f, 0);
         rod.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        rod.transform.localScale = new Vector3(0.03f, 0.7f, 0.03f);
+        rod.transform.localScale = new Vector3(0.025f, 0.50f, 0.025f);
         rod.GetComponent<Renderer>().sharedMaterial = rodMat;
         Object.DestroyImmediate(rod.GetComponent<Collider>());
 
-        // Rod tip (thinner)
+        // Rod tip section (thinner, more flexible looking)
         GameObject tip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         tip.name = "RodTip";
         tip.transform.SetParent(rod.transform);
-        tip.transform.localPosition = new Vector3(0, 0.9f, 0);
-        tip.transform.localScale = new Vector3(0.5f, 0.4f, 0.5f);
+        tip.transform.localPosition = new Vector3(0, 0.85f, 0);
+        tip.transform.localScale = new Vector3(0.6f, 0.45f, 0.6f);
         tip.GetComponent<Renderer>().sharedMaterial = rodMat;
         Object.DestroyImmediate(tip.GetComponent<Collider>());
 
-        // Reel - mounted on handle
+        // Line guides (eyelets along rod)
+        Material guideMat = new Material(Shader.Find("Standard"));
+        guideMat.color = new Color(0.3f, 0.3f, 0.35f);
+        guideMat.SetFloat("_Metallic", 0.8f);
+
+        float[] guidePositions = { 0.3f, 0.55f, 0.75f, 0.9f };
+        foreach (float pos in guidePositions)
+        {
+            GameObject guide = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            guide.name = "LineGuide";
+            guide.transform.SetParent(rodPivot.transform);
+            guide.transform.localPosition = new Vector3(0, pos, 0.015f);
+            guide.transform.localRotation = Quaternion.Euler(0, 0, 0);
+            guide.transform.localScale = new Vector3(0.025f, 0.008f, 0.025f);
+            guide.GetComponent<Renderer>().sharedMaterial = guideMat;
+            Object.DestroyImmediate(guide.GetComponent<Collider>());
+        }
+
+        // Reel - mounted below handle, on reel seat
         GameObject reel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         reel.name = "Reel";
         reel.transform.SetParent(rodPivot.transform);
-        reel.transform.localPosition = new Vector3(0.05f, 0.15f, 0);
+        reel.transform.localPosition = new Vector3(0.06f, 0.0f, 0);
         reel.transform.localRotation = Quaternion.Euler(0, 0, 0);
-        reel.transform.localScale = new Vector3(0.08f, 0.03f, 0.08f);
+        reel.transform.localScale = new Vector3(0.07f, 0.025f, 0.07f);
         Material reelMat = new Material(Shader.Find("Standard"));
-        reelMat.color = new Color(0.25f, 0.25f, 0.30f);
-        reelMat.SetFloat("_Metallic", 0.7f);
-        reelMat.SetFloat("_Glossiness", 0.6f);
+        reelMat.color = new Color(0.20f, 0.20f, 0.25f);
+        reelMat.SetFloat("_Metallic", 0.8f);
+        reelMat.SetFloat("_Glossiness", 0.7f);
         reel.GetComponent<Renderer>().sharedMaterial = reelMat;
         Object.DestroyImmediate(reel.GetComponent<Collider>());
+
+        // Reel body (spool)
+        GameObject reelBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        reelBody.name = "ReelSpool";
+        reelBody.transform.SetParent(reel.transform);
+        reelBody.transform.localPosition = new Vector3(0.8f, 0, 0);
+        reelBody.transform.localRotation = Quaternion.Euler(0, 0, 90);
+        reelBody.transform.localScale = new Vector3(0.9f, 0.4f, 0.9f);
+        reelBody.GetComponent<Renderer>().sharedMaterial = reelMat;
+        Object.DestroyImmediate(reelBody.GetComponent<Collider>());
 
         // Reel handle
         GameObject reelHandle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -924,5 +1009,201 @@ public class AutoSetup
         Camera.main.transform.position = new Vector3(0, 7, -3);
         Camera.main.backgroundColor = new Color(0.5f, 0.7f, 0.9f);  // Sky blue
         Camera.main.clearFlags = CameraClearFlags.SolidColor;
+    }
+
+    static void CreatePortals()
+    {
+        GameObject portalsParent = new GameObject("PortalsParent");
+
+        // 4 portals on the beach, behind where player spawns (negative Z)
+        // Spaced along the beach area
+        Vector3[] portalPositions = {
+            new Vector3(-15f, 0.5f, -25f),  // Portal 1 - Jungle (Level 50)
+            new Vector3(-5f, 0.5f, -28f),   // Portal 2 - Volcanic (Level 100)
+            new Vector3(5f, 0.5f, -28f),    // Portal 3 - Ice (Level 200)
+            new Vector3(15f, 0.5f, -25f)    // Portal 4 - Void (Level 300)
+        };
+
+        int[] requiredLevels = { 50, 100, 200, 300 };
+        string[] portalNames = { "JunglePortal", "VolcanicPortal", "IcePortal", "VoidPortal" };
+        Color[] portalColors = {
+            new Color(0.2f, 0.8f, 0.3f),    // Green for jungle
+            new Color(1f, 0.4f, 0.1f),       // Orange/red for volcanic
+            new Color(0.4f, 0.8f, 1f),       // Light blue for ice
+            new Color(0.6f, 0.2f, 0.8f)      // Purple for void
+        };
+
+        for (int i = 0; i < 4; i++)
+        {
+            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i]);
+        }
+    }
+
+    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor)
+    {
+        GameObject portal = new GameObject(name);
+        portal.transform.SetParent(parent);
+        portal.transform.position = pos;
+        portal.transform.rotation = Quaternion.Euler(0, 0, 0);  // Face forward toward player
+
+        // Add portal interaction component
+        PortalInteraction portalInteraction = portal.AddComponent<PortalInteraction>();
+        portalInteraction.portalName = name.Replace("Portal", " Realm");
+        portalInteraction.requiredLevel = requiredLevel;
+
+        // Portal materials
+        Material stoneMat = new Material(Shader.Find("Standard"));
+        stoneMat.color = new Color(0.3f, 0.25f, 0.35f);  // Dark purple-gray stone
+
+        Material glowMat = new Material(Shader.Find("Standard"));
+        glowMat.color = portalColor;
+        glowMat.EnableKeyword("_EMISSION");
+        glowMat.SetColor("_EmissionColor", portalColor * 0.8f);
+
+        Material portalSurfaceMat = new Material(Shader.Find("Standard"));
+        portalSurfaceMat.SetFloat("_Mode", 3);  // Transparent
+        portalSurfaceMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        portalSurfaceMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        portalSurfaceMat.EnableKeyword("_ALPHABLEND_ON");
+        portalSurfaceMat.color = new Color(portalColor.r, portalColor.g, portalColor.b, 0.6f);
+        portalSurfaceMat.EnableKeyword("_EMISSION");
+        portalSurfaceMat.SetColor("_EmissionColor", portalColor * 0.5f);
+
+        // Portal arch frame (stone pillars and arch)
+        float archHeight = 4f;
+        float archWidth = 2.5f;
+        float pillarWidth = 0.4f;
+
+        // Left pillar
+        GameObject leftPillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        leftPillar.name = "LeftPillar";
+        leftPillar.transform.SetParent(portal.transform);
+        leftPillar.transform.localPosition = new Vector3(-archWidth / 2, archHeight / 2, 0);
+        leftPillar.transform.localScale = new Vector3(pillarWidth, archHeight, pillarWidth);
+        leftPillar.GetComponent<Renderer>().sharedMaterial = stoneMat;
+
+        // Right pillar
+        GameObject rightPillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        rightPillar.name = "RightPillar";
+        rightPillar.transform.SetParent(portal.transform);
+        rightPillar.transform.localPosition = new Vector3(archWidth / 2, archHeight / 2, 0);
+        rightPillar.transform.localScale = new Vector3(pillarWidth, archHeight, pillarWidth);
+        rightPillar.GetComponent<Renderer>().sharedMaterial = stoneMat;
+
+        // Top arch (curved using multiple cubes)
+        GameObject topArch = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        topArch.name = "TopArch";
+        topArch.transform.SetParent(portal.transform);
+        topArch.transform.localPosition = new Vector3(0, archHeight + 0.3f, 0);
+        topArch.transform.localScale = new Vector3(archWidth + pillarWidth, 0.6f, pillarWidth);
+        topArch.GetComponent<Renderer>().sharedMaterial = stoneMat;
+
+        // Decorative capstones on pillars
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject capstone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            capstone.name = "Capstone";
+            capstone.transform.SetParent(portal.transform);
+            capstone.transform.localPosition = new Vector3(side * archWidth / 2, archHeight + 0.15f, 0);
+            capstone.transform.localScale = new Vector3(pillarWidth + 0.15f, 0.3f, pillarWidth + 0.15f);
+            capstone.GetComponent<Renderer>().sharedMaterial = stoneMat;
+            Object.DestroyImmediate(capstone.GetComponent<Collider>());
+        }
+
+        // Portal surface (the swirling portal itself)
+        GameObject portalSurface = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        portalSurface.name = "PortalSurface";
+        portalSurface.transform.SetParent(portal.transform);
+        portalSurface.transform.localPosition = new Vector3(0, archHeight / 2 + 0.3f, 0.05f);
+        portalSurface.transform.localScale = new Vector3(archWidth - 0.3f, archHeight - 0.5f, 1);
+        portalSurface.GetComponent<Renderer>().sharedMaterial = portalSurfaceMat;
+        Object.DestroyImmediate(portalSurface.GetComponent<Collider>());
+
+        // Glowing runes on pillars
+        Material runeMat = new Material(Shader.Find("Standard"));
+        runeMat.EnableKeyword("_EMISSION");
+        runeMat.SetColor("_EmissionColor", portalColor * 1.5f);
+        runeMat.color = portalColor;
+
+        // Rune symbols (small glowing spheres along pillars)
+        float[] runeHeights = { 1f, 2f, 3f };
+        foreach (float h in runeHeights)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject rune = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                rune.name = "Rune";
+                rune.transform.SetParent(portal.transform);
+                rune.transform.localPosition = new Vector3(side * archWidth / 2, h, pillarWidth / 2 + 0.05f);
+                rune.transform.localScale = new Vector3(0.12f, 0.12f, 0.05f);
+                rune.GetComponent<Renderer>().sharedMaterial = runeMat;
+                Object.DestroyImmediate(rune.GetComponent<Collider>());
+            }
+        }
+
+        // Mystical smoke/particle effect base
+        for (int j = 0; j < 5; j++)
+        {
+            GameObject smoke = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            smoke.name = "MysticalSmoke";
+            smoke.transform.SetParent(portal.transform);
+            float xOff = Random.Range(-archWidth / 2 + 0.3f, archWidth / 2 - 0.3f);
+            float yOff = Random.Range(0.2f, archHeight);
+            smoke.transform.localPosition = new Vector3(xOff, yOff, Random.Range(-0.1f, 0.1f));
+            float smokeSize = Random.Range(0.15f, 0.35f);
+            smoke.transform.localScale = new Vector3(smokeSize, smokeSize, smokeSize * 0.5f);
+
+            Material smokeMat = new Material(Shader.Find("Standard"));
+            smokeMat.SetFloat("_Mode", 3);
+            smokeMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            smokeMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            smokeMat.EnableKeyword("_ALPHABLEND_ON");
+            smokeMat.color = new Color(portalColor.r, portalColor.g, portalColor.b, 0.3f);
+            smokeMat.EnableKeyword("_EMISSION");
+            smokeMat.SetColor("_EmissionColor", portalColor * 0.3f);
+            smoke.GetComponent<Renderer>().sharedMaterial = smokeMat;
+            Object.DestroyImmediate(smoke.GetComponent<Collider>());
+        }
+
+        // LOCK symbol if portal is locked (always start locked)
+        GameObject lockSymbol = new GameObject("LockSymbol");
+        lockSymbol.transform.SetParent(portal.transform);
+        lockSymbol.transform.localPosition = new Vector3(0, archHeight / 2 + 0.3f, 0.15f);
+
+        // Lock body
+        GameObject lockBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        lockBody.name = "LockBody";
+        lockBody.transform.SetParent(lockSymbol.transform);
+        lockBody.transform.localPosition = new Vector3(0, -0.15f, 0);
+        lockBody.transform.localScale = new Vector3(0.5f, 0.4f, 0.15f);
+        Material lockMat = new Material(Shader.Find("Standard"));
+        lockMat.color = new Color(0.7f, 0.55f, 0.1f);  // Gold
+        lockMat.SetFloat("_Metallic", 0.9f);
+        lockMat.SetFloat("_Glossiness", 0.8f);
+        lockBody.GetComponent<Renderer>().sharedMaterial = lockMat;
+        Object.DestroyImmediate(lockBody.GetComponent<Collider>());
+
+        // Lock shackle (arch on top)
+        GameObject lockShackle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lockShackle.name = "LockShackle";
+        lockShackle.transform.SetParent(lockSymbol.transform);
+        lockShackle.transform.localPosition = new Vector3(0, 0.2f, 0);
+        lockShackle.transform.localScale = new Vector3(0.35f, 0.15f, 0.15f);
+        lockShackle.GetComponent<Renderer>().sharedMaterial = lockMat;
+        Object.DestroyImmediate(lockShackle.GetComponent<Collider>());
+
+        // Level requirement text marker (floating above portal)
+        GameObject levelMarker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        levelMarker.name = "LevelMarker";
+        levelMarker.transform.SetParent(portal.transform);
+        levelMarker.transform.localPosition = new Vector3(0, archHeight + 1.2f, 0);
+        levelMarker.transform.localScale = new Vector3(1.2f, 0.4f, 0.1f);
+        Material markerMat = new Material(Shader.Find("Standard"));
+        markerMat.color = new Color(0.1f, 0.1f, 0.15f);
+        levelMarker.GetComponent<Renderer>().sharedMaterial = markerMat;
+        Object.DestroyImmediate(levelMarker.GetComponent<Collider>());
+
+        // Add PortalAnimator for swirling effect
+        portal.AddComponent<PortalAnimator>();
     }
 }

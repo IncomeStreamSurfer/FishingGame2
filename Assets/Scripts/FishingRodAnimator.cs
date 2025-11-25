@@ -22,14 +22,14 @@ public class FishingRodAnimator : MonoBehaviour
     private Vector3 bobberTargetPos;
     private Vector3 bobberStartPos;
 
-    // Idle rod rotation (held with both hands in front, ready position)
-    private Quaternion idleRotation = Quaternion.Euler(30, 0, 0);
-    // Cast back (rod lifted over head and behind)
-    private Quaternion castBackRotation = Quaternion.Euler(-120, 0, 0);
-    // Cast forward (rod thrusts forward powerfully)
-    private Quaternion castForwardRotation = Quaternion.Euler(70, 0, 0);
-    // Waiting position (rod held out over water, both hands)
-    private Quaternion waitingRotation = Quaternion.Euler(35, 0, 0);
+    // Idle rod rotation (held naturally at waist level, tip pointing slightly up and forward)
+    private Quaternion idleRotation = Quaternion.Euler(45, 0, 0);
+    // Cast back (rod lifted over shoulder behind head)
+    private Quaternion castBackRotation = Quaternion.Euler(-100, 0, 0);
+    // Cast forward (rod thrusts forward and down in casting motion)
+    private Quaternion castForwardRotation = Quaternion.Euler(65, 0, 0);
+    // Waiting position (rod held at comfortable angle over water, tip up slightly)
+    private Quaternion waitingRotation = Quaternion.Euler(40, 0, 0);
 
     void Start()
     {
