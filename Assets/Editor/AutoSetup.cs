@@ -59,6 +59,10 @@ public class AutoSetup
         GameObject ui = new GameObject("UIManager");
         ui.AddComponent<UIManager>();
 
+        // Character Panel (Tab inventory)
+        GameObject charPanel = new GameObject("CharacterPanel");
+        charPanel.AddComponent<CharacterPanel>();
+
         // Quest NPC on the dock
         CreateQuestNPC();
 
@@ -77,7 +81,7 @@ public class AutoSetup
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
@@ -1005,8 +1009,7 @@ public class AutoSetup
 
         GameObject player = GameObject.Find("Player");
         Camera.main.GetComponent<CameraController>().target = player.transform;
-        Camera.main.GetComponent<CameraController>().offset = new Vector3(0, 5, -7);
-        Camera.main.transform.position = new Vector3(0, 7, -3);
+        Camera.main.transform.position = new Vector3(0, 7, -12);
         Camera.main.backgroundColor = new Color(0.5f, 0.7f, 0.9f);  // Sky blue
         Camera.main.clearFlags = CameraClearFlags.SolidColor;
     }

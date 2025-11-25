@@ -3,72 +3,92 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     public Transform target;
-    public Vector3 offset = new Vector3(0, 8, -10);
-    public float smoothSpeed = 5f;
+    public float smoothSpeed = 10f;
+
+    [Header("Camera Position")]
+    public float cameraDistance = 8f;    // Distance behind player
+    public float cameraHeight = 4f;      // Height above player
+    public float lookAtHeight = 1.2f;    // Where camera looks at on player
 
     [Header("Zoom Settings")]
     public float zoomSpeed = 3f;
     public float minZoom = 4f;
-    public float maxZoom = 20f;
-    private float currentZoom = 10f;
+    public float maxZoom = 15f;
 
-    [Header("Rotation Settings")]
-    public float rotationSpeed = 3f;
-    public float minVerticalAngle = 10f;
-    public float maxVerticalAngle = 80f;
-
-    private float currentYaw = 0f;      // Horizontal rotation
-    private float currentPitch = 35f;   // Vertical rotation (angle from horizontal)
+    // Camera is locked behind player - follows player's rotation
+    public float GetCurrentYaw()
+    {
+        if (target != null)
+        {
+            return target.eulerAngles.y;
+        }
+        return 0f;
+    }
 
     void Start()
     {
-        currentZoom = offset.magnitude;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
-        // Initialize rotation from current offset
-        Vector3 flatOffset = new Vector3(offset.x, 0, offset.z);
-        if (flatOffset.magnitude > 0.01f)
+        // Auto-find player if not assigned
+        if (target == null)
         {
-            currentYaw = Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg;
+            GameObject player = GameObject.Find("Player");
+            if (player != null)
+            {
+                target = player.transform;
+            }
         }
-        currentPitch = Mathf.Clamp(35f, minVerticalAngle, maxVerticalAngle);
+
+        // Set initial camera position immediately
+        if (target != null)
+        {
+            Vector3 behindPlayer = -target.forward * cameraDistance;
+            Vector3 abovePlayer = Vector3.up * cameraHeight;
+            transform.position = target.position + behindPlayer + abovePlayer;
+            transform.LookAt(target.position + Vector3.up * lookAtHeight);
+        }
     }
 
     void LateUpdate()
     {
-        if (target == null) return;
+        // Keep trying to find player if not found
+        if (target == null)
+        {
+            GameObject player = GameObject.Find("Player");
+            if (player != null)
+            {
+                target = player.transform;
+            }
+            else
+            {
+                return;
+            }
+        }
 
         // Zoom with scroll wheel
         float scroll = Input.GetAxis("Mouse ScrollWheel");
-        currentZoom -= scroll * zoomSpeed;
-        currentZoom = Mathf.Clamp(currentZoom, minZoom, maxZoom);
-
-        // Right-click to rotate camera 360 degrees around player
-        if (Input.GetMouseButton(1))
+        if (scroll != 0)
         {
-            float mouseX = Input.GetAxis("Mouse X");
-            float mouseY = Input.GetAxis("Mouse Y");
-
-            currentYaw += mouseX * rotationSpeed;
-            currentPitch -= mouseY * rotationSpeed;
-            currentPitch = Mathf.Clamp(currentPitch, minVerticalAngle, maxVerticalAngle);
+            cameraDistance -= scroll * zoomSpeed;
+            cameraDistance = Mathf.Clamp(cameraDistance, minZoom, maxZoom);
         }
 
-        // Calculate camera position based on spherical coordinates
-        float pitchRad = currentPitch * Mathf.Deg2Rad;
-        float yawRad = currentYaw * Mathf.Deg2Rad;
+        // Camera is LOCKED behind the player - always sees the back of the character
+        // Camera position is relative to player's facing direction
+        Vector3 behindPlayer = -target.forward * cameraDistance;
+        Vector3 abovePlayer = Vector3.up * cameraHeight;
 
-        // Spherical to Cartesian conversion
-        float horizontalDist = currentZoom * Mathf.Cos(pitchRad);
-        float verticalDist = currentZoom * Mathf.Sin(pitchRad);
+        Vector3 desiredPosition = target.position + behindPlayer + abovePlayer;
+        Vector3 lookAtPoint = target.position + Vector3.up * lookAtHeight;
 
-        Vector3 cameraOffset = new Vector3(
-            horizontalDist * Mathf.Sin(yawRad),
-            verticalDist,
-            horizontalDist * Mathf.Cos(yawRad)
-        );
-
-        Vector3 desiredPosition = target.position + cameraOffset;
+        // Smooth follow
         transform.position = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);
-        transform.LookAt(target.position + Vector3.up * 0.5f);
+        transform.LookAt(lookAtPoint);
+    }
+
+    public void SetYaw(float yaw)
+    {
+        // Not used in locked camera mode, but kept for compatibility
     }
 }
