@@ -5,6 +5,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 5f;
+    public float runSpeed = 8f;
     public float rotationSpeed = 10f;
 
     [Header("Jump")]
@@ -19,18 +20,29 @@ public class PlayerController : MonoBehaviour
 
     private Vector3 moveDirection;
     private Rigidbody rb;
+    private CameraController cameraController;
+
+    // Cached texture for death screen
+    private Texture2D deathOverlayTexture;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        cameraController = Camera.main?.GetComponent<CameraController>();
+
+        // Create death overlay texture once
+        deathOverlayTexture = new Texture2D(2, 2);
+        Color[] pixels = new Color[4];
+        for (int i = 0; i < 4; i++) pixels[i] = new Color(0.6f, 0, 0, 0.7f);
+        deathOverlayTexture.SetPixels(pixels);
+        deathOverlayTexture.Apply();
     }
 
     void Update()
     {
         if (isDead) return;
 
-        HandleMovement();
-        HandleRotation();
+        HandleWoWMovement();
         CheckGrounded();
 
         // Left mouse button to fish (only starts cast, rod animator handles the rest)
@@ -58,26 +70,33 @@ public class PlayerController : MonoBehaviour
         CheckWaterDeath();
     }
 
-    void HandleMovement()
+    void HandleWoWMovement()
     {
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
+        float horizontal = Input.GetAxisRaw("Horizontal"); // A/D for turning
+        float vertical = Input.GetAxisRaw("Vertical");     // W/S for forward/back
 
-        moveDirection = new Vector3(horizontal, 0f, vertical).normalized;
+        bool isRunning = Input.GetKey(KeyCode.LeftShift);
+        float currentSpeed = isRunning ? runSpeed : moveSpeed;
 
-        if (moveDirection.magnitude >= 0.1f)
+        // Locked camera style: A/D always turns character, W/S moves forward/back
+        // Camera follows behind, so player always sees character's back
+
+        // Turn left/right with A/D
+        if (Mathf.Abs(horizontal) > 0.1f)
         {
-            transform.Translate(moveDirection * moveSpeed * Time.deltaTime, Space.World);
+            transform.Rotate(Vector3.up, horizontal * rotationSpeed * 12f * Time.deltaTime);
         }
-    }
 
-    void HandleRotation()
-    {
-        if (moveDirection.magnitude >= 0.1f)
+        // Move forward/backward with W/S
+        if (Mathf.Abs(vertical) > 0.1f)
         {
-            float targetAngle = Mathf.Atan2(moveDirection.x, moveDirection.z) * Mathf.Rad2Deg;
-            Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
-            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            Vector3 moveDir = transform.forward * vertical;
+            transform.position += moveDir * currentSpeed * Time.deltaTime;
+            moveDirection = moveDir;
+        }
+        else
+        {
+            moveDirection = Vector3.zero;
         }
     }
 
@@ -171,13 +190,13 @@ public class PlayerController : MonoBehaviour
 
     void OnGUI()
     {
-        if (showDeathScreen)
+        if (showDeathScreen && deathOverlayTexture != null)
         {
-            // Red overlay
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), MakeTexture(2, 2, new Color(0.6f, 0, 0, 0.7f)));
+            // Red overlay - using cached texture
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), deathOverlayTexture);
 
             // Death message
-            GUIStyle deathStyle = new GUIStyle();
+            GUIStyle deathStyle = new GUIStyle(GUI.skin.label);
             deathStyle.fontSize = 48;
             deathStyle.fontStyle = FontStyle.Bold;
             deathStyle.alignment = TextAnchor.MiddleCenter;
@@ -195,14 +214,12 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    Texture2D MakeTexture(int width, int height, Color color)
+    void OnDestroy()
     {
-        Color[] pixels = new Color[width * height];
-        for (int i = 0; i < pixels.Length; i++) pixels[i] = color;
-        Texture2D tex = new Texture2D(width, height);
-        tex.SetPixels(pixels);
-        tex.Apply();
-        return tex;
+        if (deathOverlayTexture != null)
+        {
+            Destroy(deathOverlayTexture);
+        }
     }
 
     public bool IsDead()
