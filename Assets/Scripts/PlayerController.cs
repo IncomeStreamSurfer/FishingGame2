@@ -49,15 +49,15 @@ public class PlayerController : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             FishingRodAnimator rodAnimator = GetComponent<FishingRodAnimator>();
-            // Only start fishing if line is not already out
-            if (rodAnimator != null && !rodAnimator.IsLineOut())
+            // Only start fishing if line is not already out AND not already charging
+            if (rodAnimator != null && !rodAnimator.IsLineOut() && !rodAnimator.IsCharging())
             {
                 if (FishingSystem.Instance != null && FishingSystem.Instance.CanFish())
                 {
                     FishingSystem.Instance.StartFishing();
                 }
             }
-            // If line is out, the rod animator handles the click for reeling in
+            // If line is out or charging, the rod animator handles the click
         }
 
         // Space to jump

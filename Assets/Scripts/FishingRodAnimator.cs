@@ -214,13 +214,20 @@ public class FishingRodAnimator : MonoBehaviour
 
     public void CastLine()
     {
-        if (!isLineOut && rodPivot != null && !isCharging)
+        // Only start charging if not already charging and not fishing
+        if (!isLineOut && rodPivot != null && !isCharging && !rodBroken)
         {
             // Start charging
             isCharging = true;
             chargeTime = 0f;
             currentCastPower = 0f;
         }
+    }
+
+    // Returns true if currently in charging state
+    public bool IsCharging()
+    {
+        return isCharging;
     }
 
     IEnumerator ChargedCastCoroutine(float power)

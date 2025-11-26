@@ -83,7 +83,8 @@ public class FishingSystem : MonoBehaviour
         if (player != null)
         {
             FishingRodAnimator rodAnimator = player.GetComponent<FishingRodAnimator>();
-            if (rodAnimator != null && !rodAnimator.IsLineOut())
+            // Don't start if already charging, line is out, or rod is broken
+            if (rodAnimator != null && !rodAnimator.IsLineOut() && !rodAnimator.IsCharging() && !rodAnimator.IsRodBroken())
             {
                 isFishing = true;
                 canFish = false;
