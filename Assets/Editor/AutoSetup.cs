@@ -155,177 +155,32 @@ public class AutoSetup
 
     static void CreateGround()
     {
-        // ONE UNIFIED GROUND - completely flat, no obstacles
-        CreateUnifiedGround();
-    }
-
-    static void CreateUnifiedGround()
-    {
+        // SIMPLE CLEAN GROUND - one grass island surrounded by water
         GameObject ground = new GameObject("Ground");
         ground.transform.position = Vector3.zero;
 
-        float groundY = 1.0f; // THE ONLY ground level - everything walks on this
+        float groundY = 1.0f; // Ground level
 
-        // Materials
-        Material sandMat = new Material(Shader.Find("Standard"));
-        sandMat.color = new Color(0.9f, 0.82f, 0.65f); // Light sandy
-
+        // ONE SIMPLE GREEN FLOOR - this is what you walk on
         Material grassMat = new Material(Shader.Find("Standard"));
         grassMat.color = new Color(0.28f, 0.52f, 0.18f); // Lush green grass
 
-        Material transitionMat = new Material(Shader.Find("Standard"));
-        transitionMat.color = new Color(0.5f, 0.6f, 0.35f); // Grass-sand mix
-
-        // ============================================
-        // ONE MASSIVE WALKABLE FLOOR - THE ONLY COLLIDER
-        // ============================================
         GameObject mainFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
         mainFloor.name = "MainFloor";
         mainFloor.transform.SetParent(ground.transform);
-        mainFloor.transform.localPosition = new Vector3(30, groundY - 0.1f, 20);
-        mainFloor.transform.localScale = new Vector3(150, 0.2f, 120); // HUGE - covers everything
-        mainFloor.GetComponent<Renderer>().sharedMaterial = sandMat;
-        // This is the ONLY ground collider - player walks on this
+        mainFloor.transform.localPosition = new Vector3(0, groundY, 0);
+        mainFloor.transform.localScale = new Vector3(80, 0.5f, 60); // Island size
+        mainFloor.GetComponent<Renderer>().sharedMaterial = grassMat;
 
-        // ============================================
-        // VISUAL LAYERS ONLY (no colliders) - for color
-        // ============================================
-
-        // Grass area where player spawns (visual only)
-        GameObject grassVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        grassVisual.name = "GrassVisual";
-        grassVisual.transform.SetParent(ground.transform);
-        grassVisual.transform.localPosition = new Vector3(0, groundY + 0.01f, -15);
-        grassVisual.transform.localScale = new Vector3(50, 0.02f, 40);
-        grassVisual.GetComponent<Renderer>().sharedMaterial = grassMat;
-        Object.DestroyImmediate(grassVisual.GetComponent<Collider>()); // NO COLLIDER
-
-        // Grass-sand transition (visual only)
-        GameObject transitionVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        transitionVisual.name = "TransitionVisual";
-        transitionVisual.transform.SetParent(ground.transform);
-        transitionVisual.transform.localPosition = new Vector3(0, groundY + 0.01f, 2);
-        transitionVisual.transform.localScale = new Vector3(55, 0.02f, 15);
-        transitionVisual.GetComponent<Renderer>().sharedMaterial = transitionMat;
-        Object.DestroyImmediate(transitionVisual.GetComponent<Collider>()); // NO COLLIDER
-
-        // Grass area on clothing shop side (visual only)
-        GameObject shopGrassVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        shopGrassVisual.name = "ShopGrassVisual";
-        shopGrassVisual.transform.SetParent(ground.transform);
-        shopGrassVisual.transform.localPosition = new Vector3(60, groundY + 0.01f, 20);
-        shopGrassVisual.transform.localScale = new Vector3(25, 0.02f, 20);
-        shopGrassVisual.GetComponent<Renderer>().sharedMaterial = grassMat;
-        Object.DestroyImmediate(shopGrassVisual.GetComponent<Collider>()); // NO COLLIDER
-
-        // Add decorative grass tufts (no colliders - already handled in function)
-        AddProceduralGrass(ground.transform, new Vector3(0, groundY, -15), 20f, 80);
-        AddProceduralGrass(ground.transform, new Vector3(60, groundY, 20), 8f, 30);
+        // Add grass tufts for decoration
+        AddProceduralGrass(ground.transform, new Vector3(0, groundY + 0.25f, -10), 25f, 100);
+        AddProceduralGrass(ground.transform, new Vector3(-15, groundY + 0.25f, 5), 10f, 40);
+        AddProceduralGrass(ground.transform, new Vector3(15, groundY + 0.25f, 5), 10f, 40);
     }
 
     static void CreateBridgeToShop()
     {
-        // Wooden bridge - VISUAL ONLY (player walks on unified floor underneath)
-        GameObject bridge = new GameObject("BridgeToShop");
-        bridge.transform.position = Vector3.zero;
-
-        Material woodMat = new Material(Shader.Find("Standard"));
-        woodMat.color = new Color(0.5f, 0.38f, 0.25f); // Brown wood
-
-        Material railMat = new Material(Shader.Find("Standard"));
-        railMat.color = new Color(0.4f, 0.3f, 0.2f); // Darker wood for rails
-
-        float bridgeY = 1.01f; // Just above unified floor for visual
-        float bridgeStartX = 28f;
-        float bridgeEndX = 55f;
-        float bridgeZ = 20f;
-
-        // Main bridge walkway - VISUAL ONLY
-        GameObject walkway = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        walkway.name = "BridgeWalkway";
-        walkway.transform.SetParent(bridge.transform);
-        walkway.transform.localPosition = new Vector3((bridgeStartX + bridgeEndX) / 2, bridgeY, bridgeZ);
-        walkway.transform.localScale = new Vector3(bridgeEndX - bridgeStartX, 0.02f, 3f);
-        walkway.GetComponent<Renderer>().sharedMaterial = woodMat;
-        Object.DestroyImmediate(walkway.GetComponent<Collider>()); // NO COLLIDER - walk on unified floor
-
-        // Bridge planks (visual detail)
-        for (int i = 0; i < 15; i++)
-        {
-            GameObject plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            plank.name = "BridgePlank" + i;
-            plank.transform.SetParent(bridge.transform);
-            float x = bridgeStartX + 2 + i * 1.8f;
-            plank.transform.localPosition = new Vector3(x, bridgeY + 0.08f, bridgeZ);
-            plank.transform.localScale = new Vector3(1.6f, 0.05f, 2.8f);
-            plank.GetComponent<Renderer>().sharedMaterial = woodMat;
-            Object.DestroyImmediate(plank.GetComponent<Collider>()); // Visual only
-        }
-
-        // Bridge support posts
-        for (int i = 0; i < 5; i++)
-        {
-            float x = bridgeStartX + 3 + i * 6f;
-
-            // Left post
-            GameObject leftPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            leftPost.name = "BridgePostL" + i;
-            leftPost.transform.SetParent(bridge.transform);
-            leftPost.transform.localPosition = new Vector3(x, bridgeY - 0.8f, bridgeZ - 1.3f);
-            leftPost.transform.localScale = new Vector3(0.2f, 1.2f, 0.2f);
-            leftPost.GetComponent<Renderer>().sharedMaterial = railMat;
-            Object.DestroyImmediate(leftPost.GetComponent<Collider>());
-
-            // Right post
-            GameObject rightPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            rightPost.name = "BridgePostR" + i;
-            rightPost.transform.SetParent(bridge.transform);
-            rightPost.transform.localPosition = new Vector3(x, bridgeY - 0.8f, bridgeZ + 1.3f);
-            rightPost.transform.localScale = new Vector3(0.2f, 1.2f, 0.2f);
-            rightPost.GetComponent<Renderer>().sharedMaterial = railMat;
-            Object.DestroyImmediate(rightPost.GetComponent<Collider>());
-        }
-
-        // Railings
-        // Left railing
-        GameObject leftRail = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        leftRail.name = "LeftRailing";
-        leftRail.transform.SetParent(bridge.transform);
-        leftRail.transform.localPosition = new Vector3((bridgeStartX + bridgeEndX) / 2, bridgeY + 0.5f, bridgeZ - 1.4f);
-        leftRail.transform.localScale = new Vector3(bridgeEndX - bridgeStartX - 2, 0.08f, 0.1f);
-        leftRail.GetComponent<Renderer>().sharedMaterial = railMat;
-        Object.DestroyImmediate(leftRail.GetComponent<Collider>());
-
-        // Right railing
-        GameObject rightRail = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        rightRail.name = "RightRailing";
-        rightRail.transform.SetParent(bridge.transform);
-        rightRail.transform.localPosition = new Vector3((bridgeStartX + bridgeEndX) / 2, bridgeY + 0.5f, bridgeZ + 1.4f);
-        rightRail.transform.localScale = new Vector3(bridgeEndX - bridgeStartX - 2, 0.08f, 0.1f);
-        rightRail.GetComponent<Renderer>().sharedMaterial = railMat;
-        Object.DestroyImmediate(rightRail.GetComponent<Collider>());
-
-        // Railing posts
-        for (int i = 0; i < 8; i++)
-        {
-            float x = bridgeStartX + 2 + i * 3.5f;
-
-            GameObject leftRailPost = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            leftRailPost.name = "RailPostL" + i;
-            leftRailPost.transform.SetParent(bridge.transform);
-            leftRailPost.transform.localPosition = new Vector3(x, bridgeY + 0.3f, bridgeZ - 1.4f);
-            leftRailPost.transform.localScale = new Vector3(0.1f, 0.5f, 0.1f);
-            leftRailPost.GetComponent<Renderer>().sharedMaterial = railMat;
-            Object.DestroyImmediate(leftRailPost.GetComponent<Collider>());
-
-            GameObject rightRailPost = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            rightRailPost.name = "RailPostR" + i;
-            rightRailPost.transform.SetParent(bridge.transform);
-            rightRailPost.transform.localPosition = new Vector3(x, bridgeY + 0.3f, bridgeZ + 1.4f);
-            rightRailPost.transform.localScale = new Vector3(0.1f, 0.5f, 0.1f);
-            rightRailPost.GetComponent<Renderer>().sharedMaterial = railMat;
-            Object.DestroyImmediate(rightRailPost.GetComponent<Collider>());
-        }
+        // Bridge removed - simplified terrain
     }
 
     // Scattered islands removed - using unified floor instead
@@ -431,18 +286,19 @@ public class AutoSetup
 
     static void CreateWater()
     {
-        // Large water plane covering entire play area
+        // WATER SURROUNDS THE ENTIRE ISLAND
+        // Water level is below ground level (ground is at y=1.0, water at y=0.5)
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
         water.name = "Water";
-        water.transform.position = new Vector3(0, 0.1f, 40);  // Water level below ground
-        water.transform.localScale = new Vector3(25, 1, 25);
+        water.transform.position = new Vector3(0, 0.5f, 0);  // Water level below island
+        water.transform.localScale = new Vector3(50, 1, 50); // HUGE water plane surrounding island
         water.AddComponent<WaterEffect>();
 
         // Water bed (sandy bottom visible through clear water)
         GameObject waterBed = GameObject.CreatePrimitive(PrimitiveType.Plane);
         waterBed.name = "WaterBed";
-        waterBed.transform.position = new Vector3(0, -2f, 40);
-        waterBed.transform.localScale = new Vector3(25, 1, 25);
+        waterBed.transform.position = new Vector3(0, -1f, 0);
+        waterBed.transform.localScale = new Vector3(50, 1, 50);
         Material bedMat = new Material(Shader.Find("Standard"));
         bedMat.color = new Color(0.65f, 0.58f, 0.45f); // Sandy bottom color
         waterBed.GetComponent<Renderer>().sharedMaterial = bedMat;
@@ -450,48 +306,42 @@ public class AutoSetup
 
     static void CreateDock()
     {
-        // DOCK IS VISUAL ONLY - player walks on unified floor
+        // RAISED DOCK - extends from island out over water
+        // This has a collider so player can walk on it
         GameObject dockParent = new GameObject("Dock");
         dockParent.transform.position = Vector3.zero;
 
         Material woodMat = MaterialGenerator.CreateWoodMaterial();
+        Material darkWood = new Material(Shader.Find("Standard"));
+        darkWood.color = new Color(0.22f, 0.14f, 0.08f);
 
-        // Dock dimensions - visual layer on top of unified floor
-        float dockStartZ = -2f;
-        float dockEndZ = 18f;
+        // Dock dimensions
+        float dockStartZ = 10f;   // Start at edge of island (island goes to z=30)
+        float dockEndZ = 45f;     // Extend out over water
         float dockWidth = 5f;
-        float dockHeight = 1.01f; // Just above unified floor (1.0)
+        float dockHeight = 1.5f;  // RAISED above ground level (ground is 1.25)
 
-        // ONE SOLID DOCK SURFACE - visual only, no gaps
+        // MAIN DOCK SURFACE - HAS COLLIDER for walking
         GameObject dockSurface = GameObject.CreatePrimitive(PrimitiveType.Cube);
         dockSurface.name = "DockSurface";
         dockSurface.transform.SetParent(dockParent.transform);
         dockSurface.transform.position = new Vector3(0, dockHeight, (dockStartZ + dockEndZ) / 2f);
-        dockSurface.transform.localScale = new Vector3(dockWidth, 0.02f, dockEndZ - dockStartZ);
+        dockSurface.transform.localScale = new Vector3(dockWidth, 0.3f, dockEndZ - dockStartZ);
         dockSurface.GetComponent<Renderer>().sharedMaterial = woodMat;
-        Object.DestroyImmediate(dockSurface.GetComponent<Collider>()); // NO COLLIDER
+        // KEEP COLLIDER - player walks on this
 
-        // Visual plank lines (just for looks)
-        Material plankLineMat = new Material(Shader.Find("Standard"));
-        plankLineMat.color = new Color(0.35f, 0.25f, 0.15f); // Darker lines between planks
+        // Ramp from ground to dock
+        GameObject ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        ramp.name = "DockRamp";
+        ramp.transform.SetParent(dockParent.transform);
+        ramp.transform.position = new Vector3(0, 1.4f, 7f);
+        ramp.transform.localScale = new Vector3(dockWidth, 0.2f, 8f);
+        ramp.transform.rotation = Quaternion.Euler(5, 0, 0); // Slight slope up
+        ramp.GetComponent<Renderer>().sharedMaterial = woodMat;
+        // KEEP COLLIDER
 
-        for (float z = dockStartZ; z < dockEndZ; z += 0.6f)
-        {
-            GameObject line = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            line.name = "PlankLine";
-            line.transform.SetParent(dockParent.transform);
-            line.transform.position = new Vector3(0, dockHeight + 0.01f, z);
-            line.transform.localScale = new Vector3(dockWidth, 0.005f, 0.02f);
-            line.GetComponent<Renderer>().sharedMaterial = plankLineMat;
-            Object.DestroyImmediate(line.GetComponent<Collider>()); // NO COLLIDER
-        }
-
-        // Support structure - VISUAL ONLY
-        Material darkWood = new Material(Shader.Find("Standard"));
-        darkWood.color = new Color(0.22f, 0.14f, 0.08f);
-
-        // Vertical support posts (pilings) - visual only
-        float[] postPositions = { 0f, 5f, 10f, 15f };
+        // Support posts going into water - VISUAL ONLY
+        float[] postPositions = { 15f, 25f, 35f, 45f };
         foreach (float zPos in postPositions)
         {
             for (int side = -1; side <= 1; side += 2)
@@ -499,23 +349,36 @@ public class AutoSetup
                 GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 post.name = "DockPost";
                 post.transform.SetParent(dockParent.transform);
-                post.transform.position = new Vector3(side * 2.2f, -0.5f, zPos);
-                post.transform.localScale = new Vector3(0.2f, 2f, 0.2f);
+                post.transform.position = new Vector3(side * 2f, 0f, zPos);
+                post.transform.localScale = new Vector3(0.25f, 2f, 0.25f);
                 post.GetComponent<Renderer>().sharedMaterial = darkWood;
-                Object.DestroyImmediate(post.GetComponent<Collider>()); // NO COLLIDER
+                Object.DestroyImmediate(post.GetComponent<Collider>()); // Visual only
             }
         }
 
-        // Decorative rope coil - visual only
+        // Cross beams under dock - VISUAL ONLY
+        for (int i = 0; i < 4; i++)
+        {
+            float z = dockStartZ + 5 + i * 8f;
+            GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            beam.name = "CrossBeam";
+            beam.transform.SetParent(dockParent.transform);
+            beam.transform.position = new Vector3(0, dockHeight - 0.3f, z);
+            beam.transform.localScale = new Vector3(dockWidth + 0.5f, 0.15f, 0.2f);
+            beam.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(beam.GetComponent<Collider>()); // Visual only
+        }
+
+        // Decorative rope coil at end - VISUAL ONLY
         GameObject rope = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         rope.name = "RopeCoil";
         rope.transform.SetParent(dockParent.transform);
-        rope.transform.position = new Vector3(2f, dockHeight + 0.05f, 1f);
-        rope.transform.localScale = new Vector3(0.4f, 0.08f, 0.4f);
+        rope.transform.position = new Vector3(2f, dockHeight + 0.2f, dockEndZ - 2f);
+        rope.transform.localScale = new Vector3(0.5f, 0.1f, 0.5f);
         Material ropeMat = new Material(Shader.Find("Standard"));
         ropeMat.color = new Color(0.55f, 0.45f, 0.30f);
         rope.GetComponent<Renderer>().sharedMaterial = ropeMat;
-        Object.DestroyImmediate(rope.GetComponent<Collider>()); // NO COLLIDER
+        Object.DestroyImmediate(rope.GetComponent<Collider>()); // Visual only
     }
 
     static void CreateRamp()
@@ -527,7 +390,7 @@ public class AutoSetup
     static void CreatePlayer()
     {
         GameObject player = new GameObject("Player");
-        player.transform.position = new Vector3(0, 1.5f, -15f);  // Start on GRASS area (safe spawn)
+        player.transform.position = new Vector3(0, 2f, -5f);  // Start on grass island
         player.transform.rotation = Quaternion.Euler(0, 0, 0);
         player.AddComponent<PlayerController>();
         player.AddComponent<FishingRodAnimator>();
@@ -1085,7 +948,7 @@ public class AutoSetup
     {
         // WETSUIT PETE - Quest NPC wearing black wetsuit with snorkel
         GameObject npc = new GameObject("QuestNPC");
-        npc.transform.position = new Vector3(-2f, 2f, 3f);  // Standing on dock, to the side
+        npc.transform.position = new Vector3(-2f, 1.65f, 15f);  // Standing on dock
         npc.transform.rotation = Quaternion.Euler(0, 45, 0);  // Facing toward player area
 
         // Add NPC interaction component
@@ -1588,27 +1451,24 @@ public class AutoSetup
 
     static void CreateClothingShopIsland()
     {
-        // Clothing shop area - VISUAL ONLY (player walks on unified floor)
-        GameObject island = new GameObject("ClothingShopIsland");
-        island.transform.position = new Vector3(60, 0, 20);
+        // Clothing shop on the main island (left side)
+        GameObject shop = new GameObject("ClothingShopIsland");
+        shop.transform.position = new Vector3(-25, 0, -10); // Left side of island
 
-        float groundY = 1.0f; // Same as unified floor
+        float groundY = 1.25f; // On the grass floor
 
-        // Palm trees with grass underneath
-        CreatePalmTree(island.transform, new Vector3(-3, groundY, -5));
-        CreatePalmTree(island.transform, new Vector3(6, groundY, 4));
-        CreatePalmTree(island.transform, new Vector3(-6, groundY, 3));
+        // Palm trees near shop
+        CreatePalmTree(shop.transform, new Vector3(-3, groundY, -3));
+        CreatePalmTree(shop.transform, new Vector3(5, groundY, 2));
 
         // Small wooden shop structure
-        CreateClothingShopBuilding(island.transform, new Vector3(4f, groundY, -2));
+        CreateClothingShopBuilding(shop.transform, new Vector3(0f, groundY, 0));
 
         // Granny NPC with rocking chair - in front of shop
-        CreateGrannyNPC(island.transform, new Vector3(0f, groundY, 2));
+        CreateGrannyNPC(shop.transform, new Vector3(-3f, groundY, 3));
 
         // Add clothing shop component
-        island.AddComponent<ClothingShopNPC>();
-
-        // NO ROCKS - they were blocking movement
+        shop.AddComponent<ClothingShopNPC>();
     }
 
     static void CreatePalmTree(Transform parent, Vector3 localPos)
