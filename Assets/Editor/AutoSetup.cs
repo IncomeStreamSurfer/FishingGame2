@@ -178,6 +178,14 @@ public class AutoSetup
 
         float groundY = 1.0f; // FLAT ground level - player spawns here
 
+        // === MASSIVE UNIFIED FLOOR - prevents falling through gaps ===
+        GameObject unifiedFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        unifiedFloor.name = "UnifiedFloor";
+        unifiedFloor.transform.SetParent(mainIsland.transform);
+        unifiedFloor.transform.localPosition = new Vector3(0, groundY - 0.3f, 0);
+        unifiedFloor.transform.localScale = new Vector3(100, 0.4f, 80);
+        unifiedFloor.GetComponent<Renderer>().sharedMaterial = sandMat;
+
         // === GRASS AREA (where player spawns) - FLAT ===
         GameObject grassArea = GameObject.CreatePrimitive(PrimitiveType.Cube);
         grassArea.name = "GrassGround";
@@ -194,13 +202,13 @@ public class AutoSetup
         sandArea.transform.localScale = new Vector3(45, 0.2f, 20); // Beach area
         sandArea.GetComponent<Renderer>().sharedMaterial = sandMat;
 
-        // === BEACH EDGE (slopes gently into water) ===
+        // === BEACH EDGE (FLAT - extends to water) ===
         GameObject beachEdge = GameObject.CreatePrimitive(PrimitiveType.Cube);
         beachEdge.name = "BeachEdge";
         beachEdge.transform.SetParent(mainIsland.transform);
-        beachEdge.transform.localPosition = new Vector3(0, groundY - 0.4f, 18);
-        beachEdge.transform.localRotation = Quaternion.Euler(8, 0, 0); // Gentle slope into water
-        beachEdge.transform.localScale = new Vector3(40, 0.2f, 12);
+        beachEdge.transform.localPosition = new Vector3(0, groundY - 0.2f, 18);
+        // NO ROTATION - completely flat
+        beachEdge.transform.localScale = new Vector3(50, 0.2f, 15);
         beachEdge.GetComponent<Renderer>().sharedMaterial = sandMat;
 
         // === GRASS-SAND TRANSITION (smooth edge) ===
@@ -548,12 +556,8 @@ public class AutoSetup
             plank.transform.position = new Vector3(0, dockHeight, z);
             plank.transform.localScale = new Vector3(dockWidth, 0.12f, plankWidth - 0.04f);
 
-            // Slight variation for natural look
-            plank.transform.rotation = Quaternion.Euler(
-                Random.Range(-0.3f, 0.3f),
-                Random.Range(-0.5f, 0.5f),
-                Random.Range(-0.2f, 0.2f)
-            );
+            // FLAT - no rotation to prevent physics issues
+            plank.transform.rotation = Quaternion.identity;
 
             plank.GetComponent<Renderer>().sharedMaterial = woodMat;
         }
@@ -618,33 +622,37 @@ public class AutoSetup
     {
         Material woodMat = MaterialGenerator.CreateWoodMaterial();
 
-        // Ramp from ground to dock
-        GameObject ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        ramp.name = "Ramp";
-        ramp.transform.position = new Vector3(0, 0.6f, -4f);
-        ramp.transform.localScale = new Vector3(3.5f, 0.15f, 4f);
-        ramp.transform.rotation = Quaternion.Euler(-18, 0, 0);
-        ramp.GetComponent<Renderer>().sharedMaterial = woodMat;
+        // FLAT walkway from ground to dock - NO ANGLE
+        // Create a series of flat steps instead of a sloped ramp
+        float stepHeight = 0.2f;
+        float dockHeight = 1.2f;
+        float startZ = -6f;
+        int numSteps = 5;
 
-        // Ramp side rails
-        Material railMat = new Material(Shader.Find("Standard"));
-        railMat.color = new Color(0.28f, 0.18f, 0.10f);
-
-        for (int side = -1; side <= 1; side += 2)
+        for (int i = 0; i < numSteps; i++)
         {
-            GameObject rail = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            rail.name = "RampRail";
-            rail.transform.position = new Vector3(side * 1.6f, 0.8f, -4f);
-            rail.transform.localScale = new Vector3(0.08f, 0.5f, 4.2f);
-            rail.transform.rotation = Quaternion.Euler(-18, 0, 0);
-            rail.GetComponent<Renderer>().sharedMaterial = railMat;
+            GameObject step = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            step.name = "RampStep" + i;
+            float height = 0.2f + (i * stepHeight);
+            float z = startZ + i * 1.2f;
+            step.transform.position = new Vector3(0, height, z);
+            step.transform.localScale = new Vector3(3.5f, 0.2f, 1.4f);
+            // NO ROTATION - completely flat steps
+            step.GetComponent<Renderer>().sharedMaterial = woodMat;
         }
+
+        // Final step connecting to dock
+        GameObject finalStep = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        finalStep.name = "RampFinal";
+        finalStep.transform.position = new Vector3(0, dockHeight - 0.1f, -1.5f);
+        finalStep.transform.localScale = new Vector3(3.5f, 0.2f, 2f);
+        finalStep.GetComponent<Renderer>().sharedMaterial = woodMat;
     }
 
     static void CreatePlayer()
     {
         GameObject player = new GameObject("Player");
-        player.transform.position = new Vector3(0, 2f, -5f);  // Start on beach side of dock (facing water)
+        player.transform.position = new Vector3(0, 1.5f, -15f);  // Start on GRASS area (safe spawn)
         player.transform.rotation = Quaternion.Euler(0, 0, 0);
         player.AddComponent<PlayerController>();
         player.AddComponent<FishingRodAnimator>();
