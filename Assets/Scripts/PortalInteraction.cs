@@ -104,7 +104,7 @@ public class PortalInteraction : MonoBehaviour
 
     void OnGUI()
     {
-        if (!playerNearby) return;
+        if (!MainMenu.GameStarted || !playerNearby) return;
 
         // Show portal info when nearby
         GUIStyle style = new GUIStyle();

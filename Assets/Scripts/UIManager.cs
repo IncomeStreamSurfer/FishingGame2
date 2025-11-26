@@ -41,6 +41,10 @@ public class UIManager : MonoBehaviour
     private Texture2D tabActiveTex;
     private bool stylesInitialized = false;
 
+    // Cached textures to avoid creating new ones every frame
+    private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
+    private bool initialized = false;
+
     // Level up notification
     private float levelUpNotificationTime = 0f;
     private int levelUpFrom = 0;
@@ -81,10 +85,20 @@ public class UIManager : MonoBehaviour
         {
             LevelingSystem.Instance.OnLevelUp += OnLevelUp;
         }
+
+        // Delay initialization to avoid texture creation issues
+        Invoke("Initialize", 0.5f);
+    }
+
+    void Initialize()
+    {
+        InitStyles();
+        initialized = true;
     }
 
     void InitializeShopItems()
     {
+        // Note: Clothing items moved to Granny's Boutique on the island
         shopItems = new ShopItem[]
         {
             new ShopItem("Bait Pack (10)", "Basic bait for fishing", 50, ShopItemType.Consumable),
@@ -94,9 +108,9 @@ public class UIManager : MonoBehaviour
             new ShopItem("Silver Rod", "Good quality rod", 500, ShopItemType.Rod),
             new ShopItem("Golden Rod", "Excellent rod", 2000, ShopItemType.Rod),
             new ShopItem("Legendary Rod", "The best rod money can buy", 10000, ShopItemType.Rod),
-            new ShopItem("Fisherman's Hat", "A stylish hat", 300, ShopItemType.Cosmetic),
-            new ShopItem("Sailor's Coat", "Protection from the elements", 750, ShopItemType.Cosmetic),
             new ShopItem("XP Boost (1hr)", "Double XP for 1 hour", 1000, ShopItemType.Consumable),
+            new ShopItem("Fish Finder", "Shows fish locations for 5 min", 750, ShopItemType.Consumable),
+            new ShopItem("Tackle Box", "Store more bait types", 1500, ShopItemType.Consumable),
         };
     }
 
@@ -150,12 +164,32 @@ public class UIManager : MonoBehaviour
 
     Texture2D MakeTexture(int width, int height, Color color)
     {
+        // Create a cache key from the color
+        string key = $"{color.r:F2}_{color.g:F2}_{color.b:F2}_{color.a:F2}";
+
+        if (textureCache.TryGetValue(key, out Texture2D cached))
+        {
+            return cached;
+        }
+
         Color[] pixels = new Color[width * height];
         for (int i = 0; i < pixels.Length; i++) pixels[i] = color;
         Texture2D tex = new Texture2D(width, height);
         tex.SetPixels(pixels);
         tex.Apply();
+
+        textureCache[key] = tex;
         return tex;
+    }
+
+    void OnDestroy()
+    {
+        // Clean up cached textures
+        foreach (var tex in textureCache.Values)
+        {
+            if (tex != null) Destroy(tex);
+        }
+        textureCache.Clear();
     }
 
     void Update()
@@ -225,7 +259,9 @@ public class UIManager : MonoBehaviour
 
     void OnGUI()
     {
-        InitStyles();
+        // Don't draw HUD if game hasn't started or not initialized
+        if (!MainMenu.GameStarted || !initialized) return;
+
         DrawHUD();
         DrawNotifications();
 
