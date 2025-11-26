@@ -9,7 +9,7 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed = 10f;
 
     [Header("Jump")]
-    public float jumpForce = 12f;  // Higher jump!
+    public float jumpForce = 35f;  // CRAZY HIGH jump!
     public LayerMask groundLayer;
     private bool isGrounded = true;
 
@@ -190,6 +190,8 @@ public class PlayerController : MonoBehaviour
 
     void OnGUI()
     {
+        if (!MainMenu.GameStarted) return;
+
         if (showDeathScreen && deathOverlayTexture != null)
         {
             // Red overlay - using cached texture

@@ -39,6 +39,8 @@ public class NPCInteraction : MonoBehaviour
 
     void Update()
     {
+        if (!MainMenu.GameStarted) return;
+
         // Update quest marker visibility
         UpdateQuestMarker();
 
