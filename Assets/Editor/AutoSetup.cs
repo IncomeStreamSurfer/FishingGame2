@@ -36,6 +36,9 @@ public class AutoSetup
         // Player with proper human proportions
         CreatePlayer();
 
+        // Spawn NPC - greets the naked player
+        CreateSpawnNPC();
+
         // IMPORTANT: Create MainMenu FIRST so other systems can check GameStarted
         GameObject mainMenu = new GameObject("MainMenu");
         mainMenu.AddComponent<MainMenu>();
@@ -75,6 +78,17 @@ public class AutoSetup
         GameObject devPanel = new GameObject("DevPanel");
         devPanel.AddComponent<DevPanel>();
 
+        // Player Health System (HP, hunger, death)
+        GameObject playerHealth = new GameObject("PlayerHealth");
+        playerHealth.AddComponent<PlayerHealth>();
+
+        // Food Inventory System (fish storage, cooking, hotbar)
+        GameObject foodInventory = new GameObject("FoodInventory");
+        foodInventory.AddComponent<FoodInventory>();
+
+        // BBQ Station at end of dock
+        CreateBBQ();
+
         // Quest NPC on the dock
         CreateQuestNPC();
 
@@ -98,13 +112,17 @@ public class AutoSetup
         GameObject birds = new GameObject("BirdFlock");
         birds.AddComponent<BirdFlock>();
 
+        // Candy the cat - calico cat that patrols the island
+        GameObject candy = new GameObject("CandyCat");
+        candy.AddComponent<CandyCat>();
+
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         Debug.Log("=== FISHING GAME READY! Press PLAY, WASD to move, HOLD LEFT CLICK to charge cast! ===");
     }
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
@@ -155,27 +173,366 @@ public class AutoSetup
 
     static void CreateGround()
     {
-        // SIMPLE CLEAN GROUND - one grass island surrounded by water
+        // LAYERED TERRAIN with gradients - grass > sand > water slope
         GameObject ground = new GameObject("Ground");
         ground.transform.position = Vector3.zero;
 
         float groundY = 1.0f; // Ground level
 
-        // ONE SIMPLE GREEN FLOOR - this is what you walk on
+        // === GRASS LAYERS (center island) - multiple shades for gradient ===
+        // Core grass (darkest/richest green)
+        Material grassCoreMat = new Material(Shader.Find("Standard"));
+        grassCoreMat.color = new Color(0.22f, 0.48f, 0.15f); // Deep lush green
+
+        GameObject grassCore = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        grassCore.name = "GrassCore";
+        grassCore.transform.SetParent(ground.transform);
+        grassCore.transform.localPosition = new Vector3(0, groundY + 0.02f, -9.2f);
+        grassCore.transform.localScale = new Vector3(60, 0.5f, 62f);
+        grassCore.GetComponent<Renderer>().sharedMaterial = grassCoreMat;
+
+        // Mid grass (medium green)
+        Material grassMidMat = new Material(Shader.Find("Standard"));
+        grassMidMat.color = new Color(0.32f, 0.55f, 0.22f); // Medium green
+
+        GameObject grassMid = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        grassMid.name = "GrassMid";
+        grassMid.transform.SetParent(ground.transform);
+        grassMid.transform.localPosition = new Vector3(0, groundY + 0.01f, -9.2f);
+        grassMid.transform.localScale = new Vector3(70, 0.5f, 72f);
+        grassMid.GetComponent<Renderer>().sharedMaterial = grassMidMat;
+
+        // Outer grass (lighter, transitioning to sand)
+        Material grassOuterMat = new Material(Shader.Find("Standard"));
+        grassOuterMat.color = new Color(0.42f, 0.58f, 0.30f); // Light green with yellow tint
+
+        GameObject grassOuter = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        grassOuter.name = "GrassOuter";
+        grassOuter.transform.SetParent(ground.transform);
+        grassOuter.transform.localPosition = new Vector3(0, groundY, -9.2f);
+        grassOuter.transform.localScale = new Vector3(76, 0.5f, 78f);
+        grassOuter.GetComponent<Renderer>().sharedMaterial = grassOuterMat;
+
+        // Main walkable floor (base grass)
         Material grassMat = new Material(Shader.Find("Standard"));
-        grassMat.color = new Color(0.28f, 0.52f, 0.18f); // Lush green grass
+        grassMat.color = new Color(0.35f, 0.52f, 0.25f);
 
         GameObject mainFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
         mainFloor.name = "MainFloor";
         mainFloor.transform.SetParent(ground.transform);
-        mainFloor.transform.localPosition = new Vector3(0, groundY, 0);
-        mainFloor.transform.localScale = new Vector3(80, 0.5f, 60); // Island size
+        mainFloor.transform.localPosition = new Vector3(0, groundY - 0.01f, -9.2f);
+        mainFloor.transform.localScale = new Vector3(80, 0.5f, 81.88f);
         mainFloor.GetComponent<Renderer>().sharedMaterial = grassMat;
+
+        // === SAND/BEACH GRADIENT LAYERS ===
+        // Inner sand (grass-sand transition - greenish sand)
+        Material sandInnerMat = new Material(Shader.Find("Standard"));
+        sandInnerMat.color = new Color(0.72f, 0.68f, 0.45f); // Yellow-green sand
+
+        GameObject sandInner = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        sandInner.name = "SandInner";
+        sandInner.transform.SetParent(ground.transform);
+        sandInner.transform.localPosition = new Vector3(0, groundY - 0.08f, -9.2f);
+        sandInner.transform.localScale = new Vector3(85, 0.5f, 87f);
+        sandInner.GetComponent<Renderer>().sharedMaterial = sandInnerMat;
+
+        // Mid sand (typical beach color)
+        Material sandMidMat = new Material(Shader.Find("Standard"));
+        sandMidMat.color = new Color(0.88f, 0.78f, 0.55f); // Classic sand
+
+        GameObject sandMid = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        sandMid.name = "SandMid";
+        sandMid.transform.SetParent(ground.transform);
+        sandMid.transform.localPosition = new Vector3(0, groundY - 0.15f, -9.2f);
+        sandMid.transform.localScale = new Vector3(92, 0.5f, 94f);
+        sandMid.GetComponent<Renderer>().sharedMaterial = sandMidMat;
+
+        // Outer sand (wet sand near water - darker)
+        Material sandWetMat = new Material(Shader.Find("Standard"));
+        sandWetMat.color = new Color(0.65f, 0.55f, 0.38f); // Wet dark sand
+        sandWetMat.SetFloat("_Glossiness", 0.4f); // Slightly shiny wet look
+
+        GameObject sandWet = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        sandWet.name = "SandWet";
+        sandWet.transform.SetParent(ground.transform);
+        sandWet.transform.localPosition = new Vector3(0, groundY - 0.25f, -9.2f);
+        sandWet.transform.localScale = new Vector3(100, 0.5f, 102f);
+        sandWet.GetComponent<Renderer>().sharedMaterial = sandWetMat;
 
         // Add grass tufts for decoration
         AddProceduralGrass(ground.transform, new Vector3(0, groundY + 0.25f, -10), 25f, 100);
         AddProceduralGrass(ground.transform, new Vector3(-15, groundY + 0.25f, 5), 10f, 40);
         AddProceduralGrass(ground.transform, new Vector3(15, groundY + 0.25f, 5), 10f, 40);
+
+        // Add random BUSHES in the center of the island
+        AddBushes(ground.transform, groundY);
+    }
+
+    static void AddBushes(Transform parent, float groundY)
+    {
+        // Various bush materials
+        Material darkGreenMat = new Material(Shader.Find("Standard"));
+        darkGreenMat.color = new Color(0.18f, 0.42f, 0.15f);
+
+        Material lightGreenMat = new Material(Shader.Find("Standard"));
+        lightGreenMat.color = new Color(0.22f, 0.48f, 0.18f);
+
+        Material oliveGreenMat = new Material(Shader.Find("Standard"));
+        oliveGreenMat.color = new Color(0.35f, 0.45f, 0.20f);
+
+        Material blueGreenMat = new Material(Shader.Find("Standard"));
+        blueGreenMat.color = new Color(0.15f, 0.38f, 0.32f);
+
+        // Flowering bush materials
+        Material pinkFlowerMat = new Material(Shader.Find("Standard"));
+        pinkFlowerMat.color = new Color(0.95f, 0.55f, 0.70f);
+
+        Material yellowFlowerMat = new Material(Shader.Find("Standard"));
+        yellowFlowerMat.color = new Color(0.95f, 0.85f, 0.30f);
+
+        Material whiteFlowerMat = new Material(Shader.Find("Standard"));
+        whiteFlowerMat.color = new Color(0.95f, 0.95f, 0.90f);
+
+        Material purpleFlowerMat = new Material(Shader.Find("Standard"));
+        purpleFlowerMat.color = new Color(0.70f, 0.40f, 0.85f);
+
+        Material[] greenMats = { darkGreenMat, lightGreenMat, oliveGreenMat, blueGreenMat };
+        Material[] flowerMats = { pinkFlowerMat, yellowFlowerMat, whiteFlowerMat, purpleFlowerMat };
+
+        // More bush positions spread across island
+        Vector3[] bushPositions = {
+            new Vector3(-8f, groundY + 0.4f, -15f),
+            new Vector3(5f, groundY + 0.4f, -12f),
+            new Vector3(-12f, groundY + 0.4f, -5f),
+            new Vector3(10f, groundY + 0.4f, -8f),
+            new Vector3(-5f, groundY + 0.4f, -20f),
+            new Vector3(15f, groundY + 0.4f, -18f),
+            new Vector3(-18f, groundY + 0.4f, -12f),
+            new Vector3(0f, groundY + 0.4f, -25f),
+            new Vector3(8f, groundY + 0.4f, 0f),
+            new Vector3(-10f, groundY + 0.4f, 2f),
+            new Vector3(20f, groundY + 0.4f, -5f),
+            new Vector3(-22f, groundY + 0.4f, -20f),
+            new Vector3(12f, groundY + 0.4f, -22f),
+            new Vector3(-15f, groundY + 0.4f, -25f),
+            new Vector3(18f, groundY + 0.4f, 5f),
+            new Vector3(-6f, groundY + 0.4f, -8f),
+            new Vector3(3f, groundY + 0.4f, -18f),
+            new Vector3(-20f, groundY + 0.4f, 0f),
+        };
+
+        // Bush types: 0=round, 1=tall/columnar, 2=wide/spreading, 3=flowering, 4=topiary/shaped
+        for (int i = 0; i < bushPositions.Length; i++)
+        {
+            int bushType = Random.Range(0, 5);
+            Material greenMat = greenMats[Random.Range(0, greenMats.Length)];
+
+            GameObject bush = new GameObject("Bush_" + bushType);
+            bush.transform.SetParent(parent);
+            bush.transform.position = bushPositions[i];
+
+            switch (bushType)
+            {
+                case 0: // Round bush - classic spherical shape
+                    CreateRoundBush(bush.transform, greenMat, Random.Range(0.8f, 1.6f));
+                    break;
+                case 1: // Tall/columnar bush - like cypress
+                    CreateTallBush(bush.transform, greenMat, Random.Range(1.2f, 2.0f));
+                    break;
+                case 2: // Wide/spreading bush - low and wide
+                    CreateWideBush(bush.transform, greenMat, Random.Range(1.0f, 1.8f));
+                    break;
+                case 3: // Flowering bush - green with colorful flowers
+                    Material flowerMat = flowerMats[Random.Range(0, flowerMats.Length)];
+                    CreateFloweringBush(bush.transform, greenMat, flowerMat, Random.Range(0.9f, 1.4f));
+                    break;
+                case 4: // Topiary/shaped bush - geometric shapes
+                    CreateTopiaryBush(bush.transform, greenMat, Random.Range(0.8f, 1.3f));
+                    break;
+            }
+        }
+    }
+
+    static void CreateRoundBush(Transform parent, Material mat, float size)
+    {
+        int numParts = Random.Range(4, 7);
+        for (int j = 0; j < numParts; j++)
+        {
+            GameObject part = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            part.name = "BushPart";
+            part.transform.SetParent(parent);
+            part.transform.localPosition = new Vector3(
+                Random.Range(-0.3f, 0.3f) * size,
+                Random.Range(0f, 0.4f) * size,
+                Random.Range(-0.3f, 0.3f) * size
+            );
+            float partSize = Random.Range(0.4f, 0.7f) * size;
+            part.transform.localScale = new Vector3(partSize, partSize * 0.85f, partSize);
+            part.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.DestroyImmediate(part.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateTallBush(Transform parent, Material mat, float height)
+    {
+        // Tall columnar bush like a small cypress
+        float width = height * 0.35f;
+
+        // Main tall body
+        GameObject main = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        main.name = "TallBushMain";
+        main.transform.SetParent(parent);
+        main.transform.localPosition = new Vector3(0, height * 0.5f, 0);
+        main.transform.localScale = new Vector3(width, height * 0.5f, width);
+        main.GetComponent<Renderer>().sharedMaterial = mat;
+        Object.DestroyImmediate(main.GetComponent<Collider>());
+
+        // Top pointed section
+        GameObject top = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        top.name = "TallBushTop";
+        top.transform.SetParent(parent);
+        top.transform.localPosition = new Vector3(0, height * 0.9f, 0);
+        top.transform.localScale = new Vector3(width * 0.7f, height * 0.25f, width * 0.7f);
+        top.GetComponent<Renderer>().sharedMaterial = mat;
+        Object.DestroyImmediate(top.GetComponent<Collider>());
+
+        // Small bulges around sides
+        for (int i = 0; i < 4; i++)
+        {
+            float angle = (90f * i) * Mathf.Deg2Rad;
+            GameObject bulge = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            bulge.name = "TallBushBulge";
+            bulge.transform.SetParent(parent);
+            bulge.transform.localPosition = new Vector3(
+                Mathf.Sin(angle) * width * 0.4f,
+                height * Random.Range(0.3f, 0.7f),
+                Mathf.Cos(angle) * width * 0.4f
+            );
+            float bulgeSize = width * Random.Range(0.3f, 0.5f);
+            bulge.transform.localScale = new Vector3(bulgeSize, bulgeSize * 1.2f, bulgeSize);
+            bulge.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.DestroyImmediate(bulge.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateWideBush(Transform parent, Material mat, float width)
+    {
+        // Wide spreading bush, low to ground
+        float height = width * 0.4f;
+
+        // Main wide body
+        GameObject main = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        main.name = "WideBushMain";
+        main.transform.SetParent(parent);
+        main.transform.localPosition = new Vector3(0, height * 0.5f, 0);
+        main.transform.localScale = new Vector3(width, height, width);
+        main.GetComponent<Renderer>().sharedMaterial = mat;
+        Object.DestroyImmediate(main.GetComponent<Collider>());
+
+        // Spreading side clusters
+        for (int i = 0; i < 6; i++)
+        {
+            float angle = (60f * i + Random.Range(-15f, 15f)) * Mathf.Deg2Rad;
+            float dist = width * Random.Range(0.35f, 0.55f);
+            GameObject cluster = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            cluster.name = "WideBushCluster";
+            cluster.transform.SetParent(parent);
+            cluster.transform.localPosition = new Vector3(
+                Mathf.Sin(angle) * dist,
+                height * Random.Range(0.2f, 0.5f),
+                Mathf.Cos(angle) * dist
+            );
+            float clusterSize = width * Random.Range(0.25f, 0.4f);
+            cluster.transform.localScale = new Vector3(clusterSize, clusterSize * 0.7f, clusterSize);
+            cluster.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.DestroyImmediate(cluster.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateFloweringBush(Transform parent, Material greenMat, Material flowerMat, float size)
+    {
+        // Base green bush
+        CreateRoundBush(parent, greenMat, size);
+
+        // Add colorful flower clusters on top
+        int numFlowers = Random.Range(8, 15);
+        for (int i = 0; i < numFlowers; i++)
+        {
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float dist = Random.Range(0f, size * 0.4f);
+            GameObject flower = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            flower.name = "Flower";
+            flower.transform.SetParent(parent);
+            flower.transform.localPosition = new Vector3(
+                Mathf.Sin(angle) * dist,
+                size * Random.Range(0.3f, 0.6f),
+                Mathf.Cos(angle) * dist
+            );
+            float flowerSize = Random.Range(0.08f, 0.15f);
+            flower.transform.localScale = new Vector3(flowerSize, flowerSize * 0.6f, flowerSize);
+            flower.GetComponent<Renderer>().sharedMaterial = flowerMat;
+            Object.DestroyImmediate(flower.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateTopiaryBush(Transform parent, Material mat, float size)
+    {
+        // Geometric shaped bushes - random shape selection
+        int shape = Random.Range(0, 3);
+
+        switch (shape)
+        {
+            case 0: // Sphere on stem (lollipop)
+                GameObject stem = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                stem.name = "TopiaryStem";
+                stem.transform.SetParent(parent);
+                stem.transform.localPosition = new Vector3(0, size * 0.3f, 0);
+                stem.transform.localScale = new Vector3(0.08f, size * 0.3f, 0.08f);
+                stem.GetComponent<Renderer>().sharedMaterial = mat;
+                Object.DestroyImmediate(stem.GetComponent<Collider>());
+
+                GameObject ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                ball.name = "TopiaryBall";
+                ball.transform.SetParent(parent);
+                ball.transform.localPosition = new Vector3(0, size * 0.8f, 0);
+                ball.transform.localScale = new Vector3(size * 0.7f, size * 0.7f, size * 0.7f);
+                ball.GetComponent<Renderer>().sharedMaterial = mat;
+                Object.DestroyImmediate(ball.GetComponent<Collider>());
+                break;
+
+            case 1: // Cone/pyramid shape
+                GameObject cone = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                cone.name = "TopiaryCone";
+                cone.transform.SetParent(parent);
+                cone.transform.localPosition = new Vector3(0, size * 0.5f, 0);
+                cone.transform.localScale = new Vector3(size * 0.8f, size * 1.2f, size * 0.8f);
+                cone.GetComponent<Renderer>().sharedMaterial = mat;
+                Object.DestroyImmediate(cone.GetComponent<Collider>());
+
+                GameObject tip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                tip.name = "TopiaryConeTop";
+                tip.transform.SetParent(parent);
+                tip.transform.localPosition = new Vector3(0, size * 1.1f, 0);
+                tip.transform.localScale = new Vector3(size * 0.3f, size * 0.4f, size * 0.3f);
+                tip.GetComponent<Renderer>().sharedMaterial = mat;
+                Object.DestroyImmediate(tip.GetComponent<Collider>());
+                break;
+
+            case 2: // Tiered/stacked balls
+                for (int tier = 0; tier < 3; tier++)
+                {
+                    float tierSize = size * (1f - tier * 0.25f);
+                    float tierY = tier * size * 0.4f + tierSize * 0.4f;
+                    GameObject tierBall = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    tierBall.name = "TopiaryTier" + tier;
+                    tierBall.transform.SetParent(parent);
+                    tierBall.transform.localPosition = new Vector3(0, tierY, 0);
+                    tierBall.transform.localScale = new Vector3(tierSize * 0.6f, tierSize * 0.5f, tierSize * 0.6f);
+                    tierBall.GetComponent<Renderer>().sharedMaterial = mat;
+                    Object.DestroyImmediate(tierBall.GetComponent<Collider>());
+                }
+                break;
+        }
     }
 
     static void CreateBridgeToShop()
@@ -306,79 +663,157 @@ public class AutoSetup
 
     static void CreateDock()
     {
-        // RAISED DOCK - extends from island out over water
-        // This has a collider so player can walk on it
+        // RAISED DOCK ON LEGS - extends from island out over water
+        // MOVED MORE TO THE LEFT (X = -12)
         GameObject dockParent = new GameObject("Dock");
-        dockParent.transform.position = Vector3.zero;
+        dockParent.transform.position = new Vector3(-12f, 0, 0);  // 12 meters left
 
         Material woodMat = MaterialGenerator.CreateWoodMaterial();
         Material darkWood = new Material(Shader.Find("Standard"));
         darkWood.color = new Color(0.22f, 0.14f, 0.08f);
 
-        // Dock dimensions
-        float dockStartZ = 10f;   // Start at edge of island (island goes to z=30)
-        float dockEndZ = 45f;     // Extend out over water
+        // Dock dimensions - LONGER and HIGHER
+        float dockStartZ = 8f;    // Start slightly earlier
+        float dockEndZ = 58f;     // Extend further out over water (was 45)
         float dockWidth = 5f;
-        float dockHeight = 1.5f;  // RAISED above ground level (ground is 1.25)
+        float dockHeight = 2.5f;  // RAISED HIGHER above ground level (was 1.5)
+        float legHeight = 3.5f;   // Visible legs going down
 
         // MAIN DOCK SURFACE - HAS COLLIDER for walking
         GameObject dockSurface = GameObject.CreatePrimitive(PrimitiveType.Cube);
         dockSurface.name = "DockSurface";
         dockSurface.transform.SetParent(dockParent.transform);
-        dockSurface.transform.position = new Vector3(0, dockHeight, (dockStartZ + dockEndZ) / 2f);
+        dockSurface.transform.localPosition = new Vector3(0, dockHeight, (dockStartZ + dockEndZ) / 2f);
         dockSurface.transform.localScale = new Vector3(dockWidth, 0.3f, dockEndZ - dockStartZ);
         dockSurface.GetComponent<Renderer>().sharedMaterial = woodMat;
         // KEEP COLLIDER - player walks on this
 
-        // Ramp from ground to dock
-        GameObject ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        ramp.name = "DockRamp";
-        ramp.transform.SetParent(dockParent.transform);
-        ramp.transform.position = new Vector3(0, 1.4f, 7f);
-        ramp.transform.localScale = new Vector3(dockWidth, 0.2f, 8f);
-        ramp.transform.rotation = Quaternion.Euler(5, 0, 0); // Slight slope up
-        ramp.GetComponent<Renderer>().sharedMaterial = woodMat;
-        // KEEP COLLIDER
-
-        // Support posts going into water - VISUAL ONLY
-        float[] postPositions = { 15f, 25f, 35f, 45f };
-        foreach (float zPos in postPositions)
+        // Support LEGS going down into water - VISUAL ONLY
+        float[] legPositions = { 12f, 22f, 32f, 42f, 52f };
+        foreach (float zPos in legPositions)
         {
             for (int side = -1; side <= 1; side += 2)
             {
-                GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                post.name = "DockPost";
-                post.transform.SetParent(dockParent.transform);
-                post.transform.position = new Vector3(side * 2f, 0f, zPos);
-                post.transform.localScale = new Vector3(0.25f, 2f, 0.25f);
-                post.GetComponent<Renderer>().sharedMaterial = darkWood;
-                Object.DestroyImmediate(post.GetComponent<Collider>()); // Visual only
+                // Main vertical leg
+                GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                leg.name = "DockLeg";
+                leg.transform.SetParent(dockParent.transform);
+                leg.transform.localPosition = new Vector3(side * 2f, dockHeight - legHeight / 2f, zPos);
+                leg.transform.localScale = new Vector3(0.3f, legHeight / 2f, 0.3f);
+                leg.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(leg.GetComponent<Collider>()); // Visual only
+
+                // Diagonal support brace
+                GameObject brace = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                brace.name = "DockBrace";
+                brace.transform.SetParent(dockParent.transform);
+                brace.transform.localPosition = new Vector3(side * 1.5f, dockHeight - 1.2f, zPos);
+                brace.transform.localRotation = Quaternion.Euler(0, 0, side * 35f);
+                brace.transform.localScale = new Vector3(0.12f, 1.2f, 0.12f);
+                brace.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(brace.GetComponent<Collider>()); // Visual only
             }
         }
 
         // Cross beams under dock - VISUAL ONLY
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             float z = dockStartZ + 5 + i * 8f;
             GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
             beam.name = "CrossBeam";
             beam.transform.SetParent(dockParent.transform);
-            beam.transform.position = new Vector3(0, dockHeight - 0.3f, z);
+            beam.transform.localPosition = new Vector3(0, dockHeight - 0.3f, z);
             beam.transform.localScale = new Vector3(dockWidth + 0.5f, 0.15f, 0.2f);
             beam.GetComponent<Renderer>().sharedMaterial = darkWood;
             Object.DestroyImmediate(beam.GetComponent<Collider>()); // Visual only
+        }
+
+        // Longitudinal support beams (run length of dock)
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject longBeam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            longBeam.name = "LongBeam";
+            longBeam.transform.SetParent(dockParent.transform);
+            longBeam.transform.localPosition = new Vector3(side * 1.8f, dockHeight - 0.5f, (dockStartZ + dockEndZ) / 2f);
+            longBeam.transform.localScale = new Vector3(0.2f, 0.2f, dockEndZ - dockStartZ - 2f);
+            longBeam.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(longBeam.GetComponent<Collider>()); // Visual only
         }
 
         // Decorative rope coil at end - VISUAL ONLY
         GameObject rope = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         rope.name = "RopeCoil";
         rope.transform.SetParent(dockParent.transform);
-        rope.transform.position = new Vector3(2f, dockHeight + 0.2f, dockEndZ - 2f);
+        rope.transform.localPosition = new Vector3(2f, dockHeight + 0.2f, dockEndZ - 2f);
         rope.transform.localScale = new Vector3(0.5f, 0.1f, 0.5f);
         Material ropeMat = new Material(Shader.Find("Standard"));
         ropeMat.color = new Color(0.55f, 0.45f, 0.30f);
         rope.GetComponent<Renderer>().sharedMaterial = ropeMat;
         Object.DestroyImmediate(rope.GetComponent<Collider>()); // Visual only
+
+        // STAIRCASE leading up to dock from ground level
+        // Ground is at 1.26f, dock is at dockHeight (2.5f)
+        // Stairs at the entrance of the dock (z around dockStartZ)
+        float groundLevel = 1.26f;
+        float stairStartZ = dockStartZ - 3f;  // Start stairs 3m before dock entrance
+        int numSteps = 5;
+        float stepHeight = (dockHeight - groundLevel) / numSteps;  // Height per step
+        float stepDepth = 0.6f;  // Depth of each step
+        float stairWidth = dockWidth;  // Same width as dock
+
+        for (int i = 0; i < numSteps; i++)
+        {
+            GameObject step = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            step.name = "DockStair_" + i;
+            step.transform.SetParent(dockParent.transform);
+
+            // Each step is higher and further toward the dock
+            float stepY = groundLevel + stepHeight * (i + 0.5f);
+            float stepZ = stairStartZ + stepDepth * i;
+
+            step.transform.localPosition = new Vector3(0, stepY, stepZ);
+            step.transform.localScale = new Vector3(stairWidth, stepHeight, stepDepth);
+            step.GetComponent<Renderer>().sharedMaterial = woodMat;
+            // KEEP COLLIDER - player walks on stairs
+        }
+
+        // Side rails for the staircase
+        for (int side = -1; side <= 1; side += 2)
+        {
+            // Rail post at bottom
+            GameObject bottomPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            bottomPost.name = "StairPostBottom";
+            bottomPost.transform.SetParent(dockParent.transform);
+            bottomPost.transform.localPosition = new Vector3(side * (stairWidth / 2f + 0.15f), groundLevel + 0.5f, stairStartZ - 0.2f);
+            bottomPost.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
+            bottomPost.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(bottomPost.GetComponent<Collider>());
+
+            // Rail post at top
+            GameObject topPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            topPost.name = "StairPostTop";
+            topPost.transform.SetParent(dockParent.transform);
+            topPost.transform.localPosition = new Vector3(side * (stairWidth / 2f + 0.15f), dockHeight + 0.5f, stairStartZ + stepDepth * numSteps - 0.2f);
+            topPost.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
+            topPost.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(topPost.GetComponent<Collider>());
+
+            // Angled handrail connecting posts
+            GameObject handrail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            handrail.name = "StairHandrail";
+            handrail.transform.SetParent(dockParent.transform);
+
+            float railCenterY = (groundLevel + dockHeight) / 2f + 0.5f;
+            float railCenterZ = stairStartZ + (stepDepth * numSteps) / 2f - 0.2f;
+            float railLength = Mathf.Sqrt(Mathf.Pow(dockHeight - groundLevel, 2) + Mathf.Pow(stepDepth * numSteps, 2));
+            float railAngle = Mathf.Atan2(dockHeight - groundLevel, stepDepth * numSteps) * Mathf.Rad2Deg;
+
+            handrail.transform.localPosition = new Vector3(side * (stairWidth / 2f + 0.15f), railCenterY, railCenterZ);
+            handrail.transform.localRotation = Quaternion.Euler(-railAngle, 0, 0);
+            handrail.transform.localScale = new Vector3(0.08f, 0.08f, railLength);
+            handrail.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(handrail.GetComponent<Collider>());
+        }
     }
 
     static void CreateRamp()
@@ -408,36 +843,34 @@ public class AutoSetup
         // Total height ~1.8m, head ~0.24m
 
         Material skinMat = MaterialGenerator.CreateSkinMaterial();
-        Material shirtMat = MaterialGenerator.CreateFabricMaterial(new Color(0.15f, 0.30f, 0.55f)); // Blue shirt
-        Material pantsMat = MaterialGenerator.CreateFabricMaterial(new Color(0.22f, 0.18f, 0.12f)); // Brown pants
 
-        // TORSO (upper body with shirt)
+        // TORSO (naked upper body)
         GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
         torso.name = "Torso";
         torso.transform.SetParent(player.transform);
         torso.transform.localPosition = new Vector3(0, 0.15f, 0);
         torso.transform.localScale = new Vector3(0.45f, 0.55f, 0.25f);
-        torso.GetComponent<Renderer>().sharedMaterial = shirtMat;
+        torso.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(torso.GetComponent<Collider>());
 
-        // HIPS/WAIST
+        // HIPS/WAIST (naked)
         GameObject hips = GameObject.CreatePrimitive(PrimitiveType.Cube);
         hips.name = "Hips";
         hips.transform.SetParent(player.transform);
         hips.transform.localPosition = new Vector3(0, -0.2f, 0);
         hips.transform.localScale = new Vector3(0.40f, 0.25f, 0.22f);
-        hips.GetComponent<Renderer>().sharedMaterial = pantsMat;
+        hips.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(hips.GetComponent<Collider>());
 
-        // LEFT LEG
-        CreateLeg(player, pantsMat, -0.12f);
-        // RIGHT LEG
-        CreateLeg(player, pantsMat, 0.12f);
+        // LEFT LEG (naked)
+        CreateLeg(player, skinMat, -0.12f);
+        // RIGHT LEG (naked)
+        CreateLeg(player, skinMat, 0.12f);
 
-        // LEFT ARM
-        CreateArm(player, skinMat, shirtMat, -0.30f);
-        // RIGHT ARM
-        CreateArm(player, skinMat, shirtMat, 0.30f);
+        // LEFT ARM (naked)
+        CreateArm(player, skinMat, skinMat, -0.30f);
+        // RIGHT ARM (naked)
+        CreateArm(player, skinMat, skinMat, 0.30f);
 
         // NECK
         GameObject neck = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -460,61 +893,57 @@ public class AutoSetup
         // FACE DETAILS
         CreateFace(head, skinMat);
 
-        // FISHING HAT
-        CreateFishingHat(head);
+        // NO HAT - player starts bald/naked
 
         // FISHING ROD
         CreateFishingRod(player);
     }
 
-    static void CreateLeg(GameObject player, Material pantsMat, float xOffset)
+    static void CreateLeg(GameObject player, Material skinMat, float xOffset)
     {
-        // Upper leg
+        // Upper leg (naked)
         GameObject upperLeg = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         upperLeg.name = "UpperLeg";
         upperLeg.transform.SetParent(player.transform);
         upperLeg.transform.localPosition = new Vector3(xOffset, -0.50f, 0);
         upperLeg.transform.localScale = new Vector3(0.14f, 0.22f, 0.14f);
-        upperLeg.GetComponent<Renderer>().sharedMaterial = pantsMat;
+        upperLeg.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(upperLeg.GetComponent<Collider>());
 
-        // Lower leg
+        // Lower leg (naked)
         GameObject lowerLeg = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         lowerLeg.name = "LowerLeg";
         lowerLeg.transform.SetParent(player.transform);
         lowerLeg.transform.localPosition = new Vector3(xOffset, -0.78f, 0);
         lowerLeg.transform.localScale = new Vector3(0.11f, 0.20f, 0.11f);
-        lowerLeg.GetComponent<Renderer>().sharedMaterial = pantsMat;
+        lowerLeg.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(lowerLeg.GetComponent<Collider>());
 
-        // Foot/boot
-        Material bootMat = new Material(Shader.Find("Standard"));
-        bootMat.color = new Color(0.15f, 0.12f, 0.08f);
-
+        // Bare foot (naked)
         GameObject foot = GameObject.CreatePrimitive(PrimitiveType.Cube);
         foot.name = "Foot";
         foot.transform.SetParent(player.transform);
         foot.transform.localPosition = new Vector3(xOffset, -0.95f, 0.03f);
         foot.transform.localScale = new Vector3(0.10f, 0.08f, 0.18f);
-        foot.GetComponent<Renderer>().sharedMaterial = bootMat;
+        foot.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(foot.GetComponent<Collider>());
     }
 
-    static void CreateArm(GameObject player, Material skinMat, Material shirtMat, float xOffset)
+    static void CreateArm(GameObject player, Material skinMat, Material armMat, float xOffset)
     {
         // Both arms reach forward to hold the fishing rod with two hands
         bool isRightArm = xOffset > 0;
 
-        // Shoulder - at body sides
+        // Shoulder - at body sides (naked)
         GameObject shoulder = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         shoulder.name = isRightArm ? "RightShoulder" : "LeftShoulder";
         shoulder.transform.SetParent(player.transform);
         shoulder.transform.localPosition = new Vector3(xOffset * 0.8f, 0.35f, 0.02f);
         shoulder.transform.localScale = new Vector3(0.13f, 0.11f, 0.11f);
-        shoulder.GetComponent<Renderer>().sharedMaterial = shirtMat;
+        shoulder.GetComponent<Renderer>().sharedMaterial = armMat;
         Object.DestroyImmediate(shoulder.GetComponent<Collider>());
 
-        // Upper arm - angled forward and inward toward center where rod is held
+        // Upper arm - angled forward and inward toward center where rod is held (naked)
         GameObject upperArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         upperArm.name = isRightArm ? "RightUpperArm" : "LeftUpperArm";
         upperArm.transform.SetParent(player.transform);
@@ -522,7 +951,7 @@ public class AutoSetup
         upperArm.transform.localPosition = new Vector3(xOffset * 0.55f, 0.18f, 0.15f);
         upperArm.transform.localRotation = Quaternion.Euler(60, isRightArm ? -15 : 15, isRightArm ? -20 : 20);
         upperArm.transform.localScale = new Vector3(0.09f, 0.16f, 0.09f);
-        upperArm.GetComponent<Renderer>().sharedMaterial = shirtMat;
+        upperArm.GetComponent<Renderer>().sharedMaterial = armMat;
         Object.DestroyImmediate(upperArm.GetComponent<Collider>());
 
         // Lower arm - extends forward to rod, both arms parallel
@@ -790,32 +1219,292 @@ public class AutoSetup
         GameObject treesParent = new GameObject("TreesParent");
         float groundY = 1.0f; // Match unified floor
 
+        // Tree size categories: 0=small(3-5), 1=medium(6-10), 2=large(11-15), 3=giant(16-20)
+        // Tree type: 0=oak-like, 1=pine-like, 2=palm-like
+
         // Trees on the left side of the dock - with grass patches
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
         {
             float x = Random.Range(-35f, -10f);
             float z = Random.Range(-30f, 5f);
-            CreateRealisticTree(treesParent.transform, new Vector3(x, groundY, z));
+            int treeType = Random.Range(0, 3);
+            int sizeCategory = Random.Range(0, 4);
+            CreateVariedTree(treesParent.transform, new Vector3(x, groundY, z), treeType, sizeCategory);
             CreateGrassPatchUnderTree(treesParent.transform, new Vector3(x, groundY, z));
         }
 
         // Trees on the right side - with grass patches
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
         {
             float x = Random.Range(10f, 35f);
             float z = Random.Range(-30f, 5f);
-            CreateRealisticTree(treesParent.transform, new Vector3(x, groundY, z));
+            int treeType = Random.Range(0, 3);
+            int sizeCategory = Random.Range(0, 4);
+            CreateVariedTree(treesParent.transform, new Vector3(x, groundY, z), treeType, sizeCategory);
             CreateGrassPatchUnderTree(treesParent.transform, new Vector3(x, groundY, z));
         }
 
-        // Trees in the background - with grass patches
-        for (int i = 0; i < 8; i++)
+        // Trees in the background - with grass patches (more large and giant trees for depth)
+        for (int i = 0; i < 12; i++)
         {
-            float x = Random.Range(-40f, 40f);
-            float z = Random.Range(-45f, -25f);
-            CreateRealisticTree(treesParent.transform, new Vector3(x, groundY, z));
+            float x = Random.Range(-45f, 45f);
+            float z = Random.Range(-50f, -25f);
+            int treeType = Random.Range(0, 3);
+            int sizeCategory = Random.Range(1, 4); // No small trees in background
+            CreateVariedTree(treesParent.transform, new Vector3(x, groundY, z), treeType, sizeCategory);
             CreateGrassPatchUnderTree(treesParent.transform, new Vector3(x, groundY, z));
         }
+
+        // A few scattered small/medium trees on island itself
+        for (int i = 0; i < 4; i++)
+        {
+            float x = Random.Range(-20f, 20f);
+            float z = Random.Range(-20f, -5f);
+            int treeType = Random.Range(0, 3);
+            int sizeCategory = Random.Range(0, 2); // Only small and medium on island
+            CreateVariedTree(treesParent.transform, new Vector3(x, groundY, z), treeType, sizeCategory);
+        }
+    }
+
+    static void CreateVariedTree(Transform parent, Vector3 pos, int treeType, int sizeCategory)
+    {
+        // Get height based on size category
+        float minHeight, maxHeight;
+        switch (sizeCategory)
+        {
+            case 0: minHeight = 3f; maxHeight = 5f; break;    // Small
+            case 1: minHeight = 6f; maxHeight = 10f; break;   // Medium
+            case 2: minHeight = 11f; maxHeight = 15f; break;  // Large
+            case 3: minHeight = 16f; maxHeight = 22f; break;  // Giant
+            default: minHeight = 6f; maxHeight = 10f; break;
+        }
+        float treeHeight = Random.Range(minHeight, maxHeight);
+
+        switch (treeType)
+        {
+            case 0: // Oak-like tree (round canopy)
+                CreateOakTree(parent, pos, treeHeight);
+                break;
+            case 1: // Pine-like tree (conical canopy)
+                CreatePineTree(parent, pos, treeHeight);
+                break;
+            case 2: // Palm-like tree (tropical)
+                CreateTropicalPalmTree(parent, pos, treeHeight);
+                break;
+        }
+    }
+
+    static void CreateOakTree(Transform parent, Vector3 pos, float treeHeight)
+    {
+        GameObject tree = new GameObject("OakTree");
+        tree.transform.SetParent(parent);
+        tree.transform.position = pos;
+
+        Material barkMat = MaterialGenerator.CreateBarkMaterial();
+        Material leavesMat = MaterialGenerator.CreateLeavesMaterial();
+
+        float trunkBaseRadius = treeHeight * 0.04f;
+
+        // TRUNK - tapers from bottom to top
+        GameObject lowerTrunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lowerTrunk.name = "LowerTrunk";
+        lowerTrunk.transform.SetParent(tree.transform);
+        lowerTrunk.transform.localPosition = new Vector3(0, treeHeight * 0.2f, 0);
+        lowerTrunk.transform.localScale = new Vector3(trunkBaseRadius, treeHeight * 0.2f, trunkBaseRadius);
+        lowerTrunk.GetComponent<Renderer>().sharedMaterial = barkMat;
+        Object.DestroyImmediate(lowerTrunk.GetComponent<Collider>());
+
+        GameObject midTrunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        midTrunk.name = "MidTrunk";
+        midTrunk.transform.SetParent(tree.transform);
+        midTrunk.transform.localPosition = new Vector3(0, treeHeight * 0.45f, 0);
+        midTrunk.transform.localScale = new Vector3(trunkBaseRadius * 0.75f, treeHeight * 0.15f, trunkBaseRadius * 0.75f);
+        midTrunk.GetComponent<Renderer>().sharedMaterial = barkMat;
+        Object.DestroyImmediate(midTrunk.GetComponent<Collider>());
+
+        GameObject upperTrunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        upperTrunk.name = "UpperTrunk";
+        upperTrunk.transform.SetParent(tree.transform);
+        upperTrunk.transform.localPosition = new Vector3(0, treeHeight * 0.6f, 0);
+        upperTrunk.transform.localScale = new Vector3(trunkBaseRadius * 0.5f, treeHeight * 0.1f, trunkBaseRadius * 0.5f);
+        upperTrunk.GetComponent<Renderer>().sharedMaterial = barkMat;
+        Object.DestroyImmediate(upperTrunk.GetComponent<Collider>());
+
+        // BRANCHES
+        int numBranches = Mathf.RoundToInt(treeHeight * 0.5f);
+        for (int i = 0; i < numBranches; i++)
+        {
+            float branchHeight = treeHeight * Random.Range(0.4f, 0.7f);
+            float branchAngle = Random.Range(0f, 360f);
+            float branchTilt = Random.Range(15f, 45f);
+            float branchLength = Random.Range(1.5f, 3f) * (treeHeight / 8f);
+
+            GameObject branch = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            branch.name = "Branch";
+            branch.transform.SetParent(tree.transform);
+            branch.transform.localPosition = new Vector3(0, branchHeight, 0);
+            branch.transform.localRotation = Quaternion.Euler(branchTilt, branchAngle, 0);
+            branch.transform.localScale = new Vector3(0.08f * (treeHeight / 8f), branchLength * 0.5f, 0.08f * (treeHeight / 8f));
+            branch.GetComponent<Renderer>().sharedMaterial = barkMat;
+            Object.DestroyImmediate(branch.GetComponent<Collider>());
+            branch.transform.localPosition += branch.transform.up * branchLength * 0.4f;
+        }
+
+        // LEAF CANOPY - round shape for oak
+        float canopyRadius = treeHeight * 0.35f;
+
+        GameObject mainCanopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        mainCanopy.name = "MainCanopy";
+        mainCanopy.transform.SetParent(tree.transform);
+        mainCanopy.transform.localPosition = new Vector3(0, treeHeight * 0.75f, 0);
+        mainCanopy.transform.localScale = new Vector3(canopyRadius * 1.8f, canopyRadius * 1.5f, canopyRadius * 1.8f);
+        mainCanopy.GetComponent<Renderer>().sharedMaterial = leavesMat;
+        Object.DestroyImmediate(mainCanopy.GetComponent<Collider>());
+
+        // Lower canopy clusters
+        int numClusters = Mathf.RoundToInt(treeHeight * 0.6f);
+        float canopyBaseHeight = treeHeight * 0.55f;
+        for (int i = 0; i < numClusters; i++)
+        {
+            float angle = (360f / numClusters) * i + Random.Range(-20f, 20f);
+            float rad = angle * Mathf.Deg2Rad;
+            float dist = Random.Range(canopyRadius * 0.6f, canopyRadius * 1.1f);
+            float height = canopyBaseHeight + Random.Range(-0.5f, 1.5f);
+
+            GameObject cluster = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            cluster.name = "LeafCluster";
+            cluster.transform.SetParent(tree.transform);
+            cluster.transform.localPosition = new Vector3(Mathf.Sin(rad) * dist, height, Mathf.Cos(rad) * dist);
+            float clusterSize = Random.Range(canopyRadius * 0.5f, canopyRadius * 0.8f);
+            cluster.transform.localScale = new Vector3(clusterSize, clusterSize * 0.8f, clusterSize);
+            cluster.GetComponent<Renderer>().sharedMaterial = leavesMat;
+            Object.DestroyImmediate(cluster.GetComponent<Collider>());
+        }
+
+        // Top crown
+        GameObject crown = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        crown.name = "Crown";
+        crown.transform.SetParent(tree.transform);
+        crown.transform.localPosition = new Vector3(Random.Range(-0.3f, 0.3f), treeHeight * 0.9f, Random.Range(-0.3f, 0.3f));
+        crown.transform.localScale = new Vector3(canopyRadius * 0.9f, canopyRadius * 1.1f, canopyRadius * 0.9f);
+        crown.GetComponent<Renderer>().sharedMaterial = leavesMat;
+        Object.DestroyImmediate(crown.GetComponent<Collider>());
+    }
+
+    static void CreatePineTree(Transform parent, Vector3 pos, float treeHeight)
+    {
+        GameObject tree = new GameObject("PineTree");
+        tree.transform.SetParent(parent);
+        tree.transform.position = pos;
+
+        Material barkMat = new Material(Shader.Find("Standard"));
+        barkMat.color = new Color(0.35f, 0.25f, 0.15f); // Darker pine bark
+
+        Material pineMat = new Material(Shader.Find("Standard"));
+        pineMat.color = new Color(0.12f, 0.32f, 0.18f); // Dark pine green
+
+        float trunkBaseRadius = treeHeight * 0.03f;
+
+        // Single straight trunk
+        GameObject trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(tree.transform);
+        trunk.transform.localPosition = new Vector3(0, treeHeight * 0.35f, 0);
+        trunk.transform.localScale = new Vector3(trunkBaseRadius, treeHeight * 0.35f, trunkBaseRadius);
+        trunk.GetComponent<Renderer>().sharedMaterial = barkMat;
+        Object.DestroyImmediate(trunk.GetComponent<Collider>());
+
+        // Conical leaf layers - stacked cones
+        int numLayers = Mathf.RoundToInt(treeHeight * 0.4f);
+        float baseWidth = treeHeight * 0.35f;
+        for (int i = 0; i < numLayers; i++)
+        {
+            float layerY = treeHeight * 0.3f + (treeHeight * 0.65f * i / numLayers);
+            float layerWidth = baseWidth * (1f - (float)i / numLayers * 0.8f);
+            float layerHeight = treeHeight * 0.15f;
+
+            GameObject layer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            layer.name = "PineLayer" + i;
+            layer.transform.SetParent(tree.transform);
+            layer.transform.localPosition = new Vector3(Random.Range(-0.1f, 0.1f), layerY, Random.Range(-0.1f, 0.1f));
+            layer.transform.localScale = new Vector3(layerWidth, layerHeight, layerWidth);
+            layer.GetComponent<Renderer>().sharedMaterial = pineMat;
+            Object.DestroyImmediate(layer.GetComponent<Collider>());
+        }
+
+        // Pointed top
+        GameObject top = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        top.name = "PineTop";
+        top.transform.SetParent(tree.transform);
+        top.transform.localPosition = new Vector3(0, treeHeight * 0.95f, 0);
+        top.transform.localScale = new Vector3(baseWidth * 0.15f, treeHeight * 0.12f, baseWidth * 0.15f);
+        top.GetComponent<Renderer>().sharedMaterial = pineMat;
+        Object.DestroyImmediate(top.GetComponent<Collider>());
+    }
+
+    static void CreateTropicalPalmTree(Transform parent, Vector3 pos, float treeHeight)
+    {
+        GameObject tree = new GameObject("PalmTree");
+        tree.transform.SetParent(parent);
+        tree.transform.position = pos;
+
+        Material trunkMat = new Material(Shader.Find("Standard"));
+        trunkMat.color = new Color(0.55f, 0.42f, 0.28f); // Palm trunk color
+
+        Material leafMat = new Material(Shader.Find("Standard"));
+        leafMat.color = new Color(0.18f, 0.48f, 0.15f); // Bright palm green
+
+        // Curved trunk segments
+        int numSegments = Mathf.RoundToInt(treeHeight * 0.5f);
+        float segmentHeight = treeHeight / numSegments;
+        float trunkRadius = treeHeight * 0.025f;
+        float curve = Random.Range(-0.15f, 0.15f);
+
+        for (int i = 0; i < numSegments; i++)
+        {
+            GameObject segment = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            segment.name = "TrunkSegment" + i;
+            segment.transform.SetParent(tree.transform);
+
+            float xOffset = curve * i * 0.3f;
+            float segY = segmentHeight * i + segmentHeight * 0.5f;
+            segment.transform.localPosition = new Vector3(xOffset, segY, 0);
+            segment.transform.localScale = new Vector3(trunkRadius * (1f - i * 0.03f), segmentHeight * 0.55f, trunkRadius * (1f - i * 0.03f));
+            segment.GetComponent<Renderer>().sharedMaterial = trunkMat;
+            Object.DestroyImmediate(segment.GetComponent<Collider>());
+        }
+
+        // Palm fronds at top
+        int numFronds = Random.Range(6, 10);
+        float topX = curve * numSegments * 0.3f;
+        for (int i = 0; i < numFronds; i++)
+        {
+            float angle = (360f / numFronds) * i + Random.Range(-10f, 10f);
+            float tilt = Random.Range(25f, 55f);
+
+            GameObject frond = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            frond.name = "PalmFrond" + i;
+            frond.transform.SetParent(tree.transform);
+            frond.transform.localPosition = new Vector3(topX, treeHeight * 0.95f, 0);
+            frond.transform.localRotation = Quaternion.Euler(tilt, angle, 0);
+
+            float frondLength = treeHeight * Random.Range(0.25f, 0.4f);
+            frond.transform.localScale = new Vector3(0.15f, frondLength, 0.6f);
+            frond.GetComponent<Renderer>().sharedMaterial = leafMat;
+            Object.DestroyImmediate(frond.GetComponent<Collider>());
+
+            // Move frond outward
+            frond.transform.localPosition += frond.transform.up * frondLength * 0.4f;
+        }
+
+        // Central crown
+        GameObject crown = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        crown.name = "PalmCrown";
+        crown.transform.SetParent(tree.transform);
+        crown.transform.localPosition = new Vector3(topX, treeHeight * 0.98f, 0);
+        crown.transform.localScale = new Vector3(treeHeight * 0.08f, treeHeight * 0.06f, treeHeight * 0.08f);
+        crown.GetComponent<Renderer>().sharedMaterial = leafMat;
+        Object.DestroyImmediate(crown.GetComponent<Collider>());
     }
 
     static void CreateGrassPatchUnderTree(Transform parent, Vector3 pos)
@@ -944,287 +1633,386 @@ public class AutoSetup
         Object.DestroyImmediate(crown.GetComponent<Collider>()); // NO COLLIDER
     }
 
+    static void CreateBBQ()
+    {
+        // BBQ Station at the end of the dock - moved to the left
+        // Dock ends at z=58, surface at y=2.5
+        GameObject bbq = new GameObject("BBQStation");
+        bbq.transform.position = new Vector3(-14f, 2.5f, 52f);  // Moved left (was -12)
+        bbq.transform.rotation = Quaternion.Euler(0, 90, 0);    // Face sideways
+        bbq.AddComponent<BBQStation>();
+
+        // Small radio in front of BBQ, angled
+        GameObject dockRadio = new GameObject("DockRadio");
+        dockRadio.transform.position = new Vector3(-13f, 2.5f, 50f);  // In front of BBQ
+        dockRadio.transform.rotation = Quaternion.Euler(0, 45, 0);    // Angled
+        dockRadio.AddComponent<DockRadio>();
+    }
+
     static void CreateQuestNPC()
     {
         // WETSUIT PETE - Quest NPC wearing black wetsuit with snorkel
+        // REMODELED with better human proportions
+        // Dock surface is at y=2.5, Pete's model origin is at feet, so place at 2.65 to be ON the dock
         GameObject npc = new GameObject("QuestNPC");
-        npc.transform.position = new Vector3(-2f, 1.65f, 15f);  // Standing on dock
-        npc.transform.rotation = Quaternion.Euler(0, 45, 0);  // Facing toward player area
+        npc.transform.position = new Vector3(-12f, 2.65f, 18f);  // Y=2.65 - ON TOP of dock surface
+        npc.transform.rotation = Quaternion.Euler(0, 180, 0);  // Facing toward shore/player approach
 
-        // Add NPC interaction component
+        // Add NPC interaction component (for clicking)
         NPCInteraction npcInteraction = npc.AddComponent<NPCInteraction>();
         npcInteraction.npcName = "Wetsuit Pete";
-        npcInteraction.interactionRange = 4f;
+        npcInteraction.interactionRange = 5f;
+
+        // Add Wetsuit Pete's quest system with speech bubbles
+        npc.AddComponent<WetsuitPeteQuests>();
 
         // Materials
         Material skinMat = MaterialGenerator.CreateSkinMaterial();
         Material wetsuitMat = new Material(Shader.Find("Standard"));
         wetsuitMat.color = new Color(0.05f, 0.05f, 0.08f); // Black wetsuit
-        wetsuitMat.SetFloat("_Glossiness", 0.7f); // Shiny rubber look
+        wetsuitMat.SetFloat("_Glossiness", 0.7f);
 
         Material wetsuitAccentMat = new Material(Shader.Find("Standard"));
-        wetsuitAccentMat.color = new Color(0.1f, 0.1f, 0.15f); // Slightly lighter accent
+        wetsuitAccentMat.color = new Color(0.12f, 0.12f, 0.18f);
 
-        // Torso - wetsuit
-        GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        // === TORSO - properly proportioned ===
+        GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         torso.name = "NPCTorso";
         torso.transform.SetParent(npc.transform);
-        torso.transform.localPosition = new Vector3(0, 0.15f, 0);
-        torso.transform.localScale = new Vector3(0.45f, 0.55f, 0.25f);
+        torso.transform.localPosition = new Vector3(0, 0.35f, 0);
+        torso.transform.localScale = new Vector3(0.38f, 0.35f, 0.22f);
         torso.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
         Object.DestroyImmediate(torso.GetComponent<Collider>());
+
+        // Chest detail
+        GameObject chest = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        chest.transform.SetParent(npc.transform);
+        chest.transform.localPosition = new Vector3(0, 0.45f, 0.05f);
+        chest.transform.localScale = new Vector3(0.35f, 0.25f, 0.18f);
+        chest.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
+        Object.DestroyImmediate(chest.GetComponent<Collider>());
 
         // Wetsuit zipper stripe
         GameObject zipper = GameObject.CreatePrimitive(PrimitiveType.Cube);
         zipper.transform.SetParent(torso.transform);
-        zipper.transform.localPosition = new Vector3(0, 0, 0.51f);
-        zipper.transform.localScale = new Vector3(0.1f, 0.9f, 0.02f);
+        zipper.transform.localPosition = new Vector3(0, 0, 0.52f);
+        zipper.transform.localScale = new Vector3(0.08f, 0.85f, 0.02f);
         Material zipperMat = new Material(Shader.Find("Standard"));
-        zipperMat.color = new Color(0.4f, 0.4f, 0.45f);
+        zipperMat.color = new Color(0.5f, 0.5f, 0.55f);
         zipperMat.SetFloat("_Metallic", 0.8f);
         zipper.GetComponent<Renderer>().sharedMaterial = zipperMat;
         Object.DestroyImmediate(zipper.GetComponent<Collider>());
 
-        // Hips - wetsuit
-        GameObject hips = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        // === HIPS - wider pelvis ===
+        GameObject hips = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         hips.name = "NPCHips";
         hips.transform.SetParent(npc.transform);
-        hips.transform.localPosition = new Vector3(0, -0.2f, 0);
-        hips.transform.localScale = new Vector3(0.40f, 0.25f, 0.22f);
+        hips.transform.localPosition = new Vector3(0, 0f, 0);
+        hips.transform.localScale = new Vector3(0.35f, 0.18f, 0.20f);
         hips.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
         Object.DestroyImmediate(hips.GetComponent<Collider>());
 
-        // Legs - wetsuit
-        for (float xOffset = -0.12f; xOffset <= 0.12f; xOffset += 0.24f)
+        // === LEGS - LONGER and more proportionate ===
+        for (float xOffset = -0.11f; xOffset <= 0.11f; xOffset += 0.22f)
         {
+            // Upper thigh
             GameObject upperLeg = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             upperLeg.transform.SetParent(npc.transform);
-            upperLeg.transform.localPosition = new Vector3(xOffset, -0.50f, 0);
-            upperLeg.transform.localScale = new Vector3(0.14f, 0.22f, 0.14f);
+            upperLeg.transform.localPosition = new Vector3(xOffset, -0.35f, 0);
+            upperLeg.transform.localScale = new Vector3(0.14f, 0.25f, 0.14f);
             upperLeg.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
             Object.DestroyImmediate(upperLeg.GetComponent<Collider>());
 
+            // Lower thigh / knee area
+            GameObject knee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            knee.transform.SetParent(npc.transform);
+            knee.transform.localPosition = new Vector3(xOffset, -0.58f, 0.02f);
+            knee.transform.localScale = new Vector3(0.12f, 0.10f, 0.12f);
+            knee.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
+            Object.DestroyImmediate(knee.GetComponent<Collider>());
+
+            // Shin / calf
             GameObject lowerLeg = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             lowerLeg.transform.SetParent(npc.transform);
-            lowerLeg.transform.localPosition = new Vector3(xOffset, -0.78f, 0);
-            lowerLeg.transform.localScale = new Vector3(0.11f, 0.20f, 0.11f);
+            lowerLeg.transform.localPosition = new Vector3(xOffset, -0.85f, 0);
+            lowerLeg.transform.localScale = new Vector3(0.10f, 0.22f, 0.10f);
             lowerLeg.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
             Object.DestroyImmediate(lowerLeg.GetComponent<Collider>());
 
-            // Diving booties (black rubber)
+            // Ankle
+            GameObject ankle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            ankle.transform.SetParent(npc.transform);
+            ankle.transform.localPosition = new Vector3(xOffset, -1.08f, 0);
+            ankle.transform.localScale = new Vector3(0.08f, 0.06f, 0.08f);
+            ankle.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
+            Object.DestroyImmediate(ankle.GetComponent<Collider>());
+
+            // Diving booties
             Material bootyMat = new Material(Shader.Find("Standard"));
             bootyMat.color = new Color(0.02f, 0.02f, 0.02f);
             bootyMat.SetFloat("_Glossiness", 0.8f);
             GameObject foot = GameObject.CreatePrimitive(PrimitiveType.Cube);
             foot.transform.SetParent(npc.transform);
-            foot.transform.localPosition = new Vector3(xOffset, -0.95f, 0.03f);
-            foot.transform.localScale = new Vector3(0.10f, 0.08f, 0.18f);
+            foot.transform.localPosition = new Vector3(xOffset, -1.18f, 0.05f);
+            foot.transform.localScale = new Vector3(0.09f, 0.06f, 0.20f);
             foot.GetComponent<Renderer>().sharedMaterial = bootyMat;
             Object.DestroyImmediate(foot.GetComponent<Collider>());
         }
 
-        // Arms - wetsuit sleeves
-        for (float xOffset = -0.30f; xOffset <= 0.30f; xOffset += 0.60f)
+        // === ARMS - properly proportioned and positioned ===
+        for (float xOffset = -0.24f; xOffset <= 0.24f; xOffset += 0.48f)
         {
+            int side = xOffset > 0 ? 1 : -1;
+
+            // Shoulder
             GameObject shoulder = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             shoulder.transform.SetParent(npc.transform);
-            shoulder.transform.localPosition = new Vector3(xOffset, 0.35f, 0);
-            shoulder.transform.localScale = new Vector3(0.12f, 0.10f, 0.10f);
+            shoulder.transform.localPosition = new Vector3(xOffset, 0.55f, 0);
+            shoulder.transform.localScale = new Vector3(0.14f, 0.12f, 0.12f);
             shoulder.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
             Object.DestroyImmediate(shoulder.GetComponent<Collider>());
 
+            // Upper arm
             GameObject upperArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             upperArm.transform.SetParent(npc.transform);
-            upperArm.transform.localPosition = new Vector3(xOffset * 1.15f, 0.18f, 0);
-            upperArm.transform.localScale = new Vector3(0.09f, 0.15f, 0.09f);
-            upperArm.transform.localRotation = Quaternion.Euler(0, 0, xOffset > 0 ? -30 : 30);
+            upperArm.transform.localPosition = new Vector3(xOffset * 1.25f, 0.35f, 0);
+            upperArm.transform.localScale = new Vector3(0.10f, 0.18f, 0.10f);
+            upperArm.transform.localRotation = Quaternion.Euler(0, 0, side * -15);
             upperArm.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
             Object.DestroyImmediate(upperArm.GetComponent<Collider>());
 
+            // Elbow
+            GameObject elbow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            elbow.transform.SetParent(npc.transform);
+            elbow.transform.localPosition = new Vector3(xOffset * 1.35f, 0.15f, 0);
+            elbow.transform.localScale = new Vector3(0.08f, 0.08f, 0.08f);
+            elbow.GetComponent<Renderer>().sharedMaterial = wetsuitMat;
+            Object.DestroyImmediate(elbow.GetComponent<Collider>());
+
+            // Forearm
             GameObject lowerArm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             lowerArm.transform.SetParent(npc.transform);
-            lowerArm.transform.localPosition = new Vector3(xOffset * 0.5f, 0.02f, 0.12f);
-            lowerArm.transform.localScale = new Vector3(0.07f, 0.14f, 0.07f);
-            lowerArm.transform.localRotation = Quaternion.Euler(60, 0, 0);
+            lowerArm.transform.localPosition = new Vector3(xOffset * 1.2f, -0.05f, 0.08f);
+            lowerArm.transform.localScale = new Vector3(0.08f, 0.16f, 0.08f);
+            lowerArm.transform.localRotation = Quaternion.Euler(40, 0, side * 10);
             lowerArm.GetComponent<Renderer>().sharedMaterial = wetsuitAccentMat;
             Object.DestroyImmediate(lowerArm.GetComponent<Collider>());
 
-            // Bare hands
-            GameObject hand = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            // Wrist
+            GameObject wrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            wrist.transform.SetParent(npc.transform);
+            wrist.transform.localPosition = new Vector3(xOffset * 1.0f, -0.18f, 0.18f);
+            wrist.transform.localScale = new Vector3(0.06f, 0.05f, 0.06f);
+            wrist.GetComponent<Renderer>().sharedMaterial = skinMat;
+            Object.DestroyImmediate(wrist.GetComponent<Collider>());
+
+            // Hand
+            GameObject hand = GameObject.CreatePrimitive(PrimitiveType.Cube);
             hand.transform.SetParent(npc.transform);
-            hand.transform.localPosition = new Vector3(xOffset * 0.3f, 0.05f, 0.22f);
-            hand.transform.localScale = new Vector3(0.08f, 0.10f, 0.05f);
+            hand.transform.localPosition = new Vector3(xOffset * 0.9f, -0.25f, 0.22f);
+            hand.transform.localScale = new Vector3(0.07f, 0.10f, 0.04f);
+            hand.transform.localRotation = Quaternion.Euler(20, 0, 0);
             hand.GetComponent<Renderer>().sharedMaterial = skinMat;
             Object.DestroyImmediate(hand.GetComponent<Collider>());
         }
 
-        // Neck - visible above wetsuit
+        // === NECK ===
         GameObject neck = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         neck.transform.SetParent(npc.transform);
-        neck.transform.localPosition = new Vector3(0, 0.5f, 0);
-        neck.transform.localScale = new Vector3(0.12f, 0.08f, 0.12f);
+        neck.transform.localPosition = new Vector3(0, 0.68f, 0);
+        neck.transform.localScale = new Vector3(0.10f, 0.06f, 0.10f);
         neck.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(neck.GetComponent<Collider>());
 
-        // Head with detailed features
+        // === HEAD - better proportioned face ===
         GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         head.name = "NPCHead";
         head.transform.SetParent(npc.transform);
-        head.transform.localPosition = new Vector3(0, 0.72f, 0);
-        head.transform.localScale = new Vector3(0.26f, 0.30f, 0.26f);
+        head.transform.localPosition = new Vector3(0, 0.88f, 0);
+        head.transform.localScale = new Vector3(0.22f, 0.26f, 0.24f);
         head.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(head.GetComponent<Collider>());
 
-        // Eyes with detail
-        for (float ex = -0.06f; ex <= 0.06f; ex += 0.12f)
+        // Face plane (flatter front of face)
+        GameObject face = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        face.transform.SetParent(head.transform);
+        face.transform.localPosition = new Vector3(0, -0.05f, 0.35f);
+        face.transform.localScale = new Vector3(0.85f, 0.75f, 0.25f);
+        face.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(face.GetComponent<Collider>());
+
+        // Eyes - better positioned
+        for (float ex = -0.15f; ex <= 0.15f; ex += 0.30f)
         {
-            // Eye socket shadow
+            // Eye socket (subtle shadow)
             GameObject eyeSocket = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             eyeSocket.transform.SetParent(head.transform);
-            eyeSocket.transform.localPosition = new Vector3(ex, 0.05f, 0.42f);
-            eyeSocket.transform.localScale = new Vector3(0.18f, 0.12f, 0.08f);
+            eyeSocket.transform.localPosition = new Vector3(ex, 0.08f, 0.42f);
+            eyeSocket.transform.localScale = new Vector3(0.20f, 0.14f, 0.08f);
             Material socketMat = new Material(Shader.Find("Standard"));
-            socketMat.color = new Color(0.7f, 0.55f, 0.45f);
+            socketMat.color = new Color(0.75f, 0.60f, 0.50f);
             eyeSocket.GetComponent<Renderer>().sharedMaterial = socketMat;
             Object.DestroyImmediate(eyeSocket.GetComponent<Collider>());
 
+            // Eye white
             GameObject eyeWhite = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             eyeWhite.transform.SetParent(head.transform);
-            eyeWhite.transform.localPosition = new Vector3(ex, 0.05f, 0.45f);
-            eyeWhite.transform.localScale = new Vector3(0.14f, 0.10f, 0.08f);
+            eyeWhite.transform.localPosition = new Vector3(ex, 0.08f, 0.46f);
+            eyeWhite.transform.localScale = new Vector3(0.14f, 0.10f, 0.06f);
             Material whiteMat = new Material(Shader.Find("Standard"));
-            whiteMat.color = Color.white;
+            whiteMat.color = new Color(0.98f, 0.98f, 0.95f);
             eyeWhite.GetComponent<Renderer>().sharedMaterial = whiteMat;
             Object.DestroyImmediate(eyeWhite.GetComponent<Collider>());
 
+            // Iris
             GameObject iris = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             iris.transform.SetParent(eyeWhite.transform);
-            iris.transform.localPosition = new Vector3(0, 0, 0.35f);
-            iris.transform.localScale = new Vector3(0.55f, 0.65f, 0.25f);
+            iris.transform.localPosition = new Vector3(0, 0, 0.4f);
+            iris.transform.localScale = new Vector3(0.5f, 0.6f, 0.3f);
             Material irisMat = new Material(Shader.Find("Standard"));
-            irisMat.color = new Color(0.2f, 0.5f, 0.6f);  // Blue eyes
+            irisMat.color = new Color(0.25f, 0.50f, 0.55f);  // Blue-green eyes
             iris.GetComponent<Renderer>().sharedMaterial = irisMat;
             Object.DestroyImmediate(iris.GetComponent<Collider>());
 
             // Pupil
             GameObject pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             pupil.transform.SetParent(iris.transform);
-            pupil.transform.localPosition = new Vector3(0, 0, 0.3f);
-            pupil.transform.localScale = new Vector3(0.5f, 0.5f, 0.3f);
+            pupil.transform.localPosition = new Vector3(0, 0, 0.35f);
+            pupil.transform.localScale = new Vector3(0.45f, 0.45f, 0.3f);
             Material pupilMat = new Material(Shader.Find("Standard"));
-            pupilMat.color = Color.black;
+            pupilMat.color = new Color(0.05f, 0.05f, 0.05f);
             pupil.GetComponent<Renderer>().sharedMaterial = pupilMat;
             Object.DestroyImmediate(pupil.GetComponent<Collider>());
 
             // Eyebrow
             GameObject eyebrow = GameObject.CreatePrimitive(PrimitiveType.Cube);
             eyebrow.transform.SetParent(head.transform);
-            eyebrow.transform.localPosition = new Vector3(ex, 0.18f, 0.44f);
-            eyebrow.transform.localScale = new Vector3(0.18f, 0.04f, 0.08f);
-            eyebrow.transform.localRotation = Quaternion.Euler(0, 0, ex > 0 ? -8 : 8);
+            eyebrow.transform.localPosition = new Vector3(ex, 0.22f, 0.42f);
+            eyebrow.transform.localScale = new Vector3(0.20f, 0.035f, 0.06f);
+            eyebrow.transform.localRotation = Quaternion.Euler(0, 0, ex > 0 ? -6 : 6);
             Material browMat = new Material(Shader.Find("Standard"));
-            browMat.color = new Color(0.35f, 0.25f, 0.15f);
+            browMat.color = new Color(0.30f, 0.22f, 0.12f);
             eyebrow.GetComponent<Renderer>().sharedMaterial = browMat;
             Object.DestroyImmediate(eyebrow.GetComponent<Collider>());
         }
 
-        // Nose
-        GameObject nose = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        nose.transform.SetParent(head.transform);
-        nose.transform.localPosition = new Vector3(0, -0.05f, 0.48f);
-        nose.transform.localScale = new Vector3(0.08f, 0.15f, 0.12f);
-        nose.transform.localRotation = Quaternion.Euler(-10, 0, 0);
-        nose.GetComponent<Renderer>().sharedMaterial = skinMat;
-        Object.DestroyImmediate(nose.GetComponent<Collider>());
+        // Nose bridge
+        GameObject noseBridge = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        noseBridge.transform.SetParent(head.transform);
+        noseBridge.transform.localPosition = new Vector3(0, 0f, 0.48f);
+        noseBridge.transform.localScale = new Vector3(0.06f, 0.12f, 0.08f);
+        noseBridge.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(noseBridge.GetComponent<Collider>());
 
         // Nose tip
         GameObject noseTip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         noseTip.transform.SetParent(head.transform);
-        noseTip.transform.localPosition = new Vector3(0, -0.12f, 0.52f);
+        noseTip.transform.localPosition = new Vector3(0, -0.08f, 0.52f);
         noseTip.transform.localScale = new Vector3(0.10f, 0.08f, 0.08f);
         noseTip.GetComponent<Renderer>().sharedMaterial = skinMat;
         Object.DestroyImmediate(noseTip.GetComponent<Collider>());
 
+        // Nostrils
+        for (float nx = -0.03f; nx <= 0.03f; nx += 0.06f)
+        {
+            GameObject nostril = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            nostril.transform.SetParent(head.transform);
+            nostril.transform.localPosition = new Vector3(nx, -0.12f, 0.50f);
+            nostril.transform.localScale = new Vector3(0.03f, 0.02f, 0.02f);
+            Material nostrilMat = new Material(Shader.Find("Standard"));
+            nostrilMat.color = new Color(0.5f, 0.35f, 0.3f);
+            nostril.GetComponent<Renderer>().sharedMaterial = nostrilMat;
+            Object.DestroyImmediate(nostril.GetComponent<Collider>());
+        }
+
         // Ears
-        for (float ex = -0.48f; ex <= 0.48f; ex += 0.96f)
+        for (float ex = -0.50f; ex <= 0.50f; ex += 1.0f)
         {
             GameObject ear = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             ear.transform.SetParent(head.transform);
-            ear.transform.localPosition = new Vector3(ex, 0f, 0f);
-            ear.transform.localScale = new Vector3(0.12f, 0.18f, 0.10f);
+            ear.transform.localPosition = new Vector3(ex, 0.02f, 0f);
+            ear.transform.localScale = new Vector3(0.08f, 0.14f, 0.08f);
             ear.GetComponent<Renderer>().sharedMaterial = skinMat;
             Object.DestroyImmediate(ear.GetComponent<Collider>());
         }
 
-        // SNORKEL in mouth!
+        // Jaw / chin area
+        GameObject jaw = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        jaw.transform.SetParent(head.transform);
+        jaw.transform.localPosition = new Vector3(0, -0.30f, 0.20f);
+        jaw.transform.localScale = new Vector3(0.60f, 0.30f, 0.45f);
+        jaw.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(jaw.GetComponent<Collider>());
+
+        // === SNORKEL ===
         Material snorkelMat = new Material(Shader.Find("Standard"));
-        snorkelMat.color = new Color(0.1f, 0.4f, 0.6f); // Blue snorkel
+        snorkelMat.color = new Color(0.1f, 0.4f, 0.6f);
         snorkelMat.SetFloat("_Glossiness", 0.8f);
 
         // Snorkel mouthpiece
         GameObject mouthpiece = GameObject.CreatePrimitive(PrimitiveType.Cube);
         mouthpiece.transform.SetParent(head.transform);
-        mouthpiece.transform.localPosition = new Vector3(0, -0.22f, 0.45f);
-        mouthpiece.transform.localScale = new Vector3(0.12f, 0.06f, 0.15f);
+        mouthpiece.transform.localPosition = new Vector3(0, -0.20f, 0.48f);
+        mouthpiece.transform.localScale = new Vector3(0.10f, 0.05f, 0.12f);
         mouthpiece.GetComponent<Renderer>().sharedMaterial = snorkelMat;
         Object.DestroyImmediate(mouthpiece.GetComponent<Collider>());
 
-        // Snorkel tube going up the side
+        // Snorkel tube
         GameObject snorkelTube = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         snorkelTube.transform.SetParent(head.transform);
-        snorkelTube.transform.localPosition = new Vector3(0.35f, 0.1f, 0.25f);
-        snorkelTube.transform.localScale = new Vector3(0.08f, 0.35f, 0.08f);
-        snorkelTube.transform.localRotation = Quaternion.Euler(0, 0, 15);
+        snorkelTube.transform.localPosition = new Vector3(0.38f, 0.15f, 0.25f);
+        snorkelTube.transform.localScale = new Vector3(0.06f, 0.35f, 0.06f);
+        snorkelTube.transform.localRotation = Quaternion.Euler(0, 0, 12);
         snorkelTube.GetComponent<Renderer>().sharedMaterial = snorkelMat;
         Object.DestroyImmediate(snorkelTube.GetComponent<Collider>());
 
-        // Snorkel top curve
+        // Snorkel top
         GameObject snorkelTop = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         snorkelTop.transform.SetParent(head.transform);
-        snorkelTop.transform.localPosition = new Vector3(0.42f, 0.45f, 0.15f);
-        snorkelTop.transform.localScale = new Vector3(0.08f, 0.12f, 0.08f);
-        snorkelTop.transform.localRotation = Quaternion.Euler(30, 0, 0);
+        snorkelTop.transform.localPosition = new Vector3(0.42f, 0.50f, 0.15f);
+        snorkelTop.transform.localScale = new Vector3(0.06f, 0.10f, 0.06f);
+        snorkelTop.transform.localRotation = Quaternion.Euler(25, 0, 0);
         snorkelTop.GetComponent<Renderer>().sharedMaterial = snorkelMat;
         Object.DestroyImmediate(snorkelTop.GetComponent<Collider>());
 
-        // Snorkel splash guard
+        // Splash guard
         GameObject splashGuard = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         splashGuard.transform.SetParent(head.transform);
-        splashGuard.transform.localPosition = new Vector3(0.42f, 0.55f, 0.05f);
-        splashGuard.transform.localScale = new Vector3(0.12f, 0.08f, 0.12f);
+        splashGuard.transform.localPosition = new Vector3(0.42f, 0.58f, 0.08f);
+        splashGuard.transform.localScale = new Vector3(0.10f, 0.06f, 0.10f);
         Material guardMat = new Material(Shader.Find("Standard"));
-        guardMat.color = new Color(0.9f, 0.3f, 0.1f); // Orange splash guard
+        guardMat.color = new Color(0.9f, 0.35f, 0.1f);
         splashGuard.GetComponent<Renderer>().sharedMaterial = guardMat;
         Object.DestroyImmediate(splashGuard.GetComponent<Collider>());
 
-        // Short stubble beard (5 o'clock shadow)
+        // Stubble
         GameObject stubble = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         stubble.transform.SetParent(head.transform);
-        stubble.transform.localPosition = new Vector3(0, -0.28f, 0.25f);
-        stubble.transform.localScale = new Vector3(0.30f, 0.18f, 0.20f);
+        stubble.transform.localPosition = new Vector3(0, -0.28f, 0.28f);
+        stubble.transform.localScale = new Vector3(0.28f, 0.15f, 0.18f);
         Material stubbleMat = new Material(Shader.Find("Standard"));
-        stubbleMat.color = new Color(0.5f, 0.4f, 0.35f);
+        stubbleMat.color = new Color(0.55f, 0.45f, 0.38f);
         stubble.GetComponent<Renderer>().sharedMaterial = stubbleMat;
         Object.DestroyImmediate(stubble.GetComponent<Collider>());
 
-        // Short wet hair
+        // Hair
         Material hairMat = new Material(Shader.Find("Standard"));
-        hairMat.color = new Color(0.25f, 0.18f, 0.1f); // Dark brown wet hair
-        hairMat.SetFloat("_Glossiness", 0.7f);
+        hairMat.color = new Color(0.28f, 0.20f, 0.12f);
+        hairMat.SetFloat("_Glossiness", 0.6f);
 
         GameObject hair = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         hair.transform.SetParent(head.transform);
-        hair.transform.localPosition = new Vector3(0, 0.35f, -0.05f);
-        hair.transform.localScale = new Vector3(1.05f, 0.4f, 1.0f);
+        hair.transform.localPosition = new Vector3(0, 0.32f, -0.05f);
+        hair.transform.localScale = new Vector3(1.02f, 0.38f, 0.95f);
         hair.GetComponent<Renderer>().sharedMaterial = hairMat;
         Object.DestroyImmediate(hair.GetComponent<Collider>());
 
-        // Quest marker above head (yellow exclamation mark effect)
+        // === QUEST MARKER ===
         GameObject questMarker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         questMarker.name = "QuestMarker";
         questMarker.transform.SetParent(npc.transform);
-        questMarker.transform.localPosition = new Vector3(0, 1.3f, 0);
-        questMarker.transform.localScale = new Vector3(0.2f, 0.25f, 0.2f);
+        questMarker.transform.localPosition = new Vector3(0, 1.45f, 0);
+        questMarker.transform.localScale = new Vector3(0.18f, 0.22f, 0.18f);
         Material markerMat = new Material(Shader.Find("Standard"));
         markerMat.color = new Color(1f, 0.9f, 0f);
         markerMat.EnableKeyword("_EMISSION");
@@ -1232,13 +2020,22 @@ public class AutoSetup
         questMarker.GetComponent<Renderer>().sharedMaterial = markerMat;
         Object.DestroyImmediate(questMarker.GetComponent<Collider>());
 
-        // Exclamation mark stick
         GameObject markerStick = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         markerStick.transform.SetParent(npc.transform);
-        markerStick.transform.localPosition = new Vector3(0, 1.1f, 0);
-        markerStick.transform.localScale = new Vector3(0.06f, 0.12f, 0.06f);
+        markerStick.transform.localPosition = new Vector3(0, 1.28f, 0);
+        markerStick.transform.localScale = new Vector3(0.05f, 0.10f, 0.05f);
         markerStick.GetComponent<Renderer>().sharedMaterial = markerMat;
         Object.DestroyImmediate(markerStick.GetComponent<Collider>());
+    }
+
+    static void CreateSpawnNPC()
+    {
+        // NPC who comments on player being naked - positioned near spawn
+        // Player spawns at (0, 2f, -5f), so place NPC in front facing player
+        GameObject npc = new GameObject("SpawnNPC");
+        npc.transform.position = new Vector3(2f, 1.26f, -2f);  // To the right of spawn, on the grass
+        npc.transform.rotation = Quaternion.Euler(0, -120, 0);  // Facing toward spawn location
+        npc.AddComponent<SpawnNPC>();
     }
 
     static void SetupCamera()
@@ -1625,6 +2422,13 @@ public class AutoSetup
             cloth.GetComponent<Renderer>().sharedMaterial = clothMat;
             Object.DestroyImmediate(cloth.GetComponent<Collider>());
         }
+
+        // RADIO on the counter - plays Evil Bob's Island music
+        GameObject radio = new GameObject("ShopRadio");
+        radio.transform.SetParent(shop.transform);
+        radio.transform.localPosition = new Vector3(1.0f, 1.1f, 0.5f);  // On the counter
+        radio.transform.localRotation = Quaternion.Euler(0, -25f, 0);  // Angled
+        radio.AddComponent<ShopRadio>();
     }
 
     static void CreateGrannyNPC(Transform parent, Vector3 localPos)

@@ -40,6 +40,9 @@ public class FishingSystem : MonoBehaviour
         fishDatabase.Add(new FishData { id = "minnow", fishName = "Minnow", rarity = Rarity.Common, coinValue = 3, weight = 60f, fishColor = new Color(0.7f, 0.75f, 0.8f) });
         fishDatabase.Add(new FishData { id = "cod", fishName = "Cod", rarity = Rarity.Common, coinValue = 8, weight = 45f, fishColor = new Color(0.6f, 0.55f, 0.4f) });
 
+        // Special quest item - Tackle Box (not in normal pool, handled separately)
+        fishDatabase.Add(new FishData { id = "tackle_box", fishName = "Pete's Tackle Box", rarity = Rarity.Legendary, coinValue = 0, weight = 0f, fishColor = new Color(1f, 0.85f, 0.2f) });
+
         // Uncommon fish
         fishDatabase.Add(new FishData { id = "bass", fishName = "Bass", rarity = Rarity.Uncommon, coinValue = 20, weight = 20f, fishColor = new Color(0.3f, 0.5f, 0.3f) });
         fishDatabase.Add(new FishData { id = "salmon", fishName = "Salmon", rarity = Rarity.Uncommon, coinValue = 30, weight = 18f, fishColor = new Color(0.9f, 0.5f, 0.4f) });
@@ -74,9 +77,44 @@ public class FishingSystem : MonoBehaviour
         return canFish && !isFishing;
     }
 
+    // Check if player is on a dock - FISHING ONLY ALLOWED ON DOCKS
+    public bool IsOnDock()
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return false;
+
+        Vector3 pos = player.transform.position;
+
+        // Main dock: centered at x=-12, from z=8 to z=58, at y=2.5 (surface)
+        // Player can be slightly above the dock surface
+        bool onMainDock = pos.x > -15f && pos.x < -9f && pos.z > 5f && pos.z < 60f && pos.y > 2f && pos.y < 4f;
+
+        // Add any additional docks here in the future
+        // bool onSecondDock = ...
+
+        return onMainDock;
+    }
+
+    // Legacy method for compatibility - now just checks dock
+    public bool IsNearWater()
+    {
+        return IsOnDock();
+    }
+
     public void StartFishing()
     {
         if (!CanFish()) return;
+
+        // Check if player is on a dock
+        if (!IsOnDock())
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("You can only fish from docks!", new Color(0.9f, 0.6f, 0.2f));
+            }
+            Debug.Log("Cannot fish here - must be on a dock!");
+            return;
+        }
 
         // Find the player's rod animator and tell it to cast
         GameObject player = GameObject.Find("Player");
@@ -97,6 +135,25 @@ public class FishingSystem : MonoBehaviour
     // Called by FishingRodAnimator when player successfully reels in during a bite
     public void CompleteCatch()
     {
+        // Check if player should find tackle box (10% chance during quest)
+        if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsTackleBoxQuestActive())
+        {
+            if (Random.Range(0f, 100f) < 10f)
+            {
+                // Found the tackle box!
+                FishData tackleBox = fishDatabase.Find(f => f.id == "tackle_box");
+                if (tackleBox != null)
+                {
+                    WetsuitPeteQuests.Instance.OnTackleBoxFound();
+                    SpawnTackleBoxEffect();
+                    Debug.Log("TACKLE BOX FOUND! Return to Wetsuit Pete!");
+                    isFishing = false;
+                    StartCoroutine(ResetCooldown());
+                    return;
+                }
+            }
+        }
+
         FishData fish = GetRandomFish();
 
         // HUMPBACK WHALE SPECIAL: 1% chance to break the fishing rod!
@@ -115,6 +172,12 @@ public class FishingSystem : MonoBehaviour
         GameManager.Instance.AddCoins(fish.coinValue);
         GameManager.Instance.AddFish(fish);
 
+        // Add fish to food inventory for cooking
+        if (FoodInventory.Instance != null)
+        {
+            FoodInventory.Instance.AddRawFish(fish);
+        }
+
         // Give XP based on fish rarity
         if (LevelingSystem.Instance != null)
         {
@@ -122,10 +185,16 @@ public class FishingSystem : MonoBehaviour
             LevelingSystem.Instance.AddXP(xp);
         }
 
-        // Update quest progress
+        // Update quest progress - Old Captain's quests
         if (QuestSystem.Instance != null)
         {
             QuestSystem.Instance.OnFishCaught(fish.id);
+        }
+
+        // Update Wetsuit Pete's quest progress
+        if (WetsuitPeteQuests.Instance != null)
+        {
+            WetsuitPeteQuests.Instance.OnFishCaught(fish.id);
         }
 
         // Spawn fish and coins from water
@@ -135,6 +204,82 @@ public class FishingSystem : MonoBehaviour
 
         isFishing = false;
         StartCoroutine(ResetCooldown());
+    }
+
+    void SpawnTackleBoxEffect()
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return;
+
+        Vector3 spawnPos = player.transform.position + player.transform.forward * 3f;
+        spawnPos.y = 1.5f;
+
+        // Create tackle box with golden glow
+        GameObject tackleBox = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        tackleBox.name = "TackleBox";
+        tackleBox.transform.position = spawnPos;
+        tackleBox.transform.localScale = new Vector3(0.5f, 0.3f, 0.35f);
+        Object.Destroy(tackleBox.GetComponent<Collider>());
+
+        Material boxMat = new Material(Shader.Find("Standard"));
+        boxMat.color = new Color(0.5f, 0.35f, 0.15f);
+        boxMat.EnableKeyword("_EMISSION");
+        boxMat.SetColor("_EmissionColor", new Color(1f, 0.85f, 0.2f) * 2f); // Golden glow
+        tackleBox.GetComponent<Renderer>().material = boxMat;
+
+        // Add handle
+        GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        handle.name = "Handle";
+        handle.transform.SetParent(tackleBox.transform);
+        handle.transform.localPosition = new Vector3(0, 0.25f, 0);
+        handle.transform.localScale = new Vector3(0.4f, 0.15f, 0.15f);
+        handle.transform.localRotation = Quaternion.Euler(0, 0, 90);
+        Object.Destroy(handle.GetComponent<Collider>());
+        Material handleMat = new Material(Shader.Find("Standard"));
+        handleMat.color = new Color(0.3f, 0.3f, 0.35f);
+        handle.GetComponent<Renderer>().material = handleMat;
+
+        StartCoroutine(TackleBoxAnimation(tackleBox));
+    }
+
+    IEnumerator TackleBoxAnimation(GameObject box)
+    {
+        Vector3 startPos = box.transform.position;
+        float t = 0;
+
+        // Float up with golden sparkle
+        while (t < 2f)
+        {
+            t += Time.deltaTime;
+            box.transform.position = startPos + Vector3.up * (t * 0.5f);
+            box.transform.Rotate(Vector3.up * 90 * Time.deltaTime);
+
+            // Pulse the glow
+            float pulse = 1.5f + Mathf.Sin(t * 8f) * 0.5f;
+            box.GetComponent<Renderer>().material.SetColor("_EmissionColor", new Color(1f, 0.85f, 0.2f) * pulse);
+
+            yield return null;
+        }
+
+        // Fade out
+        Material mat = box.GetComponent<Renderer>().material;
+        mat.SetFloat("_Mode", 3);
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.EnableKeyword("_ALPHABLEND_ON");
+        mat.renderQueue = 3000;
+
+        Color c = mat.color;
+        t = 0;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f;
+            c.a = 1 - t;
+            mat.color = c;
+            yield return null;
+        }
+
+        Destroy(box);
     }
 
     IEnumerator RodBreakSequence()
@@ -628,6 +773,20 @@ public class FishingSystem : MonoBehaviour
 
     FishData GetRandomFish()
     {
+        // Check if salmon quest is active - 40% chance to get salmon
+        if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsSalmonQuestActive())
+        {
+            if (Random.Range(0f, 100f) < 40f)
+            {
+                FishData salmon = fishDatabase.Find(f => f.id == "salmon");
+                if (salmon != null)
+                {
+                    Debug.Log("Salmon quest bonus triggered!");
+                    return salmon;
+                }
+            }
+        }
+
         // Apply luck bonus - increases rare fish chances
         float luckBonus = UIManager.Instance != null ? UIManager.Instance.GetLuckBonus() : 0f;
 
@@ -654,6 +813,13 @@ public class FishingSystem : MonoBehaviour
 
         foreach (var fish in fishDatabase)
         {
+            // Skip special items (tackle box has 0 weight)
+            if (fish.weight <= 0f)
+            {
+                adjustedWeights.Add(0f);
+                continue;
+            }
+
             float adjustedWeight = fish.weight;
 
             if (fish.rarity == Rarity.Common)

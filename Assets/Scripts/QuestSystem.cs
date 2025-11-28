@@ -229,4 +229,14 @@ public class QuestSystem : MonoBehaviour
     {
         return completedQuests.Count;
     }
+
+    // Reset quests on death
+    public void ResetQuests()
+    {
+        Debug.Log("Resetting quest progress");
+        activeQuest = null;
+        pendingQuest = null;
+        // Keep completed quests as a record but generate new quest
+        Invoke(nameof(GenerateNewQuest), 1f);
+    }
 }

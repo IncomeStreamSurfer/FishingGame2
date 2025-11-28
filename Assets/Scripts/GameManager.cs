@@ -51,4 +51,12 @@ public class GameManager : MonoBehaviour
         totalFishCaught = 0;
         fishInventory.Clear();
     }
+
+    // Reset fish stats only - keeps gold and cosmetics
+    public void ResetFishStats()
+    {
+        Debug.Log($"Resetting fish stats - lost {totalFishCaught} fish. Gold preserved: {coins}");
+        totalFishCaught = 0;
+        fishInventory.Clear();
+    }
 }

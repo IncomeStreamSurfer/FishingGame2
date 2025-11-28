@@ -12,12 +12,15 @@ public class DevPanel : MonoBehaviour
     private bool isOpen = false;
     private bool isDragging = false;
     private Vector2 dragOffset;
-    private Rect windowRect = new Rect(20, 20, 320, 450);
+    private Rect windowRect = new Rect(20, 20, 320, 550);
 
     // Input fields
     private string goldInput = "1000";
     private string xpInput = "10000";
     private string levelInput = "10";
+
+    // Time control
+    private float timeSliderValue = 0.5f; // 0-1 representing time of day
 
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
@@ -50,6 +53,8 @@ public class DevPanel : MonoBehaviour
         CacheTexture("buttonDanger", new Color(0.6f, 0.2f, 0.2f, 1f));
         CacheTexture("inputBg", new Color(0.05f, 0.05f, 0.08f, 1f));
         CacheTexture("divider", new Color(0.4f, 0.4f, 0.5f, 0.5f));
+        CacheTexture("sliderTrack", new Color(0.15f, 0.15f, 0.2f, 1f));
+        CacheTexture("sliderFill", new Color(1f, 0.7f, 0.2f, 1f));
     }
 
     void CacheTexture(string name, Color color)
@@ -232,6 +237,75 @@ public class DevPanel : MonoBehaviour
         }
         contentY += 35;
 
+        // Time Control Section
+        GUI.DrawTexture(new Rect(windowRect.x + padding, contentY, contentWidth, 1), GetTexture("divider"));
+        contentY += 10;
+
+        GUIStyle timeTitle = new GUIStyle(GUI.skin.label);
+        timeTitle.fontSize = 11;
+        timeTitle.fontStyle = FontStyle.Bold;
+        timeTitle.normal.textColor = new Color(0.4f, 0.8f, 1f);
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "TIME OF DAY", timeTitle);
+        contentY += 22;
+
+        // Get current time from DayNightCycle (0-24 hours)
+        float currentHour = 12f;
+        if (DayNightCycle.Instance != null)
+        {
+            currentHour = DayNightCycle.Instance.GetCurrentHour();
+            timeSliderValue = currentHour / 24f; // Convert to 0-1 for slider
+        }
+
+        // Time label
+        GUIStyle timeLabel = new GUIStyle(GUI.skin.label);
+        timeLabel.fontSize = 11;
+        timeLabel.normal.textColor = Color.white;
+        string timeStr = GetTimeString(timeSliderValue);
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Time: {timeStr}", timeLabel);
+        contentY += 20;
+
+        // Draw slider track
+        Rect sliderTrackRect = new Rect(windowRect.x + padding, contentY, contentWidth, 16);
+        GUI.DrawTexture(sliderTrackRect, GetTexture("sliderTrack"));
+
+        // Draw slider fill
+        Rect sliderFillRect = new Rect(windowRect.x + padding, contentY, contentWidth * timeSliderValue, 16);
+        GUI.DrawTexture(sliderFillRect, GetTexture("sliderFill"));
+
+        // Slider interaction
+        if (Event.current.type == EventType.MouseDown || Event.current.type == EventType.MouseDrag)
+        {
+            if (sliderTrackRect.Contains(Event.current.mousePosition))
+            {
+                float newValue = (Event.current.mousePosition.x - sliderTrackRect.x) / sliderTrackRect.width;
+                timeSliderValue = Mathf.Clamp01(newValue);
+                if (DayNightCycle.Instance != null)
+                {
+                    DayNightCycle.Instance.SetTimeOfDay(timeSliderValue * 24f); // Convert back to 0-24
+                }
+                Event.current.Use();
+            }
+        }
+        contentY += 22;
+
+        // Time preset buttons
+        float timeBtnWidth = (contentWidth - 30) / 4;
+        string[] timeLabels = { "Dawn", "Noon", "Dusk", "Night" };
+        float[] timeHours = { 6f, 12f, 18f, 0f }; // In hours
+        for (int i = 0; i < timeLabels.Length; i++)
+        {
+            float hour = timeHours[i];
+            if (DrawButton(new Rect(windowRect.x + padding + i * (timeBtnWidth + 10), contentY, timeBtnWidth, 22), timeLabels[i]))
+            {
+                timeSliderValue = hour / 24f;
+                if (DayNightCycle.Instance != null)
+                {
+                    DayNightCycle.Instance.SetTimeOfDay(hour);
+                }
+            }
+        }
+        contentY += 30;
+
         // Danger zone
         GUIStyle dangerTitle = new GUIStyle(sectionTitle);
         dangerTitle.normal.textColor = new Color(1f, 0.4f, 0.4f);
@@ -356,6 +430,18 @@ public class DevPanel : MonoBehaviour
             GameManager.Instance.fishInventory.Clear();
         }
         Debug.Log("[DEV] Reset all progress");
+    }
+
+    string GetTimeString(float timeValue)
+    {
+        // Convert 0-1 to 24-hour time (0 = midnight, 0.5 = noon)
+        float hours = timeValue * 24f;
+        int hour = Mathf.FloorToInt(hours);
+        int minutes = Mathf.FloorToInt((hours - hour) * 60f);
+        string ampm = hour >= 12 ? "PM" : "AM";
+        int displayHour = hour % 12;
+        if (displayHour == 0) displayHour = 12;
+        return $"{displayHour}:{minutes:D2} {ampm}";
     }
 
     void OnDestroy()
