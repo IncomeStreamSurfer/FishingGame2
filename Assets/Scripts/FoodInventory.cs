@@ -178,6 +178,12 @@ public class FoodInventory : MonoBehaviour
             lunchBoxOpen = !lunchBoxOpen;
         }
 
+        // Close lunch box with ESC
+        if (lunchBoxOpen && Input.GetKeyDown(KeyCode.Escape))
+        {
+            lunchBoxOpen = false;
+        }
+
         // Consume hotbar items with number keys 1-4
         for (int i = 0; i < 4; i++)
         {

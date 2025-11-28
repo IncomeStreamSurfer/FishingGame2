@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(move \"C:\\Users\\incom\\FishingGame2\\0360. Evil Bob''s Island (Cover).mp3\" \"C:\\Users\\incom\\FishingGame2\\Assets\\Audio\"\")",
+      "Bash(powershell -Command \"New-Item -ItemType Directory -Force -Path ''C:\\Users\\incom\\FishingGame2\\Assets\\Resources''\")",
+      "Bash(powershell:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

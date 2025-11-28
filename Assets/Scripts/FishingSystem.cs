@@ -299,6 +299,17 @@ public class FishingSystem : MonoBehaviour
             // Add to special inventory (can't be BBQ'd)
             AddSpecialFish(fish);
 
+            // Give gold on catch (bonus gold!)
+            int catchGold = fish.sellToNPC / 10; // 10% of sell value as immediate bonus
+            if (catchGold > 0)
+            {
+                GameManager.Instance.AddCoins(catchGold);
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification($"+{catchGold} gold!", new Color(1f, 0.85f, 0.2f));
+                }
+            }
+
             // Apply health buff
             if (PlayerHealth.Instance != null)
             {
@@ -348,6 +359,12 @@ public class FishingSystem : MonoBehaviour
         // ========== NORMAL FISH HANDLING ==========
         GameManager.Instance.AddCoins(fish.coinValue);
         GameManager.Instance.AddFish(fish);
+
+        // Show gold notification
+        if (UIManager.Instance != null && fish.coinValue > 0)
+        {
+            UIManager.Instance.ShowLootNotification($"+{fish.coinValue} gold!", new Color(1f, 0.85f, 0.2f));
+        }
 
         // Add fish to food inventory for cooking
         if (FoodInventory.Instance != null)

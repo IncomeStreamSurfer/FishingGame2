@@ -16,7 +16,7 @@ public class PlayerHealth : MonoBehaviour
     private float maxHealth = 100f;
     private float currentHealth = 100f;
     private float healthDecayTimer = 0f;
-    private float healthDecayInterval = 5f; // 5 seconds
+    private float healthDecayInterval = 20f; // 20 seconds
 
     // Death state
     private bool isDead = false;
