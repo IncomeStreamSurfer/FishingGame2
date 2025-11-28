@@ -22,7 +22,7 @@ public class ClothingShopNPC : MonoBehaviour
     // Shop data
     private List<ClothingItem> clothingItems = new List<ClothingItem>();
     private int selectedSlot = 0;
-    private string[] slotNames = { "Head", "Top", "Legs", "Accessory" };
+    private string[] slotNames = { "Head", "Top", "Legs", "Accessory", "Consumable" };
 
     // Player's current equipment - starts naked!
     private Dictionary<string, string> playerEquipment = new Dictionary<string, string>()
@@ -30,7 +30,8 @@ public class ClothingShopNPC : MonoBehaviour
         { "Head", "None" },
         { "Top", "None" },
         { "Legs", "None" },
-        { "Accessory", "None" }
+        { "Accessory", "None" },
+        { "Consumable", "None" }
     };
 
     // Cached textures
@@ -39,6 +40,9 @@ public class ClothingShopNPC : MonoBehaviour
 
     // Audio for voice
     private AudioSource voiceSource;
+
+    // Special unlocked items (from bottle rewards, quests, etc.)
+    private HashSet<string> unlockedSpecialItems = new HashSet<string>();
 
     void Awake()
     {
@@ -64,6 +68,49 @@ public class ClothingShopNPC : MonoBehaviour
         CreateCachedTextures();
         SetupAudio();
         initialized = true;
+    }
+
+    // Unlock a special item (from bottle rewards, quests, etc.)
+    public void UnlockSpecialItem(string itemId)
+    {
+        if (!unlockedSpecialItems.Contains(itemId))
+        {
+            unlockedSpecialItems.Add(itemId);
+            Debug.Log($"Special item unlocked: {itemId}");
+
+            // Add the special item to the shop inventory
+            switch (itemId)
+            {
+                case "golden_fishing_hat":
+                    clothingItems.Add(new ClothingItem
+                    {
+                        id = "golden_fishing_hat",
+                        name = "Golden Fishing Hat",
+                        displayName = "Golden Fishing Hat",
+                        slot = "Head",
+                        price = 0, // Free since it was a reward
+                        description = "A magnificent golden hat that glitters in the sunlight",
+                        statBonus = "+25% Rare Fish Chance",
+                        luckBonus = 0.25f,
+                        previewColor = new Color(1f, 0.85f, 0.2f),
+                        isSpecial = true,
+                        isSetItem = false,
+                        isHiddenInShop = false
+                    });
+                    break;
+            }
+
+            // Show notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Special item unlocked: {itemId}!", new Color(1f, 0.9f, 0.3f));
+            }
+        }
+    }
+
+    public bool HasSpecialItem(string itemId)
+    {
+        return unlockedSpecialItems.Contains(itemId);
     }
 
     void SetupAudio()
@@ -497,9 +544,17 @@ public class ClothingShopNPC : MonoBehaviour
                 GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, 3, itemRect.height), GetTexture("equipped"));
             }
 
-            // Color swatch
-            Texture2D itemSwatch = GetOrCreateColorTexture(item.previewColor);
-            GUI.DrawTexture(new Rect(itemRect.x + 6, itemRect.y + 6, 28, 28), itemSwatch);
+            // Item sprite (pixel art) or color swatch fallback
+            Texture2D itemSprite = null;
+            if (ClothingSprites.Instance != null)
+                itemSprite = ClothingSprites.Instance.GetClothingTexture(item.name);
+            if (itemSprite != null)
+                GUI.DrawTexture(new Rect(itemRect.x + 6, itemRect.y + 6, 28, 28), itemSprite);
+            else
+            {
+                Texture2D itemSwatch = GetOrCreateColorTexture(item.previewColor);
+                GUI.DrawTexture(new Rect(itemRect.x + 6, itemRect.y + 6, 28, 28), itemSwatch);
+            }
 
             // Item name
             GUIStyle itemTitleStyle = new GUIStyle(GUI.skin.label);
@@ -770,22 +825,35 @@ public class ClothingShopNPC : MonoBehaviour
 [System.Serializable]
 public class ClothingItem
 {
+    public string id;           // Unique identifier
     public string name;
+    public string displayName;  // For special items
     public string slot;
     public int price;
     public string description;
+    public string statBonus;    // Display text for bonus
+    public float luckBonus;     // Actual luck bonus value
     public Color previewColor;
     public bool isSetItem;      // Part of a multi-slot outfit
     public bool isHiddenInShop; // Hidden companion piece (like tuxedo pants)
+    public bool isSpecial;      // Special reward item
 
     public ClothingItem(string name, string slot, int price, string description, Color color, bool isSet = false, bool hidden = false)
     {
         this.name = name;
+        this.id = name.ToLower().Replace(" ", "_");
+        this.displayName = name;
         this.slot = slot;
         this.price = price;
         this.description = description;
         this.previewColor = color;
         this.isSetItem = isSet;
         this.isHiddenInShop = hidden;
+        this.isSpecial = false;
+        this.statBonus = "";
+        this.luckBonus = 0f;
     }
+
+    // Constructor for special items
+    public ClothingItem() { }
 }

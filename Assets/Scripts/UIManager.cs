@@ -74,6 +74,13 @@ public class UIManager : MonoBehaviour
     // Close button style
     private GUIStyle closeButtonStyle;
 
+    // NPC proximity for sell prompt
+    private bool isNearNPC = false;
+    private string nearbyNPCName = "";
+    private float npcCheckTimer = 0f;
+    private const float NPC_CHECK_INTERVAL = 0.2f;
+    private const float NPC_SELL_RANGE = 4f;
+
     void Awake()
     {
         if (Instance == null)
@@ -255,6 +262,57 @@ public class UIManager : MonoBehaviour
         // Update notification timers
         if (levelUpNotificationTime > 0) levelUpNotificationTime -= Time.deltaTime;
         if (lootNotificationTime > 0) lootNotificationTime -= Time.deltaTime;
+
+        // Check for nearby NPCs periodically
+        npcCheckTimer += Time.deltaTime;
+        if (npcCheckTimer >= NPC_CHECK_INTERVAL)
+        {
+            npcCheckTimer = 0f;
+            CheckNearbyNPCs();
+        }
+
+        // Handle F key press when near NPC to open fish inventory in sell mode
+        if (isNearNPC && Input.GetKeyDown(KeyCode.F))
+        {
+            if (FishInventoryPanel.Instance != null)
+            {
+                FishInventoryPanel.Instance.EnableSellMode(nearbyNPCName);
+            }
+        }
+    }
+
+    void CheckNearbyNPCs()
+    {
+        isNearNPC = false;
+        nearbyNPCName = "";
+
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return;
+
+        Vector3 playerPos = player.transform.position;
+
+        // Check known NPC locations
+        string[] npcNames = { "QuestNPC", "SpawnNPC", "ClothingShopNPC", "GoldieBanksNPC", "WetsuitPete" };
+
+        foreach (string npcName in npcNames)
+        {
+            GameObject npc = GameObject.Find(npcName);
+            if (npc != null)
+            {
+                float distance = Vector3.Distance(playerPos, npc.transform.position);
+                if (distance <= NPC_SELL_RANGE)
+                {
+                    isNearNPC = true;
+                    // Get a friendly name for the NPC
+                    if (npcName == "QuestNPC") nearbyNPCName = "Wetsuit Pete";
+                    else if (npcName == "SpawnNPC") nearbyNPCName = "Islander";
+                    else if (npcName == "ClothingShopNPC") nearbyNPCName = "Clothing Shop";
+                    else if (npcName == "GoldieBanksNPC") nearbyNPCName = "Goldie Banks";
+                    else nearbyNPCName = npcName;
+                    return;
+                }
+            }
+        }
     }
 
     void OnLevelUp(int from, int to)
@@ -294,6 +352,7 @@ public class UIManager : MonoBehaviour
 
         DrawHUD();
         DrawNotifications();
+        DrawNPCSellPrompt();
 
         if (npcDialogOpen)
         {
@@ -303,6 +362,55 @@ public class UIManager : MonoBehaviour
         {
             DrawInventoryPanel();
         }
+    }
+
+    void DrawNPCSellPrompt()
+    {
+        if (!isNearNPC) return;
+        if (PauseMenu.IsPaused) return;
+
+        // Draw "Press F to sell fish!" prompt on left side of screen
+        float promptWidth = 180;
+        float promptHeight = 38;
+        float promptX = 15;
+        float promptY = Screen.height / 2 - 20;
+
+        // Pulsing effect
+        float pulse = 0.85f + Mathf.Sin(Time.time * 3f) * 0.15f;
+
+        // Background
+        GUI.color = new Color(0.1f, 0.15f, 0.1f, 0.9f * pulse);
+        GUI.DrawTexture(new Rect(promptX, promptY, promptWidth, promptHeight), Texture2D.whiteTexture);
+
+        // Gold border
+        GUI.color = new Color(1f, 0.85f, 0.3f, pulse);
+        GUI.DrawTexture(new Rect(promptX, promptY, promptWidth, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(promptX, promptY + promptHeight - 2, promptWidth, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(promptX, promptY, 2, promptHeight), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(promptX + promptWidth - 2, promptY, 2, promptHeight), Texture2D.whiteTexture);
+
+        GUI.color = Color.white;
+
+        // Key indicator
+        GUIStyle keyStyle = new GUIStyle();
+        keyStyle.fontSize = 16;
+        keyStyle.fontStyle = FontStyle.Bold;
+        keyStyle.alignment = TextAnchor.MiddleCenter;
+        keyStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
+
+        GUI.color = new Color(0.2f, 0.25f, 0.2f, 1f);
+        GUI.DrawTexture(new Rect(promptX + 10, promptY + 7, 26, 24), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(promptX + 10, promptY + 7, 26, 24), "F", keyStyle);
+
+        // Text
+        GUIStyle textStyle = new GUIStyle();
+        textStyle.fontSize = 13;
+        textStyle.fontStyle = FontStyle.Bold;
+        textStyle.alignment = TextAnchor.MiddleLeft;
+        textStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
+
+        GUI.Label(new Rect(promptX + 42, promptY, promptWidth - 50, promptHeight), "Sell fish!", textStyle);
     }
 
     void DrawNPCDialog()
@@ -492,10 +600,17 @@ public class UIManager : MonoBehaviour
             inventoryOpen = true;
             currentTab = 2;
         }
-        if (GUI.Button(new Rect(barX + 216, barY + 26, 94, 18), "QUESTS", buttonStyle))
+        if (GUI.Button(new Rect(barX + 216, barY + 26, 46, 18), "QUEST", buttonStyle))
         {
             inventoryOpen = true;
             currentTab = 1;
+        }
+        if (GUI.Button(new Rect(barX + 266, barY + 26, 44, 18), "CHAR", buttonStyle))
+        {
+            if (CharacterPanel.Instance != null)
+            {
+                CharacterPanel.Instance.Toggle();
+            }
         }
 
         // Controls (top left - smaller text)
@@ -661,18 +776,7 @@ public class UIManager : MonoBehaviour
 
             GUI.Label(new Rect(x, y + 28, 170, 14), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
         }
-        else if (hasPendingQuest)
-        {
-            // Show hint to talk to NPC
-            GUI.Box(new Rect(x - 4, y - 4, 180, 34), "", frameStyle);
-
-            // X close button
-            if (GUI.Button(new Rect(x - 4, y - 4, 18, 16), "X", closeButtonStyle))
-            {
-                questTrackerHidden = true;
-            }
-
-        }
+        // Don't show empty box for pending quests - removed the black empty box
     }
 
     void DrawNotifications()

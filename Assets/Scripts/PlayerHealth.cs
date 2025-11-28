@@ -27,6 +27,12 @@ public class PlayerHealth : MonoBehaviour
     private bool showLowHealthWarning = false;
     private float warningPulse = 0f;
 
+    // Drowning system
+    private bool isDrowning = false;
+    private float drowningDamageTimer = 0f;
+    private float drowningDamageInterval = 1f; // 1 HP per second while drowning
+    private float waterLevel = 0.85f; // Y level where drowning starts (water surface is at 0.75)
+
     // Tutorial tip for new players
     private bool showTutorialTip = true;
     private float tutorialTimer = 0f;
@@ -115,7 +121,7 @@ public class PlayerHealth : MonoBehaviour
             return;
         }
 
-        // Health decay - 1 HP every 5 seconds (hunger)
+        // Health decay - 1 HP every 20 seconds (hunger)
         healthDecayTimer += Time.deltaTime;
         if (healthDecayTimer >= healthDecayInterval)
         {
@@ -123,8 +129,11 @@ public class PlayerHealth : MonoBehaviour
             TakeDamage(1f);
         }
 
+        // Check for drowning
+        CheckDrowning();
+
         // Check for low health warning
-        showLowHealthWarning = currentHealth <= 5f && currentHealth > 0f;
+        showLowHealthWarning = (currentHealth <= 5f && currentHealth > 0f) || isDrowning;
         if (showLowHealthWarning)
         {
             warningPulse += Time.deltaTime * 5f;
@@ -246,6 +255,32 @@ public class PlayerHealth : MonoBehaviour
 
         return value;
     }
+
+    void CheckDrowning()
+    {
+        if (isDead) return;
+
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return;
+
+        float playerY = player.transform.position.y;
+
+        // Check if player is below water level
+        // Water (blue part) rapidly drains health - 5 HP per second!
+        // Player MUST stand on docks to fish safely
+        if (playerY < waterLevel)
+        {
+            isDrowning = true;
+            // Rapid health loss - 5 HP per second
+            TakeDamage(5f * Time.deltaTime);
+        }
+        else
+        {
+            isDrowning = false;
+        }
+    }
+
+    public bool IsDrowning() => isDrowning;
 
     public void TakeDamage(float damage)
     {
@@ -392,8 +427,11 @@ public class PlayerHealth : MonoBehaviour
         float boxX = (Screen.width - boxWidth) / 2;
         float boxY = Screen.height * 0.35f;
 
-        // Red background with pulse
-        GUI.color = new Color(0.8f, 0.1f, 0.1f, pulse * 0.9f);
+        // Different colors for drowning vs low health
+        Color bgColor = isDrowning ? new Color(0.1f, 0.2f, 0.8f, pulse * 0.9f) : new Color(0.8f, 0.1f, 0.1f, pulse * 0.9f);
+
+        // Background with pulse
+        GUI.color = bgColor;
         GUI.DrawTexture(new Rect(boxX, boxY, boxWidth, boxHeight), GetTexture("white"));
         GUI.color = Color.white;
 
@@ -403,7 +441,7 @@ public class PlayerHealth : MonoBehaviour
         iconStyle.fontStyle = FontStyle.Bold;
         iconStyle.alignment = TextAnchor.MiddleCenter;
         iconStyle.normal.textColor = new Color(1f, 1f, 0.3f, pulse);
-        GUI.Label(new Rect(boxX + 10, boxY, 40, boxHeight), "!", iconStyle);
+        GUI.Label(new Rect(boxX + 10, boxY, 40, boxHeight), isDrowning ? "~" : "!", iconStyle);
 
         // Warning text
         GUIStyle warnStyle = new GUIStyle();
@@ -413,8 +451,11 @@ public class PlayerHealth : MonoBehaviour
         warnStyle.normal.textColor = Color.white;
         warnStyle.wordWrap = true;
 
-        GUI.Label(new Rect(boxX + 50, boxY, boxWidth - 60, boxHeight),
-            "LOW HEALTH! Eat some fish from the BBQ now!", warnStyle);
+        string warningText = isDrowning
+            ? "DROWNING! Get back to land!"
+            : "LOW HEALTH! Eat some fish from the BBQ now!";
+
+        GUI.Label(new Rect(boxX + 50, boxY, boxWidth - 60, boxHeight), warningText, warnStyle);
     }
 
     void DrawTutorialTip()
@@ -606,23 +647,20 @@ public class PlayerHealth : MonoBehaviour
         // Red overlay
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("deathOverlay"));
 
-        // Death message
+        // Simple death message
         GUIStyle deathStyle = new GUIStyle();
-        deathStyle.fontSize = 48;
+        deathStyle.fontSize = 56;
         deathStyle.fontStyle = FontStyle.Bold;
         deathStyle.alignment = TextAnchor.MiddleCenter;
         deathStyle.normal.textColor = Color.white;
 
+        GUI.Label(new Rect(0, Screen.height / 2 - 50, Screen.width, 70), "YOU DIED", deathStyle);
+
+        // Countdown
         float remainingTime = respawnDelay - deathTimer;
-        GUI.Label(new Rect(0, Screen.height / 2 - 60, Screen.width, 60), "YOU DIED", deathStyle);
-
-        deathStyle.fontSize = 24;
-        deathStyle.normal.textColor = new Color(1f, 0.8f, 0.8f);
-        GUI.Label(new Rect(0, Screen.height / 2, Screen.width, 40), $"Respawning in {remainingTime:F1}s...", deathStyle);
-
-        deathStyle.fontSize = 16;
-        deathStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
-        GUI.Label(new Rect(0, Screen.height / 2 + 50, Screen.width, 30), "Gold and cosmetics will be preserved", deathStyle);
+        deathStyle.fontSize = 20;
+        deathStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
+        GUI.Label(new Rect(0, Screen.height / 2 + 30, Screen.width, 30), $"{remainingTime:F0}", deathStyle);
     }
 
     // Public getters
@@ -630,6 +668,16 @@ public class PlayerHealth : MonoBehaviour
     public float GetMaxHealth() => maxHealth;
     public float GetHealthPercent() => currentHealth / maxHealth;
     public bool IsDead() => isDead;
+
+    // Setter for save/load system
+    public void SetHealth(float health)
+    {
+        currentHealth = Mathf.Clamp(health, 0, maxHealth);
+        if (currentHealth <= 0 && !isDead)
+        {
+            Die();
+        }
+    }
 
     void OnDestroy()
     {

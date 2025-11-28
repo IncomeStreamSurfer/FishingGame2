@@ -43,12 +43,28 @@ public class AutoSetup
         GameObject mainMenu = new GameObject("MainMenu");
         mainMenu.AddComponent<MainMenu>();
 
+        // Pause Menu (ESC to open - Save/Load/Quit)
+        GameObject pauseMenu = new GameObject("PauseMenu");
+        pauseMenu.AddComponent<PauseMenu>();
+
         // Game Systems
         GameObject gm = new GameObject("GameManager");
         gm.AddComponent<GameManager>();
 
         GameObject fs = new GameObject("FishingSystem");
         fs.AddComponent<FishingSystem>();
+
+        // Tutorial Cat (appears at level 2 with tip)
+        GameObject tutCat = new GameObject("TutorialCat");
+        tutCat.AddComponent<TutorialCat>();
+
+        // Fish Sprites (pixel art for inventory)
+        GameObject fishSprites = new GameObject("FishSprites");
+        fishSprites.AddComponent<FishSprites>();
+
+        // Clothing Sprites (pixel art for shop/wardrobe)
+        GameObject clothingSprites = new GameObject("ClothingSprites");
+        clothingSprites.AddComponent<ClothingSprites>();
 
         // Leveling System (OSRS-style, level 1-399, 100M XP cap)
         GameObject ls = new GameObject("LevelingSystem");
@@ -61,6 +77,10 @@ public class AutoSetup
         // Bottle Event System (1/100 chance per cast)
         GameObject bes = new GameObject("BottleEventSystem");
         bes.AddComponent<BottleEventSystem>();
+
+        // Weather System (occasional rain, mostly sunny)
+        GameObject weather = new GameObject("WeatherSystem");
+        weather.AddComponent<WeatherSystem>();
 
         // UI System
         GameObject ui = new GameObject("UIManager");
@@ -96,6 +116,9 @@ public class AutoSetup
         // Quest NPC on the dock
         CreateQuestNPC();
 
+        // Goldie Banks - Rastafarian who walks on the beach
+        CreateGoldieBanks();
+
         // Camera setup
         SetupCamera();
 
@@ -112,6 +135,10 @@ public class AutoSetup
         GameObject boats = new GameObject("HorizonBoats");
         boats.AddComponent<HorizonBoats>();
 
+        // Atmospheric sounds (birds, breeze) with surround panning
+        GameObject atmosphere = new GameObject("AtmosphericSounds");
+        atmosphere.AddComponent<AtmosphericSounds>();
+
         // Bird flock system
         GameObject birds = new GameObject("BirdFlock");
         birds.AddComponent<BirdFlock>();
@@ -126,18 +153,24 @@ public class AutoSetup
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "AtmosphericSounds", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot", "Bobber", "FishingLine", "FishSprites", "TutorialCat", "GoldieBanks", "GoldieIsland", "BridgeToShop", "SpawnNPC", "WetsuitPete", "SmallIslands", "WeedBagCollectible", "PauseMenu", "WeatherSystem", "ClothingSprites", "FishDiary" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
             if (obj != null) Object.DestroyImmediate(obj);
         }
 
-        // Delete any stray objects
+        // Delete any stray objects including bobbers and water effects
         foreach (GameObject obj in Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
         {
             if (obj != null && (obj.name.StartsWith("Tree") || obj.name == "DockPost" || obj.name == "Plank" ||
-                obj.name.StartsWith("Ramp") || obj.name.StartsWith("Branch")))
+                obj.name.StartsWith("Ramp") || obj.name.StartsWith("Branch") ||
+                obj.name == "Bobber" || obj.name == "BobberTop" || obj.name == "BobberBottom" ||
+                obj.name == "SplashRing" || obj.name == "WaterDroplet" || obj.name == "FootRipple" ||
+                obj.name.StartsWith("ShimmerRipple") || obj.name.StartsWith("WaveRidge") ||
+                obj.name.StartsWith("WaveCrest") || obj.name.StartsWith("WaterSparkle") ||
+                obj.name.StartsWith("WaterFoam") || obj.name.StartsWith("DepthRing") ||
+                obj.name == "Bush" || obj.name == "BushPart"))
                 Object.DestroyImmediate(obj);
         }
     }
@@ -274,6 +307,15 @@ public class AutoSetup
         // Add seaweed on the sand/beach areas
         AddSeaweed(ground.transform, groundY);
 
+        // Add palm trees scattered on sand
+        AddPalmTreesOnSand(ground.transform, groundY);
+
+        // Add warning signs on sand
+        AddWarningSigns(ground.transform, groundY);
+
+        // Add more bushes on outer grass areas
+        AddOuterBushes(ground.transform, groundY);
+
         // Add small islands around the main island
         AddSmallIslands(ground.transform);
     }
@@ -305,6 +347,229 @@ public class AutoSetup
         }
     }
 
+    static void AddPalmTreesOnSand(Transform parent, float groundY)
+    {
+        // Scatter palm trees around the sand/beach areas
+        Vector3[] palmPositions = new Vector3[]
+        {
+            new Vector3(-35f, groundY - 0.1f, 10f),
+            new Vector3(38f, groundY - 0.1f, -25f),
+            new Vector3(-42f, groundY - 0.1f, -30f),
+            new Vector3(30f, groundY - 0.1f, 15f),
+            new Vector3(-25f, groundY - 0.1f, 25f),
+            new Vector3(45f, groundY - 0.1f, 5f),
+            new Vector3(-48f, groundY - 0.1f, 0f),
+            new Vector3(35f, groundY - 0.1f, -40f),
+            new Vector3(-30f, groundY - 0.1f, -45f),
+            new Vector3(40f, groundY - 0.1f, 20f),
+            new Vector3(-38f, groundY - 0.1f, 35f),
+            new Vector3(28f, groundY - 0.1f, -35f),
+        };
+
+        foreach (var pos in palmPositions)
+        {
+            CreateSimplePalmTree(parent, pos);
+        }
+    }
+
+    static void AddWarningSigns(Transform parent, float groundY)
+    {
+        // Warning signs on sand saying "CAUTION. FAST CURRENT"
+        Material postMat = new Material(Shader.Find("Standard"));
+        postMat.color = new Color(0.5f, 0.35f, 0.2f); // Wood
+
+        Material signMat = new Material(Shader.Find("Standard"));
+        signMat.color = new Color(0.95f, 0.85f, 0.3f); // Yellow warning sign
+
+        Vector3[] signPositions = new Vector3[]
+        {
+            new Vector3(-32f, groundY - 0.1f, 5f),
+            new Vector3(33f, groundY - 0.1f, -20f),
+            new Vector3(-28f, groundY - 0.1f, -35f),
+            new Vector3(38f, groundY - 0.1f, 10f),
+            new Vector3(0f, groundY - 0.1f, 35f),
+            new Vector3(-40f, groundY - 0.1f, -15f),
+        };
+
+        foreach (var pos in signPositions)
+        {
+            GameObject sign = new GameObject("WarningSign");
+            sign.transform.SetParent(parent);
+            sign.transform.localPosition = pos;
+            sign.transform.localRotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+
+            // Post
+            GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            post.name = "SignPost";
+            post.transform.SetParent(sign.transform);
+            post.transform.localPosition = new Vector3(0, 0.5f, 0);
+            post.transform.localScale = new Vector3(0.1f, 1f, 0.1f);
+            post.GetComponent<Renderer>().sharedMaterial = postMat;
+            Object.DestroyImmediate(post.GetComponent<Collider>());
+
+            // Sign board
+            GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            board.name = "SignBoard";
+            board.transform.SetParent(sign.transform);
+            board.transform.localPosition = new Vector3(0, 1.1f, 0);
+            board.transform.localScale = new Vector3(0.8f, 0.5f, 0.05f);
+            board.GetComponent<Renderer>().sharedMaterial = signMat;
+            Object.DestroyImmediate(board.GetComponent<Collider>());
+
+            // Add text component (WarningSignText script)
+            board.AddComponent<WarningSignText>();
+        }
+
+        // Add 10 more readable signs with different messages
+        AddReadableSigns(parent, groundY);
+    }
+
+    static void AddReadableSigns(Transform parent, float groundY)
+    {
+        // Different sign messages
+        string[][] signData = new string[][]
+        {
+            new string[] { "DANGER", "Deep water ahead! Strong currents may pull you under. Swim at your own risk!" },
+            new string[] { "FISHING TIP", "Cast further out for rare fish! Hold the cast button longer for more distance." },
+            new string[] { "NOTICE", "Sell your fish to Wetsuit Pete for gold! Find him near the dock." },
+            new string[] { "WARNING", "Jellyfish spotted in these waters. Watch your step near the shore!" },
+            new string[] { "ISLAND RULES", "No littering. Respect the wildlife. Take only fish, leave only footprints." },
+            new string[] { "TREASURE", "Rumor has it bottles wash up with treasure inside. Keep your eyes peeled!" },
+            new string[] { "LEGEND", "They say a Golden Starfish lives in these waters. Only the luckiest catch it!" },
+            new string[] { "TIP", "Visit the clothing shop for hats and gear. Some items boost your luck!" },
+            new string[] { "HISTORY", "This island was founded by Captain Barnacle in 1842. Fish have thrived since." },
+            new string[] { "BEWARE", "The Rastafarian on the far island has special quests. Seek him out!" }
+        };
+
+        Vector3[] signPositions = new Vector3[]
+        {
+            new Vector3(20f, groundY - 0.1f, 30f),
+            new Vector3(-15f, groundY - 0.1f, 25f),
+            new Vector3(25f, groundY - 0.1f, -15f),
+            new Vector3(-20f, groundY - 0.1f, -25f),
+            new Vector3(10f, groundY - 0.1f, -30f),
+            new Vector3(-35f, groundY - 0.1f, 15f),
+            new Vector3(15f, groundY - 0.1f, 20f),
+            new Vector3(-25f, groundY - 0.1f, 5f),
+            new Vector3(30f, groundY - 0.1f, -5f),
+            new Vector3(-10f, groundY - 0.1f, -15f)
+        };
+
+        Material postMat = new Material(Shader.Find("Standard"));
+        postMat.color = new Color(0.4f, 0.3f, 0.2f); // Dark wood
+
+        // Different sign colors
+        Color[] signColors = new Color[]
+        {
+            new Color(0.95f, 0.85f, 0.3f),  // Yellow
+            new Color(0.3f, 0.8f, 0.4f),    // Green
+            new Color(0.4f, 0.6f, 0.9f),    // Blue
+            new Color(0.9f, 0.6f, 0.3f),    // Orange
+            new Color(0.85f, 0.85f, 0.85f), // White
+            new Color(0.9f, 0.7f, 0.9f),    // Pink
+            new Color(1f, 0.85f, 0.2f),     // Gold
+            new Color(0.6f, 0.9f, 0.9f),    // Cyan
+            new Color(0.8f, 0.7f, 0.5f),    // Tan
+            new Color(0.7f, 0.5f, 0.8f)     // Purple
+        };
+
+        for (int i = 0; i < signPositions.Length; i++)
+        {
+            GameObject sign = new GameObject("ReadableSign_" + i);
+            sign.transform.SetParent(parent);
+            sign.transform.localPosition = signPositions[i];
+            sign.transform.localRotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+
+            // Post
+            GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            post.name = "SignPost";
+            post.transform.SetParent(sign.transform);
+            post.transform.localPosition = new Vector3(0, 0.6f, 0);
+            post.transform.localScale = new Vector3(0.12f, 1.2f, 0.12f);
+            post.GetComponent<Renderer>().sharedMaterial = postMat;
+            Object.DestroyImmediate(post.GetComponent<Collider>());
+
+            // Sign board
+            Material signMat = new Material(Shader.Find("Standard"));
+            signMat.color = signColors[i];
+
+            GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            board.name = "SignBoard";
+            board.transform.SetParent(sign.transform);
+            board.transform.localPosition = new Vector3(0, 1.3f, 0);
+            board.transform.localScale = new Vector3(0.9f, 0.6f, 0.06f);
+            board.GetComponent<Renderer>().sharedMaterial = signMat;
+            Object.DestroyImmediate(board.GetComponent<Collider>());
+
+            // Add readable sign component with message
+            ReadableSign readableSign = board.AddComponent<ReadableSign>();
+            readableSign.signTitle = signData[i][0];
+            readableSign.signMessage = signData[i][1];
+            readableSign.backgroundColor = signColors[i];
+            readableSign.titleColor = new Color(0.2f, 0.1f, 0.1f);
+        }
+    }
+
+    static void AddOuterBushes(Transform parent, float groundY)
+    {
+        // More bushes scattered further from center on grass areas
+        Material bushMat1 = new Material(Shader.Find("Standard"));
+        bushMat1.color = new Color(0.2f, 0.45f, 0.18f);
+
+        Material bushMat2 = new Material(Shader.Find("Standard"));
+        bushMat2.color = new Color(0.25f, 0.5f, 0.2f);
+
+        Material bushMat3 = new Material(Shader.Find("Standard"));
+        bushMat3.color = new Color(0.18f, 0.4f, 0.22f);
+
+        // Outer bush positions - further from center
+        Vector3[] outerBushPositions = new Vector3[]
+        {
+            new Vector3(-25f, groundY + 0.3f, -30f),
+            new Vector3(28f, groundY + 0.3f, -28f),
+            new Vector3(-30f, groundY + 0.3f, 8f),
+            new Vector3(25f, groundY + 0.3f, 12f),
+            new Vector3(-18f, groundY + 0.3f, -35f),
+            new Vector3(22f, groundY + 0.3f, -35f),
+            new Vector3(-35f, groundY + 0.3f, -8f),
+            new Vector3(32f, groundY + 0.3f, -12f),
+            new Vector3(-28f, groundY + 0.3f, 15f),
+            new Vector3(30f, groundY + 0.3f, 5f),
+            new Vector3(-22f, groundY + 0.3f, 20f),
+            new Vector3(18f, groundY + 0.3f, 18f),
+            new Vector3(-32f, groundY + 0.3f, -22f),
+            new Vector3(35f, groundY + 0.3f, -20f),
+            new Vector3(-12f, groundY + 0.3f, -38f),
+            new Vector3(15f, groundY + 0.3f, -40f),
+        };
+
+        Material[] mats = { bushMat1, bushMat2, bushMat3 };
+
+        foreach (var pos in outerBushPositions)
+        {
+            GameObject bush = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            bush.name = "OuterBush";
+            bush.transform.SetParent(parent);
+            bush.transform.localPosition = pos;
+            float size = Random.Range(0.8f, 1.8f);
+            bush.transform.localScale = new Vector3(size, size * 0.7f, size);
+            bush.GetComponent<Renderer>().sharedMaterial = mats[Random.Range(0, mats.Length)];
+            Object.DestroyImmediate(bush.GetComponent<Collider>());
+
+            // Add smaller spheres for variety
+            if (Random.value > 0.5f)
+            {
+                GameObject bush2 = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                bush2.name = "OuterBush2";
+                bush2.transform.SetParent(bush.transform);
+                bush2.transform.localPosition = new Vector3(Random.Range(-0.3f, 0.3f), 0.2f, Random.Range(-0.3f, 0.3f));
+                bush2.transform.localScale = Vector3.one * Random.Range(0.5f, 0.8f);
+                bush2.GetComponent<Renderer>().sharedMaterial = mats[Random.Range(0, mats.Length)];
+                Object.DestroyImmediate(bush2.GetComponent<Collider>());
+            }
+        }
+    }
+
     static void AddSmallIslands(Transform parent)
     {
         Material sandMat = new Material(Shader.Find("Standard"));
@@ -313,42 +578,60 @@ public class AutoSetup
         Material grassMat = new Material(Shader.Find("Standard"));
         grassMat.color = new Color(0.25f, 0.5f, 0.2f);
 
-        // Small islands scattered around
+        // Small islands scattered ALL AROUND the main island
+        // Raised above water level (water is at Y=0.75)
         Vector3[] islandPositions = new Vector3[]
         {
-            new Vector3(-55f, 0.6f, 20f),
-            new Vector3(60f, 0.5f, -40f),
-            new Vector3(-45f, 0.55f, -50f),
-            new Vector3(50f, 0.6f, 30f),
-            new Vector3(-60f, 0.5f, -20f)
+            // North
+            new Vector3(0f, 1.0f, 95f),
+            new Vector3(-40f, 0.95f, 85f),
+            new Vector3(45f, 1.0f, 90f),
+            // Northeast
+            new Vector3(75f, 1.0f, 70f),
+            new Vector3(95f, 0.95f, 45f),
+            // East
+            new Vector3(100f, 1.0f, 0f),
+            new Vector3(90f, 1.0f, -35f),
+            // Southeast
+            new Vector3(80f, 0.95f, -75f),
+            new Vector3(55f, 1.0f, -90f),
+            // South
+            new Vector3(0f, 1.0f, -100f),
+            new Vector3(-45f, 0.95f, -95f),
+            // Southwest
+            new Vector3(-80f, 1.0f, -70f),
+            new Vector3(-95f, 1.0f, -40f),
+            // West
+            new Vector3(-100f, 0.95f, 0f),
+            new Vector3(-90f, 1.0f, 40f),
+            // Northwest
+            new Vector3(-75f, 1.0f, 75f),
+            new Vector3(-50f, 0.95f, 90f)
         };
 
         foreach (var pos in islandPositions)
         {
             float size = Random.Range(4f, 8f);
 
-            // Sand base
+            // Sand base - raised above water
             GameObject island = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             island.name = "SmallIsland";
             island.transform.SetParent(parent);
             island.transform.localPosition = pos;
-            island.transform.localScale = new Vector3(size, 0.4f, size);
+            island.transform.localScale = new Vector3(size, 0.5f, size); // Taller base
             island.GetComponent<Renderer>().sharedMaterial = sandMat;
 
-            // Grass top
+            // Grass top - smaller and centered to avoid water overlap
             GameObject grass = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             grass.name = "IslandGrass";
             grass.transform.SetParent(island.transform);
-            grass.transform.localPosition = new Vector3(0, 0.15f, 0);
-            grass.transform.localScale = new Vector3(0.7f, 0.3f, 0.7f);
+            grass.transform.localPosition = new Vector3(0, 0.2f, 0);
+            grass.transform.localScale = new Vector3(0.5f, 0.25f, 0.5f); // Smaller grass circle
             grass.GetComponent<Renderer>().sharedMaterial = grassMat;
             Object.DestroyImmediate(grass.GetComponent<Collider>());
 
-            // Small palm or bush
-            if (Random.value > 0.3f)
-            {
-                CreateSimplePalmTree(island.transform, new Vector3(0, 0.4f, 0));
-            }
+            // EVERY small island gets a palm tree
+            CreateSimplePalmTree(island.transform, new Vector3(0, 0.5f, 0));
         }
     }
 
@@ -621,30 +904,99 @@ public class AutoSetup
 
     static void CreateBridgeToShop()
     {
-        // Create wooden bridge to small island with Goldie Banks
+        // Create wooden bridge from main island to Goldie's island
+        // Bridge sits ON TOP of sand/water and leads to the island
         GameObject bridge = new GameObject("WoodenBridge");
-        bridge.transform.position = new Vector3(25f, 1.2f, -15f);
+
+        // Bridge starts at the edge of main island
+        float bridgeStartX = 25f;
+        float bridgeStartZ = 30f;
+        float groundY = 1.5f;
+        float bridgeY = 1.8f; // Bridge deck height
+        float bridgeLength = 40f;
+        float bridgeWidth = 2.5f;
+
+        bridge.transform.position = new Vector3(bridgeStartX, bridgeY, bridgeStartZ);
+
+        // ========== STAIRCASE LEADING UP TO BRIDGE ==========
+        Material stairMat = new Material(Shader.Find("Standard"));
+        stairMat.color = new Color(0.4f, 0.3f, 0.18f); // Wood color
+
+        GameObject staircase = new GameObject("BridgeStaircase");
+        staircase.transform.SetParent(bridge.transform);
+        staircase.transform.localPosition = new Vector3(0, 0, -3f); // In front of bridge start
+
+        // Create 4 steps going up
+        int numSteps = 4;
+        float stepHeight = (bridgeY - groundY) / numSteps;
+        float stepDepth = 0.6f;
+
+        for (int i = 0; i < numSteps; i++)
+        {
+            GameObject step = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            step.name = "Step_" + i;
+            step.transform.SetParent(staircase.transform);
+            float yPos = -(bridgeY - groundY) + (i + 0.5f) * stepHeight;
+            float zPos = -i * stepDepth;
+            step.transform.localPosition = new Vector3(0, yPos, zPos);
+            step.transform.localScale = new Vector3(bridgeWidth, stepHeight * 0.9f, stepDepth);
+            step.GetComponent<Renderer>().sharedMaterial = stairMat;
+        }
+
+        // Side rails for staircase
+        Material railMat = new Material(Shader.Find("Standard"));
+        railMat.color = new Color(0.35f, 0.25f, 0.12f);
+
+        for (int side = 0; side < 2; side++)
+        {
+            float x = side == 0 ? -bridgeWidth / 2 - 0.1f : bridgeWidth / 2 + 0.1f;
+
+            // Stair rail posts
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                post.name = "StairRailPost";
+                post.transform.SetParent(staircase.transform);
+                float yPos = -(bridgeY - groundY) + (i + 1) * stepHeight + 0.4f;
+                float zPos = -i * stepDepth - stepDepth / 2;
+                post.transform.localPosition = new Vector3(x, yPos, zPos);
+                post.transform.localScale = new Vector3(0.1f, 0.8f, 0.1f);
+                post.GetComponent<Renderer>().sharedMaterial = railMat;
+                Object.DestroyImmediate(post.GetComponent<Collider>());
+            }
+        }
 
         Material plankMat = new Material(Shader.Find("Standard"));
         plankMat.color = new Color(0.45f, 0.32f, 0.18f); // Weathered wood
 
-        Material railMat = new Material(Shader.Find("Standard"));
-        railMat.color = new Color(0.35f, 0.25f, 0.12f); // Darker wood
+        // Support posts under the bridge (so it looks like it's elevated)
+        Material supportMat = new Material(Shader.Find("Standard"));
+        supportMat.color = new Color(0.3f, 0.2f, 0.1f); // Dark wood
 
-        // Bridge planks - raised and elongated
-        float bridgeLength = 25f;
-        float bridgeWidth = 2f;
-        float plankCount = 30;
-
+        // Bridge planks
+        int plankCount = 50;
         for (int i = 0; i < plankCount; i++)
         {
             GameObject plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
             plank.name = "BridgePlank";
             plank.transform.SetParent(bridge.transform);
-            float z = (i / plankCount) * bridgeLength;
-            plank.transform.localPosition = new Vector3(0, 0.05f, z);
-            plank.transform.localScale = new Vector3(bridgeWidth, 0.1f, bridgeLength / plankCount * 0.9f);
+            float z = ((float)i / plankCount) * bridgeLength;
+            plank.transform.localPosition = new Vector3(0, 0, z);
+            plank.transform.localScale = new Vector3(bridgeWidth, 0.15f, bridgeLength / plankCount * 0.9f);
             plank.GetComponent<Renderer>().sharedMaterial = plankMat;
+        }
+
+        // Support posts under bridge
+        for (int i = 0; i < 8; i++)
+        {
+            float z = i * (bridgeLength / 7);
+            GameObject support = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            support.name = "BridgeSupport";
+            support.transform.SetParent(bridge.transform);
+            support.transform.localPosition = new Vector3(0, -0.5f, z);
+            support.transform.localScale = new Vector3(0.3f, 1.2f, 0.3f);
+            support.GetComponent<Renderer>().sharedMaterial = supportMat;
+            Object.DestroyImmediate(support.GetComponent<Collider>());
         }
 
         // Rails on sides
@@ -653,9 +1005,9 @@ public class AutoSetup
             float x = side == 0 ? -bridgeWidth / 2 - 0.1f : bridgeWidth / 2 + 0.1f;
 
             // Rail posts
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 8; i++)
             {
-                float z = i * (bridgeLength / 5);
+                float z = i * (bridgeLength / 7);
                 GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 post.name = "RailPost";
                 post.transform.SetParent(bridge.transform);
@@ -675,8 +1027,10 @@ public class AutoSetup
             Object.DestroyImmediate(rail.GetComponent<Collider>());
         }
 
-        // Create small island at end of bridge
-        CreateGoldieIsland(new Vector3(25f, 0.8f, bridgeLength + 10f));
+        // Create Goldie's island at the end of the bridge - positioned to connect with bridge
+        float islandX = bridgeStartX;
+        float islandZ = bridgeStartZ + bridgeLength + 7f; // Island center is 7 units past bridge end (island radius is ~7)
+        CreateGoldieIsland(new Vector3(islandX, 1.6f, islandZ)); // Same height as bridge deck
     }
 
     static void CreateGoldieIsland(Vector3 position)
@@ -684,7 +1038,7 @@ public class AutoSetup
         GameObject island = new GameObject("GoldieIsland");
         island.transform.position = position;
 
-        // Island ground - small sandy island
+        // Island ground - small sandy island raised above water
         Material sandMat = new Material(Shader.Find("Standard"));
         sandMat.color = new Color(0.85f, 0.75f, 0.5f);
 
@@ -692,22 +1046,23 @@ public class AutoSetup
         ground.name = "IslandGround";
         ground.transform.SetParent(island.transform);
         ground.transform.localPosition = Vector3.zero;
-        ground.transform.localScale = new Vector3(12f, 0.5f, 12f);
+        ground.transform.localScale = new Vector3(14f, 0.6f, 14f); // Larger island
         ground.GetComponent<Renderer>().sharedMaterial = sandMat;
 
-        // Small shack
-        CreateSmallShack(island.transform, new Vector3(-2f, 0.5f, 2f));
+        // Small shack on the side, not blocking Goldie
+        CreateSmallShack(island.transform, new Vector3(3f, 0.6f, 3f));
 
-        // Bushes
+        // Bushes - positioned around the edges, not blocking center
         Material bushMat = new Material(Shader.Find("Standard"));
         bushMat.color = new Color(0.2f, 0.45f, 0.15f);
 
         Vector3[] bushPositions = new Vector3[]
         {
-            new Vector3(3f, 0.4f, -1f),
-            new Vector3(-3f, 0.3f, -2f),
-            new Vector3(2f, 0.35f, 3f),
-            new Vector3(-1f, 0.4f, -3f)
+            new Vector3(4.5f, 0.4f, -1f),
+            new Vector3(-4.5f, 0.3f, -2f),
+            new Vector3(4f, 0.35f, 3f),
+            new Vector3(-4f, 0.4f, 2f),
+            new Vector3(-3f, 0.35f, 4f)
         };
 
         foreach (var pos in bushPositions)
@@ -721,18 +1076,12 @@ public class AutoSetup
             Object.DestroyImmediate(bush.GetComponent<Collider>());
         }
 
-        // Add Goldie Banks NPC
-        GameObject goldie = new GameObject("GoldieBanks");
-        goldie.transform.SetParent(island.transform);
-        goldie.transform.localPosition = new Vector3(0, 0.5f, 0);
-        goldie.transform.localRotation = Quaternion.Euler(0, 180f, 0); // Face toward bridge
-        goldie.AddComponent<GoldieBanksNPC>();
+        // Goldie Banks now walks on the beach instead of being on this island
+        // The island remains as scenery at the end of the bridge
 
-        // Hidden weed bag (behind a bush)
-        GameObject weedBag = new GameObject("WeedBag");
-        weedBag.transform.SetParent(island.transform);
-        weedBag.transform.localPosition = new Vector3(-3.5f, 0.6f, -2.5f); // Hidden behind bush
-        weedBag.AddComponent<WeedBagCollectible>();
+        // Add a palm tree for atmosphere
+        CreatePalmTree(island.transform, new Vector3(-2f, 0.5f, 3f));
+        CreatePalmTree(island.transform, new Vector3(2f, 0.5f, -2f));
     }
 
     static void CreateSmallShack(Transform parent, Vector3 localPos)
@@ -879,18 +1228,18 @@ public class AutoSetup
     static void CreateWater()
     {
         // WATER SURROUNDS THE ENTIRE ISLAND
-        // Water level is below ground level (ground is at y=1.0, water at y=0.5)
+        // Water level raised slightly higher
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
         water.name = "Water";
-        water.transform.position = new Vector3(0, 0.5f, 0);  // Water level below island
-        water.transform.localScale = new Vector3(50, 1, 50); // HUGE water plane surrounding island
+        water.transform.position = new Vector3(0, 0.75f, 0);  // Raised water level
+        water.transform.localScale = new Vector3(80, 1, 80); // MASSIVE water plane to cover distant islands
         water.AddComponent<WaterEffect>();
 
         // Water bed (sandy bottom visible through clear water)
         GameObject waterBed = GameObject.CreatePrimitive(PrimitiveType.Plane);
         waterBed.name = "WaterBed";
-        waterBed.transform.position = new Vector3(0, -1f, 0);
-        waterBed.transform.localScale = new Vector3(50, 1, 50);
+        waterBed.transform.position = new Vector3(0, -0.5f, 0);  // Raised to match
+        waterBed.transform.localScale = new Vector3(80, 1, 80);
         Material bedMat = new Material(Shader.Find("Standard"));
         bedMat.color = new Color(0.65f, 0.58f, 0.45f); // Sandy bottom color
         waterBed.GetComponent<Renderer>().sharedMaterial = bedMat;
@@ -1064,6 +1413,7 @@ public class AutoSetup
         player.transform.rotation = Quaternion.Euler(0, 0, 0);
         player.AddComponent<PlayerController>();
         player.AddComponent<FishingRodAnimator>();
+        player.AddComponent<PlayerClothingVisuals>();
 
         Rigidbody rb = player.AddComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotation;
@@ -1499,6 +1849,114 @@ public class AutoSetup
             int sizeCategory = Random.Range(0, 2); // Only small and medium on island
             CreateVariedTree(treesParent.transform, new Vector3(x, groundY, z), treeType, sizeCategory);
         }
+
+        // === PALM TREES SCATTERED ON THE SANDY BEACH AREAS ===
+        // Beach is around the outer edges of the island
+        Vector3[] beachPalmPositions = new Vector3[]
+        {
+            // Front beach (near water/dock area)
+            new Vector3(-25f, groundY, 18f),
+            new Vector3(-18f, groundY, 22f),
+            new Vector3(-8f, groundY, 25f),
+            new Vector3(8f, groundY, 24f),
+            new Vector3(18f, groundY, 20f),
+            new Vector3(28f, groundY, 15f),
+            // Right side beach
+            new Vector3(32f, groundY, 5f),
+            new Vector3(35f, groundY, -8f),
+            new Vector3(30f, groundY, -18f),
+            // Back beach
+            new Vector3(22f, groundY, -28f),
+            new Vector3(10f, groundY, -32f),
+            new Vector3(-5f, groundY, -30f),
+            new Vector3(-18f, groundY, -28f),
+            // Left side beach
+            new Vector3(-30f, groundY, -15f),
+            new Vector3(-35f, groundY, -5f),
+            new Vector3(-32f, groundY, 8f),
+        };
+
+        foreach (var pos in beachPalmPositions)
+        {
+            // Randomize position slightly
+            Vector3 randomizedPos = pos + new Vector3(Random.Range(-2f, 2f), 0, Random.Range(-2f, 2f));
+            float height = Random.Range(4f, 8f);
+            CreateTropicalPalmTree(treesParent.transform, randomizedPos, height);
+        }
+
+        // === BUSHES SCATTERED AROUND THE ISLAND ===
+        CreateScatteredBushes(treesParent.transform, groundY);
+    }
+
+    static void CreateScatteredBushes(Transform parent, float groundY)
+    {
+        Material bushMat = new Material(Shader.Find("Standard"));
+        bushMat.color = new Color(0.18f, 0.42f, 0.12f); // Dark green bush
+
+        Material bushMat2 = new Material(Shader.Find("Standard"));
+        bushMat2.color = new Color(0.25f, 0.50f, 0.18f); // Medium green bush
+
+        Material bushMat3 = new Material(Shader.Find("Standard"));
+        bushMat3.color = new Color(0.35f, 0.55f, 0.25f); // Light green bush
+
+        Material[] bushMats = { bushMat, bushMat2, bushMat3 };
+
+        // Scatter bushes around the island
+        for (int i = 0; i < 40; i++)
+        {
+            // Random position on the island
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float distance = Random.Range(8f, 35f);
+            float x = Mathf.Cos(angle) * distance;
+            float z = Mathf.Sin(angle) * distance - 5f; // Offset toward back
+
+            // Skip if too close to dock area
+            if (x > -15f && x < 5f && z > 10f) continue;
+
+            Vector3 pos = new Vector3(x, groundY, z);
+            CreateBush(parent, pos, bushMats[Random.Range(0, bushMats.Length)]);
+        }
+
+        // Extra bushes near trees and palm trees
+        for (int i = 0; i < 25; i++)
+        {
+            float x = Random.Range(-35f, 35f);
+            float z = Random.Range(-35f, 25f);
+
+            // Skip dock area
+            if (x > -15f && x < 5f && z > 10f) continue;
+
+            Vector3 pos = new Vector3(x, groundY, z);
+            CreateBush(parent, pos, bushMats[Random.Range(0, bushMats.Length)]);
+        }
+    }
+
+    static void CreateBush(Transform parent, Vector3 pos, Material mat)
+    {
+        GameObject bush = new GameObject("Bush");
+        bush.transform.SetParent(parent);
+        bush.transform.position = pos;
+
+        // Main bush body - cluster of spheres
+        int sphereCount = Random.Range(3, 6);
+        float baseSize = Random.Range(0.6f, 1.2f);
+
+        for (int i = 0; i < sphereCount; i++)
+        {
+            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.name = "BushPart";
+            sphere.transform.SetParent(bush.transform);
+
+            float offsetX = Random.Range(-0.4f, 0.4f) * baseSize;
+            float offsetZ = Random.Range(-0.4f, 0.4f) * baseSize;
+            float offsetY = Random.Range(0.2f, 0.5f) * baseSize;
+            float size = Random.Range(0.5f, 0.9f) * baseSize;
+
+            sphere.transform.localPosition = new Vector3(offsetX, offsetY, offsetZ);
+            sphere.transform.localScale = new Vector3(size, size * 0.7f, size);
+            sphere.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.DestroyImmediate(sphere.GetComponent<Collider>());
+        }
     }
 
     static void CreateVariedTree(Transform parent, Vector3 pos, int treeType, int sizeCategory)
@@ -1886,6 +2344,15 @@ public class AutoSetup
         // Shoulder Parrot system (spawns when purchased from shop)
         GameObject parrotSystem = new GameObject("ShoulderParrot");
         parrotSystem.AddComponent<ShoulderParrot>();
+    }
+
+    static void CreateGoldieBanks()
+    {
+        // Goldie Banks - Rastafarian who walks along the beach
+        // He smokes, has dreadlocks, and gives repeatable quests to find his lost bag
+        GameObject goldie = new GameObject("GoldieBanks");
+        goldie.transform.position = new Vector3(15f, 1.6f, 20f); // Starting position on the beach
+        goldie.AddComponent<GoldieBanksNPC>();
     }
 
     static void CreateQuestNPC()
@@ -2500,8 +2967,8 @@ public class AutoSetup
         // Small wooden shop structure
         CreateClothingShopBuilding(shop.transform, new Vector3(0f, groundY, 0));
 
-        // Granny NPC with rocking chair - in front of shop
-        CreateGrannyNPC(shop.transform, new Vector3(-3f, groundY, 3));
+        // Granny NPC with rocking chair - in front of shop (offset left for visibility)
+        CreateGrannyNPC(shop.transform, new Vector3(-4.5f, groundY, 3));
 
         // Add clothing shop component
         shop.AddComponent<ClothingShopNPC>();

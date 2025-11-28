@@ -55,6 +55,9 @@ public class FishingRodAnimator : MonoBehaviour
 
     void Start()
     {
+        // Cleanup any stray bobbers from previous sessions
+        CleanupStrayBobbers();
+
         rodPivot = transform.Find("RodPivot");
 
         // Find rod tip for line attachment
@@ -92,6 +95,21 @@ public class FishingRodAnimator : MonoBehaviour
         if (rodPivot != null)
         {
             rodPivot.localRotation = idleRotation;
+        }
+    }
+
+    void CleanupStrayBobbers()
+    {
+        // Find and destroy any leftover bobbers from previous sessions
+        GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name == "Bobber" || obj.name == "BobberTop" || obj.name == "BobberBottom" ||
+                obj.name == "SplashRing" || obj.name == "WaterDroplet" || obj.name == "FootRipple")
+            {
+                Debug.Log($"Cleaning up stray object: {obj.name}");
+                Destroy(obj);
+            }
         }
     }
 
@@ -187,6 +205,56 @@ public class FishingRodAnimator : MonoBehaviour
         yield return new WaitForSeconds(duration);
     }
 
+    void PlayBiteSound()
+    {
+        StartCoroutine(GenerateBiteSound());
+    }
+
+    System.Collections.IEnumerator GenerateBiteSound()
+    {
+        // Watery fish bite sound - splashy tug with bubbles
+        int sampleRate = 44100;
+        float duration = 0.5f;
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip biteClip = AudioClip.Create("BiteSound", sampleCount, 1, sampleRate, false);
+
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            // Quick initial splash/tug (sharp attack)
+            float tug = Mathf.Sin(2 * Mathf.PI * 120f * t) * Mathf.Exp(-t * 20f) * 0.6f;
+
+            // Rapid bubble sequence
+            float bubbleRate = 800f + Mathf.Sin(t * 30f) * 200f;
+            float bubbles = Mathf.Sin(2 * Mathf.PI * bubbleRate * t) * Mathf.Exp(-t * 4f) * 0.3f;
+
+            // Water disturbance (filtered noise)
+            float waterNoise = (Random.value * 2f - 1f) * Mathf.Exp(-t * 6f) * 0.25f;
+
+            // Secondary smaller splashes
+            float splash2 = 0f;
+            if (t > 0.1f && t < 0.3f)
+            {
+                splash2 = Mathf.Sin(2 * Mathf.PI * 200f * t) * 0.2f * Mathf.Sin((t - 0.1f) * 10f);
+            }
+
+            // Combine with emphasis on watery quality
+            samples[i] = (tug + bubbles + waterNoise + splash2) * 0.7f;
+        }
+
+        biteClip.SetData(samples, 0);
+        audioSource.clip = biteClip;
+        audioSource.pitch = 0.95f + Random.Range(-0.1f, 0.15f);
+        audioSource.volume = 0.22f;  // 50% of original
+        audioSource.Play();
+
+        yield return new WaitForSeconds(duration);
+    }
+
     void CreateFishingLine()
     {
         lineObject = new GameObject("FishingLine");
@@ -249,6 +317,7 @@ public class FishingRodAnimator : MonoBehaviour
             {
                 // Fish starts biting!
                 fishBiting = true;
+                PlayBiteSound();  // Play watery bite sound effect
                 StartCoroutine(BobberBiteAnimation());
             }
         }
@@ -291,6 +360,23 @@ public class FishingRodAnimator : MonoBehaviour
         if (currentRodVisual <= 4) return 3;
         if (currentRodVisual <= 6) return 4;
         return 5;
+    }
+
+    // Set rod tier directly (for rewards like legendary rod from bottle)
+    public void SetRodTier(int tier)
+    {
+        // Set rod visual to highest index for that tier
+        switch (tier)
+        {
+            case 1: currentRodVisual = 0; break;
+            case 2: currentRodVisual = 2; break;
+            case 3: currentRodVisual = 4; break;
+            case 4: currentRodVisual = 6; break;
+            case 5: currentRodVisual = 7; break; // Legendary
+            default: currentRodVisual = 7; break;
+        }
+        ApplyRodCosmetics(currentRodVisual);
+        Debug.Log($"Rod upgraded to Tier {tier}!");
     }
 
     void ApplyRodCosmetics(int rodIndex)

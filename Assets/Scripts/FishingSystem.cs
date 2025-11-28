@@ -40,12 +40,125 @@ public class FishingSystem : MonoBehaviour
     private bool isFishing = false;
     private bool canFish = true;
 
+    // Catch popup display
+    private bool showingCatchPopup = false;
+    private FishData catchPopupFish = null;
+    private float catchPopupTimer = 0f;
+    private const float CATCH_POPUP_DURATION = 3f;
+
+    // Bottle event display
+    private bool showingBottlePopup = false;
+    private string bottleRewardText = "";
+    private Color bottleRewardColor = Color.white;
+    private float bottlePopupTimer = 0f;
+    private const float BOTTLE_POPUP_DURATION = 4f;
+
+    // Audio for rare fish catches
+    private AudioSource rareFishAudioSource;
+    private AudioClip rareChimeClip;
+    private AudioClip legendaryChimeClip;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
         InitializeFish();
+        InitializeRareFishAudio();
+    }
+
+    void InitializeRareFishAudio()
+    {
+        // Create audio source for rare fish chimes
+        rareFishAudioSource = gameObject.AddComponent<AudioSource>();
+        rareFishAudioSource.playOnAwake = false;
+        rareFishAudioSource.spatialBlend = 0f; // 2D sound
+        rareFishAudioSource.volume = 0.7f;
+
+        // Generate epic chime (ascending notes)
+        rareChimeClip = GenerateChimeSound(false);
+
+        // Generate legendary chime (more elaborate, magical)
+        legendaryChimeClip = GenerateChimeSound(true);
+    }
+
+    AudioClip GenerateChimeSound(bool isLegendary)
+    {
+        int sampleRate = 44100;
+        float duration = isLegendary ? 2.0f : 1.2f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Musical notes (frequencies in Hz)
+        float[] epicNotes = { 523.25f, 659.25f, 783.99f, 1046.50f }; // C5, E5, G5, C6
+        float[] legendaryNotes = { 523.25f, 659.25f, 783.99f, 987.77f, 1174.66f, 1318.51f, 1567.98f }; // C5, E5, G5, B5, D6, E6, G6
+
+        float[] notes = isLegendary ? legendaryNotes : epicNotes;
+        float noteLength = duration / notes.Length;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            int noteIndex = Mathf.Min((int)(t / noteLength), notes.Length - 1);
+            float noteT = (t - noteIndex * noteLength) / noteLength;
+
+            float freq = notes[noteIndex];
+
+            // Bell-like envelope
+            float attack = Mathf.Min(noteT * 10f, 1f);
+            float decay = Mathf.Exp(-noteT * 4f);
+            float envelope = attack * decay;
+
+            // Main tone with harmonics for bell sound
+            float sample = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.5f;
+            sample += Mathf.Sin(2f * Mathf.PI * freq * 2f * t) * 0.25f; // 2nd harmonic
+            sample += Mathf.Sin(2f * Mathf.PI * freq * 3f * t) * 0.125f; // 3rd harmonic
+            sample += Mathf.Sin(2f * Mathf.PI * freq * 4.2f * t) * 0.1f; // Inharmonic for bell character
+
+            // Add shimmer for legendary
+            if (isLegendary)
+            {
+                float shimmer = Mathf.Sin(2f * Mathf.PI * 8f * t) * 0.15f;
+                sample *= (1f + shimmer);
+                sample += Mathf.Sin(2f * Mathf.PI * freq * 5f * t) * 0.08f * envelope;
+            }
+
+            samples[i] = sample * envelope * 0.4f;
+        }
+
+        // Fade out
+        int fadeLength = sampleRate / 4;
+        for (int i = 0; i < fadeLength && i < sampleCount; i++)
+        {
+            float fadeOut = 1f - ((float)i / fadeLength);
+            samples[sampleCount - 1 - i] *= fadeOut;
+        }
+
+        AudioClip clip = AudioClip.Create(isLegendary ? "LegendaryChime" : "EpicChime", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    public void PlayRareFishChime(Rarity rarity)
+    {
+        if (rareFishAudioSource == null) return;
+
+        if (rarity == Rarity.Legendary || rarity == Rarity.Mythic)
+        {
+            rareFishAudioSource.clip = legendaryChimeClip;
+            rareFishAudioSource.volume = 0.85f;
+        }
+        else if (rarity == Rarity.Epic)
+        {
+            rareFishAudioSource.clip = rareChimeClip;
+            rareFishAudioSource.volume = 0.7f;
+        }
+        else
+        {
+            return; // No chime for lower rarities
+        }
+
+        rareFishAudioSource.Play();
     }
 
     void InitializeFish()
@@ -80,12 +193,6 @@ public class FishingSystem : MonoBehaviour
         fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 1000, weight = 0.7f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
         fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 1500, weight = 0.5f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
         fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 2000, weight = 0.4f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
-
-        // Mythic fish
-        fishDatabase.Add(new FishData { id = "kraken", fishName = "Baby Kraken", rarity = Rarity.Mythic, coinValue = 5000, weight = 0.1f, fishColor = new Color(0.6f, 0.2f, 0.6f) });
-
-        // Special - Humpback Whale (can break your rod!)
-        fishDatabase.Add(new FishData { id = "humpback_whale", fishName = "Humpback Whale", rarity = Rarity.Mythic, coinValue = 10000, weight = 0.05f, fishColor = new Color(0.25f, 0.35f, 0.5f) });
 
         // ============ SPECIAL RARE FISH (5% chance, blue glow) ============
         // 100 XP, 100g sell to Pete, instant full health, can't be BBQ'd
@@ -201,7 +308,7 @@ public class FishingSystem : MonoBehaviour
         return canFish && !isFishing;
     }
 
-    // Check if player is on a dock - FISHING ONLY ALLOWED ON DOCKS
+    // Check if player is on a dock or bridge
     public bool IsOnDock()
     {
         GameObject player = GameObject.Find("Player");
@@ -213,13 +320,13 @@ public class FishingSystem : MonoBehaviour
         // Player can be slightly above the dock surface
         bool onMainDock = pos.x > -15f && pos.x < -9f && pos.z > 5f && pos.z < 60f && pos.y > 2f && pos.y < 4f;
 
-        // Add any additional docks here in the future
-        // bool onSecondDock = ...
+        // Bridge to Goldie's island: X around 25, Z from 27 to 77, Y around 1.8
+        bool onBridge = pos.x > 22f && pos.x < 28f && pos.z > 25f && pos.z < 80f && pos.y > 1.5f && pos.y < 3f;
 
-        return onMainDock;
+        return onMainDock || onBridge;
     }
 
-    // Legacy method for compatibility - now just checks dock
+    // Check if player can fish - only allowed on docks
     public bool IsNearWater()
     {
         return IsOnDock();
@@ -229,14 +336,14 @@ public class FishingSystem : MonoBehaviour
     {
         if (!CanFish()) return;
 
-        // Check if player is on a dock
-        if (!IsOnDock())
+        // Check if player is on the dock
+        if (!IsNearWater())
         {
             if (UIManager.Instance != null)
             {
-                UIManager.Instance.ShowLootNotification("You can only fish from docks!", new Color(0.9f, 0.6f, 0.2f));
+                UIManager.Instance.ShowLootNotification("You can only fish from the dock!", new Color(0.9f, 0.6f, 0.2f));
             }
-            Debug.Log("Cannot fish here - must be on a dock!");
+            Debug.Log("Cannot fish here - must be on the dock!");
             return;
         }
 
@@ -252,8 +359,121 @@ public class FishingSystem : MonoBehaviour
                 canFish = false;
                 rodAnimator.CastLine();
                 Debug.Log("Casting line...");
+
+                // 1% chance to find a bottle when casting!
+                if (Random.Range(0f, 100f) < 1f)
+                {
+                    TriggerBottleEvent();
+                }
             }
         }
+    }
+
+    void TriggerBottleEvent()
+    {
+        Debug.Log("BOTTLE FOUND! Rolling for rewards...");
+
+        float roll = Random.Range(0f, 100f);
+
+        if (roll < 0.05f)
+        {
+            // 0.05% - 1 MILLION COINS!!!
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.AddCoins(1000000);
+            }
+            bottleRewardText = "JACKPOT!!! 1,000,000 GOLD!!!";
+            bottleRewardColor = new Color(1f, 0.85f, 0.2f);
+            Debug.Log("!!! JACKPOT - 1 MILLION COINS !!!");
+        }
+        else if (roll < 5.05f)
+        {
+            // 5% - Golden Fishing Hat (special clothing item)
+            bottleRewardText = "Golden Fishing Hat unlocked!";
+            bottleRewardColor = new Color(1f, 0.9f, 0.3f);
+            // Give special hat via clothing system
+            if (ClothingShopNPC.Instance != null)
+            {
+                ClothingShopNPC.Instance.UnlockSpecialItem("golden_fishing_hat");
+            }
+            Debug.Log("Golden Fishing Hat unlocked!");
+        }
+        else if (roll < 6.05f)
+        {
+            // 1% - Legendary Rod upgrade
+            bottleRewardText = "LEGENDARY ROD FOUND!";
+            bottleRewardColor = new Color(1f, 0.5f, 0f);
+            // Upgrade player's rod to max tier
+            GameObject player = GameObject.Find("Player");
+            if (player != null)
+            {
+                FishingRodAnimator rodAnimator = player.GetComponent<FishingRodAnimator>();
+                if (rodAnimator != null)
+                {
+                    rodAnimator.SetRodTier(5); // Max tier
+                }
+            }
+            Debug.Log("LEGENDARY ROD - Tier 5!");
+        }
+        else if (roll < 16.05f)
+        {
+            // 10% - Groovy Marlin Ring (+10 levels!)
+            bottleRewardText = "Groovy Marlin Ring! +10 LEVELS!";
+            bottleRewardColor = new Color(0.5f, 1f, 0.5f);
+            if (LevelingSystem.Instance != null)
+            {
+                // Give enough XP to level up 10 times
+                for (int i = 0; i < 10; i++)
+                {
+                    long xpNeeded = LevelingSystem.Instance.GetXPToNextLevel();
+                    if (xpNeeded > 0)
+                    {
+                        LevelingSystem.Instance.AddXP((int)xpNeeded + 1);
+                    }
+                }
+            }
+            Debug.Log("+10 LEVELS from Groovy Marlin Ring!");
+        }
+        else
+        {
+            // Rest - Random gold and XP
+            int goldAmount = Random.Range(50, 501);
+            int xpAmount = Random.Range(25, 201);
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.AddCoins(goldAmount);
+            }
+            if (LevelingSystem.Instance != null)
+            {
+                LevelingSystem.Instance.AddXP(xpAmount);
+            }
+
+            bottleRewardText = $"Bottle: +{goldAmount}g, +{xpAmount} XP!";
+            bottleRewardColor = new Color(0.7f, 0.9f, 1f);
+            Debug.Log($"Bottle reward: {goldAmount} gold, {xpAmount} XP");
+        }
+
+        // Show popup
+        showingBottlePopup = true;
+        bottlePopupTimer = BOTTLE_POPUP_DURATION;
+        StartCoroutine(BottlePopupCountdown());
+
+        // Show UI notification too
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("You found a bottle!", new Color(0.6f, 0.8f, 1f));
+        }
+    }
+
+    IEnumerator BottlePopupCountdown()
+    {
+        while (bottlePopupTimer > 0)
+        {
+            bottlePopupTimer -= Time.deltaTime;
+            yield return null;
+        }
+        showingBottlePopup = false;
     }
 
     // Called by FishingRodAnimator when player successfully reels in during a bite
@@ -280,35 +500,11 @@ public class FishingSystem : MonoBehaviour
 
         FishData fish = GetRandomFish();
 
-        // HUMPBACK WHALE SPECIAL: 1% chance to break the fishing rod!
-        if (fish.id == "humpback_whale")
-        {
-            // Random chance to break rod (1% of the time when you catch a humpback)
-            if (Random.Range(0f, 100f) < 1f)
-            {
-                // Rod breaks! No fish, need to get a new rod
-                StartCoroutine(RodBreakSequence());
-                isFishing = false;
-                return;
-            }
-        }
-
         // ========== SPECIAL FISH HANDLING ==========
         if (fish.isSpecialFish)
         {
-            // Add to special inventory (can't be BBQ'd)
+            // Add to special inventory (can't be BBQ'd, sell to NPCs for gold)
             AddSpecialFish(fish);
-
-            // Give gold on catch (bonus gold!)
-            int catchGold = fish.sellToNPC / 10; // 10% of sell value as immediate bonus
-            if (catchGold > 0)
-            {
-                GameManager.Instance.AddCoins(catchGold);
-                if (UIManager.Instance != null)
-                {
-                    UIManager.Instance.ShowLootNotification($"+{catchGold} gold!", new Color(1f, 0.85f, 0.2f));
-                }
-            }
 
             // Apply health buff
             if (PlayerHealth.Instance != null)
@@ -357,13 +553,14 @@ public class FishingSystem : MonoBehaviour
         }
 
         // ========== NORMAL FISH HANDLING ==========
-        GameManager.Instance.AddCoins(fish.coinValue);
+        // Fish goes to inventory - sell to NPCs for gold!
         GameManager.Instance.AddFish(fish);
 
-        // Show gold notification
-        if (UIManager.Instance != null && fish.coinValue > 0)
+        // Show catch notification with fish value
+        if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowLootNotification($"+{fish.coinValue} gold!", new Color(1f, 0.85f, 0.2f));
+            Color notifColor = GetRarityColor(fish.rarity);
+            UIManager.Instance.ShowLootNotification($"Caught {fish.fishName}! (Worth {fish.coinValue}g)", notifColor);
         }
 
         // Add fish to food inventory for cooking
@@ -379,6 +576,37 @@ public class FishingSystem : MonoBehaviour
             LevelingSystem.Instance.AddXP(xp);
         }
 
+        // ========== PASSIVE GOLD REWARDS ==========
+        // Base gold: 1-25 per fish
+        int passiveGold = Random.Range(1, 26);
+
+        // 10% chance for bonus 100-500 gold
+        if (Random.Range(0f, 100f) < 10f)
+        {
+            int bonusGold = Random.Range(100, 501);
+            passiveGold += bonusGold;
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"BONUS: +{bonusGold}g!", new Color(1f, 0.9f, 0.3f));
+            }
+        }
+
+        // 1% chance for big bonus 500 gold
+        if (Random.Range(0f, 100f) < 1f)
+        {
+            passiveGold += 500;
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("LUCKY CATCH! +500g!", new Color(1f, 0.85f, 0.2f));
+            }
+        }
+
+        if (GameManager.Instance != null && passiveGold > 0)
+        {
+            GameManager.Instance.AddCoins(passiveGold);
+            Debug.Log($"Passive gold reward: {passiveGold}g");
+        }
+
         // Update quest progress - Old Captain's quests
         if (QuestSystem.Instance != null)
         {
@@ -391,10 +619,10 @@ public class FishingSystem : MonoBehaviour
             WetsuitPeteQuests.Instance.OnFishCaught(fish.id);
         }
 
-        // Spawn fish and coins from water
+        // Spawn fish visual from water
         SpawnCatchEffects(fish);
 
-        Debug.Log("Caught: " + fish.fishName + " (" + fish.rarity + ") - +" + fish.coinValue + " coins!");
+        Debug.Log("Caught: " + fish.fishName + " (" + fish.rarity + ") - Worth " + fish.coinValue + " gold!");
 
         isFishing = false;
         StartCoroutine(ResetCooldown());
@@ -523,20 +751,202 @@ public class FishingSystem : MonoBehaviour
         Vector3 spawnPos = player.transform.position + player.transform.forward * 3f;
         spawnPos.y = 1.5f;
 
-        // Create detailed fish model
-        GameObject fishObj = CreateDetailedFish(fish);
-        fishObj.name = "CaughtFish";
-        fishObj.transform.position = spawnPos;
-        fishObj.transform.rotation = Quaternion.Euler(0, 90, 0);
-
-        StartCoroutine(FishCaughtAnimation(fishObj, fish));
-
-        // Spawn coins
-        int numCoins = Mathf.Min(fish.coinValue / 5, 15);
-        for (int i = 0; i < numCoins; i++)
+        // Check if epic or legendary - show special glowing golden fish
+        if (fish.rarity == Rarity.Epic || fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
         {
-            StartCoroutine(SpawnCoin(spawnPos, i * 0.08f));
+            // Play the chime sound
+            PlayRareFishChime(fish.rarity);
+
+            // Create glowing golden fish model
+            GameObject fishObj = CreateGlowingRareFish(fish);
+            fishObj.name = "RareCaughtFish";
+            fishObj.transform.position = spawnPos;
+            fishObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+
+            StartCoroutine(RareFishCaughtAnimation(fishObj, fish));
         }
+        else
+        {
+            // Create normal detailed fish model
+            GameObject fishObj = CreateDetailedFish(fish);
+            fishObj.name = "CaughtFish";
+            fishObj.transform.position = spawnPos;
+            fishObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+
+            StartCoroutine(FishCaughtAnimation(fishObj, fish));
+        }
+    }
+
+    GameObject CreateGlowingRareFish(FishData fish)
+    {
+        GameObject fishObj = new GameObject("GlowingRareFish");
+
+        // Determine glow color based on rarity
+        Color glowColor;
+        float glowIntensity;
+        if (fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
+        {
+            glowColor = new Color(1f, 0.85f, 0.3f); // Golden glow
+            glowIntensity = 3f;
+        }
+        else // Epic
+        {
+            glowColor = new Color(0.7f, 0.3f, 1f); // Purple glow
+            glowIntensity = 2f;
+        }
+
+        // Create glowing material
+        Material glowMat = new Material(Shader.Find("Standard"));
+        glowMat.color = glowColor;
+        glowMat.EnableKeyword("_EMISSION");
+        glowMat.SetColor("_EmissionColor", glowColor * glowIntensity);
+
+        // Fish body - larger for rare fish
+        float scale = fish.rarity == Rarity.Legendary ? 1.5f : 1.2f;
+
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(fishObj.transform);
+        body.transform.localPosition = Vector3.zero;
+        body.transform.localScale = new Vector3(0.3f * scale, 0.5f * scale, 0.25f * scale);
+        body.transform.localRotation = Quaternion.Euler(0, 0, 90);
+        body.GetComponent<Renderer>().material = glowMat;
+        Object.Destroy(body.GetComponent<Collider>());
+
+        // Tail fin
+        GameObject tail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        tail.name = "Tail";
+        tail.transform.SetParent(fishObj.transform);
+        tail.transform.localPosition = new Vector3(-0.45f * scale, 0, 0);
+        tail.transform.localScale = new Vector3(0.25f * scale, 0.35f * scale, 0.05f * scale);
+        tail.transform.localRotation = Quaternion.Euler(0, 0, 30);
+        tail.GetComponent<Renderer>().material = glowMat;
+        Object.Destroy(tail.GetComponent<Collider>());
+
+        // Dorsal fin
+        GameObject dorsal = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        dorsal.name = "DorsalFin";
+        dorsal.transform.SetParent(fishObj.transform);
+        dorsal.transform.localPosition = new Vector3(0, 0.2f * scale, 0);
+        dorsal.transform.localScale = new Vector3(0.3f * scale, 0.2f * scale, 0.03f * scale);
+        dorsal.GetComponent<Renderer>().material = glowMat;
+        Object.Destroy(dorsal.GetComponent<Collider>());
+
+        // Eyes (dark)
+        Material eyeMat = new Material(Shader.Find("Standard"));
+        eyeMat.color = Color.black;
+
+        GameObject leftEye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        leftEye.name = "LeftEye";
+        leftEye.transform.SetParent(fishObj.transform);
+        leftEye.transform.localPosition = new Vector3(0.35f * scale, 0.05f * scale, 0.1f * scale);
+        leftEye.transform.localScale = Vector3.one * 0.08f * scale;
+        leftEye.GetComponent<Renderer>().material = eyeMat;
+        Object.Destroy(leftEye.GetComponent<Collider>());
+
+        GameObject rightEye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        rightEye.name = "RightEye";
+        rightEye.transform.SetParent(fishObj.transform);
+        rightEye.transform.localPosition = new Vector3(0.35f * scale, 0.05f * scale, -0.1f * scale);
+        rightEye.transform.localScale = Vector3.one * 0.08f * scale;
+        rightEye.GetComponent<Renderer>().material = eyeMat;
+        Object.Destroy(rightEye.GetComponent<Collider>());
+
+        // Add sparkle particles around the fish
+        for (int i = 0; i < 8; i++)
+        {
+            GameObject sparkle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sparkle.name = "Sparkle" + i;
+            sparkle.transform.SetParent(fishObj.transform);
+            float angle = i * 45f * Mathf.Deg2Rad;
+            sparkle.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 0.5f,
+                Mathf.Sin(angle) * 0.3f,
+                0
+            );
+            sparkle.transform.localScale = Vector3.one * 0.06f;
+
+            Material sparkleMat = new Material(Shader.Find("Standard"));
+            sparkleMat.color = Color.white;
+            sparkleMat.EnableKeyword("_EMISSION");
+            sparkleMat.SetColor("_EmissionColor", Color.white * 2f);
+            sparkle.GetComponent<Renderer>().material = sparkleMat;
+            Object.Destroy(sparkle.GetComponent<Collider>());
+        }
+
+        return fishObj;
+    }
+
+    IEnumerator RareFishCaughtAnimation(GameObject fishObj, FishData fish)
+    {
+        Vector3 startPos = fishObj.transform.position;
+        float t = 0f;
+        float duration = 4f; // Longer display for rare fish
+
+        // Get all sparkles for animation
+        Transform[] sparkles = new Transform[8];
+        for (int i = 0; i < 8; i++)
+        {
+            Transform sparkle = fishObj.transform.Find("Sparkle" + i);
+            if (sparkle != null) sparkles[i] = sparkle;
+        }
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float progress = t / duration;
+
+            // Fish floats up and rotates slowly with slight bob
+            float bobAmount = Mathf.Sin(t * 3f) * 0.1f;
+            fishObj.transform.position = startPos + Vector3.up * (progress * 1.5f + bobAmount);
+            fishObj.transform.Rotate(Vector3.up * 60f * Time.deltaTime);
+
+            // Sparkles orbit around the fish
+            for (int i = 0; i < sparkles.Length; i++)
+            {
+                if (sparkles[i] != null)
+                {
+                    float angle = (i * 45f + t * 120f) * Mathf.Deg2Rad;
+                    float radius = 0.5f + Mathf.Sin(t * 2f + i) * 0.1f;
+                    sparkles[i].localPosition = new Vector3(
+                        Mathf.Cos(angle) * radius,
+                        Mathf.Sin(angle * 0.5f) * 0.3f,
+                        Mathf.Sin(angle) * radius * 0.5f
+                    );
+
+                    // Pulse sparkle size
+                    float pulse = 0.06f + Mathf.Sin(t * 8f + i) * 0.02f;
+                    sparkles[i].localScale = Vector3.one * pulse;
+                }
+            }
+
+            // Pulse the glow intensity
+            float glowPulse = 1f + Mathf.Sin(t * 4f) * 0.3f;
+            foreach (Renderer rend in fishObj.GetComponentsInChildren<Renderer>())
+            {
+                if (rend.name != "LeftEye" && rend.name != "RightEye" && !rend.name.StartsWith("Sparkle"))
+                {
+                    Color baseColor = fish.rarity == Rarity.Legendary ? new Color(1f, 0.85f, 0.3f) : new Color(0.7f, 0.3f, 1f);
+                    rend.material.SetColor("_EmissionColor", baseColor * (fish.rarity == Rarity.Legendary ? 3f : 2f) * glowPulse);
+                }
+            }
+
+            // Fade out in last second
+            if (progress > 0.75f)
+            {
+                float fade = 1f - ((progress - 0.75f) / 0.25f);
+                foreach (Renderer rend in fishObj.GetComponentsInChildren<Renderer>())
+                {
+                    Color c = rend.material.color;
+                    c.a = fade;
+                    rend.material.color = c;
+                }
+            }
+
+            yield return null;
+        }
+
+        Destroy(fishObj);
     }
 
     void SpawnSpecialFishEffects(FishData fish)
@@ -1052,29 +1462,6 @@ public class FishingSystem : MonoBehaviour
             dorsalFin.transform.localPosition = new Vector3(-0.02f, 0.18f, 0) * sizeMultiplier;
             dorsalSpike.transform.localScale = new Vector3(0.12f, 0.1f, 0.015f) * sizeMultiplier;
         }
-        else if (fish.id == "kraken")
-        {
-            // Add tentacles for baby kraken
-            Material tentacleMat = new Material(Shader.Find("Standard"));
-            tentacleMat.color = fish.fishColor;
-            tentacleMat.EnableKeyword("_EMISSION");
-            tentacleMat.SetColor("_EmissionColor", fish.fishColor * 0.8f);
-
-            for (int i = 0; i < 6; i++)
-            {
-                GameObject tentacle = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                tentacle.name = "Tentacle" + i;
-                tentacle.transform.SetParent(fishRoot.transform);
-                float angle = i * 60f * Mathf.Deg2Rad;
-                float xOff = Mathf.Cos(angle) * 0.15f;
-                float zOff = Mathf.Sin(angle) * 0.15f;
-                tentacle.transform.localPosition = new Vector3(-0.15f + xOff * 0.3f, -0.08f, zOff) * sizeMultiplier;
-                tentacle.transform.localScale = new Vector3(0.03f, 0.12f, 0.03f) * sizeMultiplier;
-                tentacle.transform.localRotation = Quaternion.Euler(xOff * 100, 0, zOff * 100);
-                Object.Destroy(tentacle.GetComponent<Collider>());
-                tentacle.GetComponent<Renderer>().material = tentacleMat;
-            }
-        }
 
         return fishRoot;
     }
@@ -1140,9 +1527,146 @@ public class FishingSystem : MonoBehaviour
 
     IEnumerator ShowCatchPopup(FishData fish)
     {
-        // This would show a UI popup - for now we'll just log it
-        // A full implementation would create a world-space canvas or OnGUI element
-        yield return null;
+        // Show the catch popup with fish sprite
+        showingCatchPopup = true;
+        catchPopupFish = fish;
+        catchPopupTimer = CATCH_POPUP_DURATION;
+
+        while (catchPopupTimer > 0)
+        {
+            catchPopupTimer -= Time.deltaTime;
+            yield return null;
+        }
+
+        showingCatchPopup = false;
+        catchPopupFish = null;
+    }
+
+    void OnGUI()
+    {
+        if (!showingCatchPopup || catchPopupFish == null) return;
+        if (!MainMenu.GameStarted) return;
+
+        // Popup dimensions
+        float popupWidth = 200;
+        float popupHeight = 100;
+        float popupX = (Screen.width - popupWidth) / 2;
+        float popupY = Screen.height * 0.25f;
+
+        // Fade based on remaining time
+        float alpha = Mathf.Clamp01(catchPopupTimer / 0.5f);
+        GUI.color = new Color(1, 1, 1, alpha);
+
+        // Background
+        Texture2D bgTex = new Texture2D(1, 1);
+        bgTex.SetPixel(0, 0, new Color(0.1f, 0.1f, 0.15f, 0.9f));
+        bgTex.Apply();
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, popupHeight), bgTex);
+
+        // Border color based on rarity
+        Color rarityCol = GetRarityColor(catchPopupFish.rarity);
+        Texture2D borderTex = new Texture2D(1, 1);
+        borderTex.SetPixel(0, 0, rarityCol);
+        borderTex.Apply();
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, 3), borderTex);
+        GUI.DrawTexture(new Rect(popupX, popupY + popupHeight - 3, popupWidth, 3), borderTex);
+        GUI.DrawTexture(new Rect(popupX, popupY, 3, popupHeight), borderTex);
+        GUI.DrawTexture(new Rect(popupX + popupWidth - 3, popupY, 3, popupHeight), borderTex);
+
+        // Fish sprite
+        float spriteSize = 48;
+        Texture2D fishSprite = null;
+        if (FishSprites.Instance != null)
+            fishSprite = FishSprites.Instance.GetFishTexture(catchPopupFish.id);
+
+        if (fishSprite != null)
+        {
+            GUI.DrawTexture(new Rect(popupX + 10, popupY + (popupHeight - spriteSize) / 2, spriteSize, spriteSize), fishSprite);
+        }
+
+        GUI.color = new Color(1, 1, 1, alpha);
+
+        // "CAUGHT!" label
+        GUIStyle caughtStyle = new GUIStyle();
+        caughtStyle.fontSize = 12;
+        caughtStyle.fontStyle = FontStyle.Bold;
+        caughtStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+        GUI.Label(new Rect(popupX + 68, popupY + 12, 120, 20), "CAUGHT!", caughtStyle);
+
+        // Fish name
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 14;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.normal.textColor = rarityCol;
+        nameStyle.wordWrap = true;
+        GUI.Label(new Rect(popupX + 68, popupY + 30, 120, 40), catchPopupFish.fishName, nameStyle);
+
+        // Value
+        GUIStyle valueStyle = new GUIStyle();
+        valueStyle.fontSize = 12;
+        valueStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUI.Label(new Rect(popupX + 68, popupY + 70, 120, 20), $"Worth {catchPopupFish.coinValue}g", valueStyle);
+
+        GUI.color = Color.white;
+
+        // Clean up textures
+        Object.Destroy(bgTex);
+        Object.Destroy(borderTex);
+
+        // Draw bottle popup if active
+        DrawBottlePopup();
+    }
+
+    void DrawBottlePopup()
+    {
+        if (!showingBottlePopup || string.IsNullOrEmpty(bottleRewardText)) return;
+
+        // Bottle popup at top-center of screen
+        float popupWidth = 300;
+        float popupHeight = 80;
+        float popupX = (Screen.width - popupWidth) / 2;
+        float popupY = 50;
+
+        // Fade based on remaining time
+        float alpha = Mathf.Clamp01(bottlePopupTimer / 0.5f);
+        GUI.color = new Color(1, 1, 1, alpha);
+
+        // Background
+        Texture2D bgTex = new Texture2D(1, 1);
+        bgTex.SetPixel(0, 0, new Color(0.05f, 0.15f, 0.25f, 0.95f));
+        bgTex.Apply();
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, popupHeight), bgTex);
+
+        // Border with bottle color (aqua)
+        Texture2D borderTex = new Texture2D(1, 1);
+        borderTex.SetPixel(0, 0, new Color(0.4f, 0.8f, 1f));
+        borderTex.Apply();
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, 4), borderTex);
+        GUI.DrawTexture(new Rect(popupX, popupY + popupHeight - 4, popupWidth, 4), borderTex);
+        GUI.DrawTexture(new Rect(popupX, popupY, 4, popupHeight), borderTex);
+        GUI.DrawTexture(new Rect(popupX + popupWidth - 4, popupY, 4, popupHeight), borderTex);
+
+        // "BOTTLE FOUND!" header
+        GUIStyle headerStyle = new GUIStyle();
+        headerStyle.fontSize = 16;
+        headerStyle.fontStyle = FontStyle.Bold;
+        headerStyle.normal.textColor = new Color(0.4f, 0.9f, 1f);
+        headerStyle.alignment = TextAnchor.MiddleCenter;
+        GUI.Label(new Rect(popupX, popupY + 10, popupWidth, 25), "BOTTLE FOUND!", headerStyle);
+
+        // Reward text
+        GUIStyle rewardStyle = new GUIStyle();
+        rewardStyle.fontSize = 14;
+        rewardStyle.fontStyle = FontStyle.Bold;
+        rewardStyle.normal.textColor = bottleRewardColor;
+        rewardStyle.alignment = TextAnchor.MiddleCenter;
+        rewardStyle.wordWrap = true;
+        GUI.Label(new Rect(popupX + 10, popupY + 38, popupWidth - 20, 35), bottleRewardText, rewardStyle);
+
+        GUI.color = Color.white;
+
+        Object.Destroy(bgTex);
+        Object.Destroy(borderTex);
     }
 
     IEnumerator SpawnCoin(Vector3 basePos, float delay)
