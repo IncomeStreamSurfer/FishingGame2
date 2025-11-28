@@ -311,6 +311,12 @@ public class BBQStation : MonoBehaviour
                 ToggleBBQ();
             }
 
+            // Close with ESC
+            if (isOpen && Input.GetKeyDown(KeyCode.Escape))
+            {
+                CloseBBQ();
+            }
+
             // Close if player walks away
             if (isOpen && distance > interactionDistance * 1.5f)
             {

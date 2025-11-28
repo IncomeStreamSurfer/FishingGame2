@@ -83,6 +83,12 @@ public class DevPanel : MonoBehaviour
             isOpen = !isOpen;
         }
 
+        // Close with ESC
+        if (isOpen && Input.GetKeyDown(KeyCode.Escape))
+        {
+            isOpen = false;
+        }
+
         // Handle dragging
         if (isDragging)
         {

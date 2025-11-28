@@ -101,6 +101,10 @@ public class CharacterPanel : MonoBehaviour
         {
             isOpen = !isOpen;
         }
+        if (isOpen && Input.GetKeyDown(KeyCode.Escape))
+        {
+            isOpen = false;
+        }
         heartbeatTime += Time.deltaTime;
 
         // Update ECG
