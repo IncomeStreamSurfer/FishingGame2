@@ -78,6 +78,10 @@ public class AutoSetup
         GameObject devPanel = new GameObject("DevPanel");
         devPanel.AddComponent<DevPanel>();
 
+        // Fish Inventory Panel (F to toggle - shows caught fish sorted by value)
+        GameObject fishInvPanel = new GameObject("FishInventoryPanel");
+        fishInvPanel.AddComponent<FishInventoryPanel>();
+
         // Player Health System (HP, hunger, death)
         GameObject playerHealth = new GameObject("PlayerHealth");
         playerHealth.AddComponent<PlayerHealth>();
@@ -122,7 +126,7 @@ public class AutoSetup
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
