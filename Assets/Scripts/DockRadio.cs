@@ -190,7 +190,7 @@ public class DockRadio : MonoBehaviour
             promptStyle.alignment = TextAnchor.MiddleCenter;
             promptStyle.normal.textColor = new Color(0.6f, 0.9f, 1f);
 
-            string promptText = isOn ? "[F] Turn Off Dock Radio" : "[F] Play Dock Radio";
+            string promptText = isOn ? "[R] Turn Off Dock Radio" : "[R] Play Dock Radio";
             float promptY = Screen.height * 0.65f;
             GUI.Label(new Rect(0, promptY, Screen.width, 30), promptText, promptStyle);
         }

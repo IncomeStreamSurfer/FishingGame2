@@ -515,8 +515,9 @@ public class FoodInventory : MonoBehaviour
     {
         float slotSize = 50;
         float spacing = 5;
-        float totalWidth = (slotSize * 4) + (spacing * 3);
-        float startX = (Screen.width - totalWidth) / 2 - 170; // Left of the main action bar
+        float totalWidth = (slotSize * 4) + (spacing * 3);  // 4 slots = 215px wide
+        // Position at bottom left, with some margin from edge
+        float startX = 15;  // 15px from left edge - ensures all 4 slots visible
         float startY = Screen.height - slotSize - 15;
 
         // Label

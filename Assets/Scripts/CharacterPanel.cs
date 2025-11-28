@@ -98,7 +98,8 @@ public class CharacterPanel : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Tab))
+        // TAB or C key to toggle character panel
+        if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.C))
         {
             isOpen = !isOpen;
         }
@@ -110,6 +111,17 @@ public class CharacterPanel : MonoBehaviour
 
         // Update ECG
         UpdateECG();
+    }
+
+    // Public method to open panel (for HUD button)
+    public void Open()
+    {
+        isOpen = true;
+    }
+
+    public void Toggle()
+    {
+        isOpen = !isOpen;
     }
 
     void UpdateECG()
@@ -460,13 +472,21 @@ public class CharacterPanel : MonoBehaviour
         // Head
         GUI.DrawTexture(new Rect(cx - 15, sy, 30, 35), GetTexture("skin"));
 
-        // Hat (only if equipped)
-        if (equippedItems[0] != "None")
+        // Face details
+        GUI.color = new Color(0.2f, 0.2f, 0.2f);
+        GUI.DrawTexture(new Rect(cx - 8, sy + 10, 4, 4), Texture2D.whiteTexture); // Left eye
+        GUI.DrawTexture(new Rect(cx + 4, sy + 10, 4, 4), Texture2D.whiteTexture); // Right eye
+        GUI.DrawTexture(new Rect(cx - 4, sy + 22, 8, 2), Texture2D.whiteTexture); // Mouth
+        GUI.color = Color.white;
+
+        // Hat (based on equipped item)
+        string hatItem = equippedItems[0];
+        if (hatItem != "None")
         {
-            GUI.DrawTexture(new Rect(cx - 20, sy - 8, 40, 12), GetTexture("hat"));
+            DrawHat(cx, sy, hatItem);
         }
 
-        // Body - color based on equipped item
+        // Body - color/pattern based on equipped item
         string bodyItem = equippedItems[1]; // Top slot
         if (bodyItem == "None")
         {
@@ -475,35 +495,45 @@ public class CharacterPanel : MonoBehaviour
         }
         else
         {
-            Texture2D shirtTex = GetShirtTexture(bodyItem);
-            GUI.DrawTexture(new Rect(cx - 18, sy + 40, 36, 50), shirtTex);
+            DrawShirt(cx, sy + 40, bodyItem);
         }
+
+        // Arms (on sides of body)
+        GUI.DrawTexture(new Rect(cx - 24, sy + 42, 8, 40), GetTexture("skin"));
+        GUI.DrawTexture(new Rect(cx + 16, sy + 42, 8, 40), GetTexture("skin"));
 
         // Legs - color based on equipped item
         string legsItem = equippedItems[2]; // Legs slot
         if (legsItem == "None")
         {
             // Naked legs - show skin
-            GUI.DrawTexture(new Rect(cx - 16, sy + 90, 32, 45), GetTexture("skin"));
+            GUI.DrawTexture(new Rect(cx - 14, sy + 90, 12, 45), GetTexture("skin"));
+            GUI.DrawTexture(new Rect(cx + 2, sy + 90, 12, 45), GetTexture("skin"));
         }
         else
         {
             Texture2D pantsTex = GetPantsTexture(legsItem);
-            GUI.DrawTexture(new Rect(cx - 16, sy + 90, 32, 45), pantsTex);
+            GUI.DrawTexture(new Rect(cx - 14, sy + 90, 12, 45), pantsTex);
+            GUI.DrawTexture(new Rect(cx + 2, sy + 90, 12, 45), pantsTex);
         }
 
         // Feet
-        GUI.DrawTexture(new Rect(cx - 16, sy + 135, 14, 12), GetTexture("skin"));
-        GUI.DrawTexture(new Rect(cx + 2, sy + 135, 14, 12), GetTexture("skin"));
+        GUI.DrawTexture(new Rect(cx - 14, sy + 135, 12, 10), GetTexture("skin"));
+        GUI.DrawTexture(new Rect(cx + 2, sy + 135, 12, 10), GetTexture("skin"));
 
         // Draw parrot if equipped
         string accessory = equippedItems[3]; // Accessory slot
         if (accessory == "Shoulder Parrot")
         {
+            // Parrot body (green)
             GUI.color = new Color(0.2f, 0.75f, 0.25f);
-            GUI.DrawTexture(new Rect(cx + 18, sy + 38, 12, 10), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx + 20, sy + 36, 14, 12), Texture2D.whiteTexture);
+            // Beak (orange)
             GUI.color = new Color(1f, 0.7f, 0.1f);
-            GUI.DrawTexture(new Rect(cx + 30, sy + 40, 5, 3), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx + 34, sy + 38, 6, 4), Texture2D.whiteTexture);
+            // Eye
+            GUI.color = Color.black;
+            GUI.DrawTexture(new Rect(cx + 30, sy + 37, 2, 2), Texture2D.whiteTexture);
             GUI.color = Color.white;
         }
 
@@ -512,11 +542,124 @@ public class CharacterPanel : MonoBehaviour
         {
             // Cane shaft (black)
             GUI.color = new Color(0.1f, 0.1f, 0.1f);
-            GUI.DrawTexture(new Rect(cx + 22, sy + 60, 4, 80), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx + 26, sy + 60, 4, 80), Texture2D.whiteTexture);
             // Gold handle
             GUI.color = new Color(0.95f, 0.8f, 0.2f);
-            GUI.DrawTexture(new Rect(cx + 20, sy + 55, 8, 8), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx + 24, sy + 52, 8, 10), Texture2D.whiteTexture);
             GUI.color = Color.white;
+        }
+    }
+
+    void DrawHat(float cx, float sy, string hatName)
+    {
+        switch (hatName)
+        {
+            case "Straw Hat":
+                // Straw colored hat with brim
+                GUI.color = new Color(0.9f, 0.8f, 0.5f);
+                GUI.DrawTexture(new Rect(cx - 25, sy - 5, 50, 8), Texture2D.whiteTexture); // Brim
+                GUI.DrawTexture(new Rect(cx - 12, sy - 18, 24, 15), Texture2D.whiteTexture); // Crown
+                GUI.color = new Color(0.45f, 0.20f, 0.10f);
+                GUI.DrawTexture(new Rect(cx - 13, sy - 6, 26, 4), Texture2D.whiteTexture); // Band
+                GUI.color = Color.white;
+                break;
+            case "Baseball Cap":
+                // Red cap with visor
+                GUI.color = new Color(0.85f, 0.15f, 0.1f);
+                GUI.DrawTexture(new Rect(cx - 16, sy - 10, 32, 14), Texture2D.whiteTexture); // Dome
+                GUI.DrawTexture(new Rect(cx - 5, sy + 2, 20, 6), Texture2D.whiteTexture); // Visor
+                GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(cx, sy - 12, 4, 4), Texture2D.whiteTexture); // Button
+                break;
+            case "Fancy Top Hat":
+                // Black top hat
+                GUI.color = new Color(0.1f, 0.1f, 0.1f);
+                GUI.DrawTexture(new Rect(cx - 18, sy - 5, 36, 6), Texture2D.whiteTexture); // Brim
+                GUI.DrawTexture(new Rect(cx - 12, sy - 30, 24, 28), Texture2D.whiteTexture); // Tall crown
+                GUI.color = new Color(0.6f, 0.1f, 0.1f);
+                GUI.DrawTexture(new Rect(cx - 13, sy - 8, 26, 4), Texture2D.whiteTexture); // Red band
+                GUI.color = Color.white;
+                break;
+            default:
+                GUI.DrawTexture(new Rect(cx - 20, sy - 8, 40, 12), GetTexture("hat"));
+                break;
+        }
+    }
+
+    void DrawShirt(float cx, float sy, string shirtName)
+    {
+        Rect bodyRect = new Rect(cx - 18, sy, 36, 50);
+
+        switch (shirtName)
+        {
+            case "Coconut Bra":
+                // Skin with coconut bra
+                GUI.DrawTexture(bodyRect, GetTexture("skin"));
+                // Coconuts (brown circles)
+                GUI.color = new Color(0.55f, 0.35f, 0.2f);
+                GUI.DrawTexture(new Rect(cx - 14, sy + 8, 12, 10), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(cx + 2, sy + 8, 12, 10), Texture2D.whiteTexture);
+                // Rope
+                GUI.color = new Color(0.6f, 0.5f, 0.35f);
+                GUI.DrawTexture(new Rect(cx - 18, sy + 6, 36, 3), Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                break;
+
+            case "Lumberjack Shirt":
+                // Red/black checkerboard pattern
+                int checkSize = 6;
+                for (int row = 0; row < 9; row++)
+                {
+                    for (int col = 0; col < 6; col++)
+                    {
+                        bool isRed = (row + col) % 2 == 0;
+                        GUI.color = isRed ? new Color(0.75f, 0.12f, 0.08f) : new Color(0.1f, 0.08f, 0.05f);
+                        GUI.DrawTexture(new Rect(cx - 18 + col * checkSize, sy + row * checkSize, checkSize, checkSize), Texture2D.whiteTexture);
+                    }
+                }
+                GUI.color = Color.white;
+                break;
+
+            case "Fancy Tuxedo":
+                // Black jacket
+                GUI.color = new Color(0.08f, 0.08f, 0.08f);
+                GUI.DrawTexture(bodyRect, Texture2D.whiteTexture);
+                // White shirt front
+                GUI.color = new Color(0.95f, 0.95f, 0.95f);
+                GUI.DrawTexture(new Rect(cx - 8, sy, 16, 50), Texture2D.whiteTexture);
+                // Black tie
+                GUI.color = new Color(0.05f, 0.05f, 0.05f);
+                GUI.DrawTexture(new Rect(cx - 3, sy + 8, 6, 35), Texture2D.whiteTexture);
+                // Tie knot
+                GUI.DrawTexture(new Rect(cx - 5, sy + 2, 10, 8), Texture2D.whiteTexture);
+                // Lapels (darker gray)
+                GUI.color = new Color(0.12f, 0.12f, 0.12f);
+                GUI.DrawTexture(new Rect(cx - 16, sy + 5, 8, 25), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(cx + 8, sy + 5, 8, 25), Texture2D.whiteTexture);
+                // Buttons
+                GUI.color = new Color(0.8f, 0.8f, 0.8f);
+                GUI.DrawTexture(new Rect(cx - 1, sy + 15, 3, 3), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(cx - 1, sy + 25, 3, 3), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(cx - 1, sy + 35, 3, 3), Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                break;
+
+            case "Red T-Shirt":
+                GUI.color = new Color(0.85f, 0.15f, 0.1f);
+                GUI.DrawTexture(bodyRect, Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                break;
+
+            case "Blue Shirt":
+                GUI.color = new Color(0.15f, 0.35f, 0.65f);
+                GUI.DrawTexture(bodyRect, Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                break;
+
+            default:
+                Texture2D shirtTex = GetShirtTexture(shirtName);
+                GUI.DrawTexture(bodyRect, shirtTex);
+                break;
         }
     }
 

@@ -45,9 +45,9 @@ public class GameManager : MonoBehaviour
 
     public void ResetOnDeath()
     {
-        // PERMANENT LOSS - player loses all gold and fish when they drown
-        Debug.Log($"DEATH PENALTY: Lost {coins} gold and {totalFishCaught} fish forever!");
-        coins = 0;
+        // Player loses fish when they die, but KEEPS gold
+        Debug.Log($"DEATH PENALTY: Lost {totalFishCaught} fish. Gold preserved: {coins}");
+        // Gold is NOT reset - player keeps their gold
         totalFishCaught = 0;
         fishInventory.Clear();
     }

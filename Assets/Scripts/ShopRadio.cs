@@ -209,7 +209,7 @@ public class ShopRadio : MonoBehaviour
             promptStyle.alignment = TextAnchor.MiddleCenter;
             promptStyle.normal.textColor = new Color(1f, 0.9f, 0.6f);
 
-            string promptText = isOn ? "[F] Turn Off Radio" : "[F] Play Radio";
+            string promptText = isOn ? "[R] Turn Off Radio" : "[R] Play Radio";
             float promptY = Screen.height * 0.65f;
             GUI.Label(new Rect(0, promptY, Screen.width, 30), promptText, promptStyle);
         }

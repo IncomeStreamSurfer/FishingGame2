@@ -172,6 +172,19 @@ public class FishInventoryPanel : MonoBehaviour
         string title = sellModeEnabled ? $"SELL FISH TO {currentNPCName.ToUpper()}" : "FISH INVENTORY";
         GUI.Label(new Rect(panelX, panelY + 5, panelWidth, 30), title, titleStyle);
 
+        // Show "SELL FISH" banner when sell mode is enabled
+        if (sellModeEnabled)
+        {
+            // Green banner
+            GUI.DrawTexture(new Rect(panelX + 10, panelY + 38, panelWidth - 20, 22), GetOrCreateColorTexture(new Color(0.15f, 0.5f, 0.25f)));
+            GUIStyle sellBannerStyle = new GUIStyle();
+            sellBannerStyle.fontSize = 12;
+            sellBannerStyle.fontStyle = FontStyle.Bold;
+            sellBannerStyle.alignment = TextAnchor.MiddleCenter;
+            sellBannerStyle.normal.textColor = new Color(0.8f, 1f, 0.8f);
+            GUI.Label(new Rect(panelX + 10, panelY + 38, panelWidth - 20, 22), "Click any fish to SELL for gold!", sellBannerStyle);
+        }
+
         // Red X close button
         GUIStyle xButtonStyle = new GUIStyle();
         xButtonStyle.fontSize = 16;
@@ -196,9 +209,9 @@ public class FishInventoryPanel : MonoBehaviour
         int totalValue = fishList.Sum(f => f.coinValue * f.count);
         GUI.Label(new Rect(panelX, panelY + 42, panelWidth, 18), $"Total: {totalFish} fish | Worth: {totalValue}g", statsStyle);
 
-        // Fish list area
-        float listY = panelY + 65;
-        float listHeight = panelHeight - 75;
+        // Fish list area (offset more when sell banner is shown)
+        float listY = sellModeEnabled ? panelY + 85 : panelY + 65;
+        float listHeight = sellModeEnabled ? panelHeight - 95 : panelHeight - 75;
         float itemHeight = 50;
 
         Rect listArea = new Rect(panelX + 10, listY, panelWidth - 20, listHeight);
@@ -249,9 +262,13 @@ public class FishInventoryPanel : MonoBehaviour
                 // Item background
                 GUI.DrawTexture(itemRect, hover ? GetTexture("itemHover") : GetTexture("itemBg"));
 
-                // Fish color/image (square)
+                // Fish pixel art sprite
                 float imgSize = 36;
-                Texture2D fishTex = GetOrCreateColorTexture(fish.color);
+                Texture2D fishTex = null;
+                if (FishSprites.Instance != null)
+                    fishTex = FishSprites.Instance.GetFishTexture(fish.id);
+                if (fishTex == null)
+                    fishTex = GetOrCreateColorTexture(fish.color);  // Fallback to color
                 GUI.DrawTexture(new Rect(itemRect.x + 8, itemRect.y + (itemHeight - imgSize) / 2 - 2, imgSize, imgSize), fishTex);
 
                 // Fish name - smaller for common fish
@@ -291,6 +308,17 @@ public class FishInventoryPanel : MonoBehaviour
                 int stackValue = fish.coinValue * fish.count;
                 GUI.Label(new Rect(itemRect.x + itemRect.width - 80, itemRect.y + 24, 75, 16), $"({stackValue}g total)", totalStyle);
 
+                // Special fish glow indicator
+                if (fish.isSpecialFish && fish.glowIntensity > 0)
+                {
+                    // Draw glow border around special fish
+                    Color glowCol = new Color(fish.glowColor.r, fish.glowColor.g, fish.glowColor.b, 0.4f);
+                    GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, itemRect.width, 2), GetOrCreateColorTexture(glowCol));
+                    GUI.DrawTexture(new Rect(itemRect.x, itemRect.y + itemRect.height - 2, itemRect.width, 2), GetOrCreateColorTexture(glowCol));
+                    GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, 2, itemRect.height), GetOrCreateColorTexture(glowCol));
+                    GUI.DrawTexture(new Rect(itemRect.x + itemRect.width - 2, itemRect.y, 2, itemRect.height), GetOrCreateColorTexture(glowCol));
+                }
+
                 // SELL button when in sell mode
                 if (sellModeEnabled && fish.coinValue > 0)
                 {
@@ -301,12 +329,14 @@ public class FishInventoryPanel : MonoBehaviour
                     sellBtnStyle.normal.textColor = Color.white;
 
                     Rect sellBtnRect = new Rect(itemRect.x + itemRect.width - 45, itemRect.y + 12, 40, 22);
-                    GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(new Color(0.2f, 0.6f, 0.3f)));
+                    // Special fish get golden sell button
+                    Color btnColor = fish.isSpecialFish ? new Color(0.7f, 0.5f, 0.2f) : new Color(0.2f, 0.6f, 0.3f);
+                    GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(btnColor));
                     GUI.Label(sellBtnRect, "SELL", sellBtnStyle);
 
                     if (GUI.Button(sellBtnRect, "", GUIStyle.none))
                     {
-                        SellFish(fish.id, fish.coinValue);
+                        SellFish(fish.id, fish.coinValue, fish.isSpecialFish);
                     }
                 }
 
@@ -335,6 +365,7 @@ public class FishInventoryPanel : MonoBehaviour
         var fishDatabase = FishingSystem.Instance.fishDatabase;
         var inventory = GameManager.Instance.fishInventory;
 
+        // Add normal fish from GameManager inventory
         foreach (var kvp in inventory)
         {
             string fishId = kvp.Key;
@@ -353,7 +384,41 @@ public class FishInventoryPanel : MonoBehaviour
                     rarity = fishData.rarity,
                     coinValue = fishData.coinValue,
                     color = fishData.fishColor,
-                    count = count
+                    count = count,
+                    isSpecialFish = false
+                });
+            }
+        }
+
+        // Add special fish from FishingSystem special inventory
+        var specialInventory = FishingSystem.Instance.specialFishInventory;
+        Dictionary<string, int> specialCounts = new Dictionary<string, int>();
+        foreach (var fish in specialInventory)
+        {
+            if (!specialCounts.ContainsKey(fish.id))
+                specialCounts[fish.id] = 0;
+            specialCounts[fish.id]++;
+        }
+
+        foreach (var kvp in specialCounts)
+        {
+            string fishId = kvp.Key;
+            int count = kvp.Value;
+
+            FishData fishData = fishDatabase.Find(f => f.id == fishId);
+            if (fishData != null)
+            {
+                result.Add(new FishDisplayData
+                {
+                    id = fishId,
+                    name = fishData.fishName,
+                    rarity = fishData.rarity,
+                    coinValue = fishData.sellToNPC, // Special fish use sellToNPC value
+                    color = fishData.fishColor,
+                    count = count,
+                    isSpecialFish = true,
+                    glowColor = fishData.glowColor,
+                    glowIntensity = fishData.glowIntensity
                 });
             }
         }
@@ -378,32 +443,62 @@ public class FishInventoryPanel : MonoBehaviour
         }
     }
 
-    void SellFish(string fishId, int coinValue)
+    void SellFish(string fishId, int coinValue, bool isSpecial = false)
     {
         if (GameManager.Instance == null) return;
-        if (!GameManager.Instance.fishInventory.ContainsKey(fishId)) return;
-        if (GameManager.Instance.fishInventory[fishId] <= 0) return;
 
-        // Remove one fish from inventory
-        GameManager.Instance.fishInventory[fishId]--;
-        if (GameManager.Instance.fishInventory[fishId] <= 0)
+        if (isSpecial)
         {
-            GameManager.Instance.fishInventory.Remove(fishId);
+            // Sell from special fish inventory
+            if (FishingSystem.Instance == null) return;
+            var specialInv = FishingSystem.Instance.specialFishInventory;
+            int idx = specialInv.FindIndex(f => f.id == fishId);
+            if (idx < 0) return;
+
+            FishData fish = specialInv[idx];
+            specialInv.RemoveAt(idx);
+
+            // Add coins
+            GameManager.Instance.AddCoins(coinValue);
+
+            // Play coin sound
+            PlayCoinSound();
+
+            // Show notification with special message
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Sold {fish.fishName} for {coinValue}g!", new Color(1f, 0.7f, 0.9f));
+            }
+
+            Debug.Log($"Sold SPECIAL fish {fishId} for {coinValue}g");
         }
-
-        // Add coins
-        GameManager.Instance.AddCoins(coinValue);
-
-        // Play coin sound
-        PlayCoinSound();
-
-        // Show notification
-        if (UIManager.Instance != null)
+        else
         {
-            UIManager.Instance.ShowLootNotification($"Sold fish for {coinValue}g!", new Color(1f, 0.85f, 0.3f));
-        }
+            // Sell from normal fish inventory
+            if (!GameManager.Instance.fishInventory.ContainsKey(fishId)) return;
+            if (GameManager.Instance.fishInventory[fishId] <= 0) return;
 
-        Debug.Log($"Sold fish {fishId} for {coinValue}g");
+            // Remove one fish from inventory
+            GameManager.Instance.fishInventory[fishId]--;
+            if (GameManager.Instance.fishInventory[fishId] <= 0)
+            {
+                GameManager.Instance.fishInventory.Remove(fishId);
+            }
+
+            // Add coins
+            GameManager.Instance.AddCoins(coinValue);
+
+            // Play coin sound
+            PlayCoinSound();
+
+            // Show notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Sold fish for {coinValue}g!", new Color(1f, 0.85f, 0.3f));
+            }
+
+            Debug.Log($"Sold fish {fishId} for {coinValue}g");
+        }
     }
 
     void OnDestroy()
@@ -426,4 +521,7 @@ public class FishDisplayData
     public int coinValue;
     public Color color;
     public int count;
+    public bool isSpecialFish;
+    public Color glowColor;
+    public float glowIntensity;
 }

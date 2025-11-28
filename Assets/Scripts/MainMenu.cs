@@ -10,7 +10,7 @@ using System.IO;
 public class MainMenu : MonoBehaviour
 {
     public static MainMenu Instance { get; private set; }
-    public static bool GameStarted { get; private set; } = false;
+    public static bool GameStarted { get; set; } = false;
 
     private enum MenuState { Main, Settings, SavedGames, LoadGame }
     private MenuState currentState = MenuState.Main;
@@ -242,10 +242,10 @@ public class MainMenu : MonoBehaviour
 
     void DrawMainMenu()
     {
-        float buttonWidth = 280;
-        float buttonHeight = 50;
-        float buttonSpacing = 15;
-        float startY = Screen.height / 2 - 50;
+        float buttonWidth = 180;
+        float buttonHeight = 32;
+        float buttonSpacing = 8;
+        float startY = Screen.height / 2 - 20;
         float centerX = (Screen.width - buttonWidth) / 2;
 
         string[] buttons = { "START NEW GAME", "LOAD GAME", "SAVED GAMES", "SETTINGS", "QUIT" };
@@ -464,7 +464,7 @@ public class MainMenu : MonoBehaviour
 
         // Text
         GUIStyle btnStyle = new GUIStyle(GUI.skin.label);
-        btnStyle.fontSize = 20;
+        btnStyle.fontSize = 13;
         btnStyle.fontStyle = FontStyle.Bold;
         btnStyle.alignment = TextAnchor.MiddleCenter;
         btnStyle.normal.textColor = hover ? Color.white : new Color(0.8f, 0.9f, 1f);

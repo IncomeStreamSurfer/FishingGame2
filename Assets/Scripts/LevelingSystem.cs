@@ -109,8 +109,11 @@ public class LevelingSystem : MonoBehaviour
         if (amount <= 0) return;
         if (currentXP >= MAX_XP) return;
 
+        // 500% XP boost (5x multiplier)
+        long boostedAmount = amount * 5;
+
         long oldXP = currentXP;
-        currentXP = Math.Min(currentXP + amount, MAX_XP);
+        currentXP = Math.Min(currentXP + boostedAmount, MAX_XP);
 
         OnXPGain?.Invoke(amount, currentXP);
 

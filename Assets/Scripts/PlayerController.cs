@@ -18,6 +18,12 @@ public class PlayerController : MonoBehaviour
     private bool isDead = false;
     private bool showDeathScreen = false;
 
+    [Header("Lie Down")]
+    private bool isLyingDown = false;
+    private float lieDownTransition = 0f;
+    private Quaternion standingRotation;
+    private Quaternion lyingRotation;
+
     private Vector3 moveDirection;
     private Rigidbody rb;
     private CameraController cameraController;
@@ -46,8 +52,8 @@ public class PlayerController : MonoBehaviour
         CheckGrounded();
 
         // Left mouse button to fish (only starts cast, rod animator handles the rest)
-        // Don't cast if any UI window is open
-        if (Input.GetMouseButtonDown(0) && !IsAnyUIOpen())
+        // Don't cast if any UI window is open or if lying down
+        if (Input.GetMouseButtonDown(0) && !IsAnyUIOpen() && !isLyingDown)
         {
             FishingRodAnimator rodAnimator = GetComponent<FishingRodAnimator>();
             // Only start fishing if line is not already out AND not already charging
@@ -61,18 +67,79 @@ public class PlayerController : MonoBehaviour
             // If line is out or charging, the rod animator handles the click
         }
 
-        // Space to jump
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        // Space to jump (can't jump while lying down)
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && !isLyingDown)
         {
             Jump();
         }
+
+        // CTRL to lie down / stand up
+        if (Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl))
+        {
+            ToggleLieDown();
+        }
+
+        // Handle lie down transition animation
+        UpdateLieDownTransition();
 
         // Check if fallen in water
         CheckWaterDeath();
     }
 
+    void ToggleLieDown()
+    {
+        isLyingDown = !isLyingDown;
+
+        if (isLyingDown)
+        {
+            // Store current rotation and set target lying rotation
+            standingRotation = transform.rotation;
+            // Lie on back, facing up
+            lyingRotation = Quaternion.Euler(-90f, transform.eulerAngles.y, 0f);
+            Debug.Log("Lying down to relax...");
+        }
+        else
+        {
+            Debug.Log("Standing back up!");
+        }
+    }
+
+    void UpdateLieDownTransition()
+    {
+        float transitionSpeed = 3f;
+
+        if (isLyingDown)
+        {
+            // Transition to lying down
+            lieDownTransition = Mathf.MoveTowards(lieDownTransition, 1f, Time.deltaTime * transitionSpeed);
+            transform.rotation = Quaternion.Slerp(standingRotation, lyingRotation, lieDownTransition);
+
+            // Lower the player slightly when lying down
+            if (lieDownTransition > 0.5f && rb != null)
+            {
+                // Keep player at ground level
+            }
+        }
+        else if (lieDownTransition > 0f)
+        {
+            // Transition back to standing
+            lieDownTransition = Mathf.MoveTowards(lieDownTransition, 0f, Time.deltaTime * transitionSpeed);
+
+            // Restore upright rotation
+            Quaternion targetStanding = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            transform.rotation = Quaternion.Slerp(lyingRotation, targetStanding, 1f - lieDownTransition);
+        }
+    }
+
     void HandleWoWMovement()
     {
+        // Can't move while lying down
+        if (isLyingDown)
+        {
+            moveDirection = Vector3.zero;
+            return;
+        }
+
         float horizontal = Input.GetAxisRaw("Horizontal"); // A/D for turning
         float vertical = Input.GetAxisRaw("Vertical");     // W/S for forward/back
 
@@ -230,6 +297,11 @@ public class PlayerController : MonoBehaviour
         return isDead;
     }
 
+    public bool IsLyingDown()
+    {
+        return isLyingDown;
+    }
+
     // Check if any UI window is currently open (blocks fishing)
     bool IsAnyUIOpen()
     {
@@ -240,7 +312,7 @@ public class PlayerController : MonoBehaviour
         if (BBQStation.Instance != null && BBQStation.Instance.IsOpen()) return true;
         if (ClothingShopNPC.Instance != null && ClothingShopNPC.Instance.IsShopOpen()) return true;
         if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsDialogueOpen()) return true;
-        if (QuestSystem.Instance != null && QuestSystem.Instance.HasPendingQuest()) return true;
+        if (GoldieBanksNPC.Instance != null && GoldieBanksNPC.Instance.IsDialogueOpen()) return true;
         return false;
     }
 }

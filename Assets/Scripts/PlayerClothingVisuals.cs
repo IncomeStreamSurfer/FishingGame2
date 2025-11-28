@@ -23,6 +23,28 @@ public class PlayerClothingVisuals : MonoBehaviour
     private GameObject caneObject;
     private GameObject parrotObject;
 
+    // Parrot flying behavior
+    private bool parrotFlying = false;
+    private float parrotFlyTimer = 0f;
+    private float nextFlyTime = 0f;
+    private Vector3 parrotFlyTarget;
+    private Vector3 parrotStartPos;
+    private float flyProgress = 0f;
+    private bool parrotReturning = false;
+    private string parrotMessage = "";
+    private float parrotMessageTimer = 0f;
+    private string[] parrotPhrases = {
+        "SQUAWK! Nice fish!",
+        "Polly wants a cracker!",
+        "ARRR! Shiver me timbers!",
+        "Pretty bird! Pretty bird!",
+        "Land ho!",
+        "SQUAWK! Keep fishing!",
+        "Pieces of eight!",
+        "Yo ho ho!",
+        "BAWK! Watch the water!"
+    };
+
     // References to body parts
     private Transform torso;
     private Transform head;
@@ -150,33 +172,33 @@ public class PlayerClothingVisuals : MonoBehaviour
         Material strawMat = new Material(Shader.Find("Standard"));
         strawMat.color = new Color(0.9f, 0.8f, 0.5f);
 
-        // Hat brim
+        // Hat brim (half size)
         GameObject brim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         brim.name = "HatBrim";
         brim.transform.SetParent(headClothingObject.transform);
-        brim.transform.localPosition = new Vector3(0, 0.4f, 0);
-        brim.transform.localScale = new Vector3(1.8f, 0.05f, 1.8f);
+        brim.transform.localPosition = new Vector3(0, 0.2f, 0);
+        brim.transform.localScale = new Vector3(0.9f, 0.025f, 0.9f);
         brim.GetComponent<Renderer>().material = strawMat;
         Object.Destroy(brim.GetComponent<Collider>());
 
-        // Hat crown
+        // Hat crown (half size)
         GameObject crown = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         crown.name = "HatCrown";
         crown.transform.SetParent(headClothingObject.transform);
-        crown.transform.localPosition = new Vector3(0, 0.6f, 0);
-        crown.transform.localScale = new Vector3(1.0f, 0.25f, 1.0f);
+        crown.transform.localPosition = new Vector3(0, 0.3f, 0);
+        crown.transform.localScale = new Vector3(0.5f, 0.125f, 0.5f);
         crown.GetComponent<Renderer>().material = strawMat;
         Object.Destroy(crown.GetComponent<Collider>());
 
-        // Hat band
+        // Hat band (half size)
         Material bandMat = new Material(Shader.Find("Standard"));
         bandMat.color = new Color(0.45f, 0.20f, 0.10f);
 
         GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         band.name = "HatBand";
         band.transform.SetParent(headClothingObject.transform);
-        band.transform.localPosition = new Vector3(0, 0.48f, 0);
-        band.transform.localScale = new Vector3(1.05f, 0.06f, 1.05f);
+        band.transform.localPosition = new Vector3(0, 0.24f, 0);
+        band.transform.localScale = new Vector3(0.525f, 0.03f, 0.525f);
         band.GetComponent<Renderer>().material = bandMat;
         Object.Destroy(band.GetComponent<Collider>());
     }
@@ -186,34 +208,34 @@ public class PlayerClothingVisuals : MonoBehaviour
         Material capMat = new Material(Shader.Find("Standard"));
         capMat.color = new Color(0.85f, 0.15f, 0.1f); // Red
 
-        // Cap dome
+        // Cap dome (half size)
         GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         dome.name = "CapDome";
         dome.transform.SetParent(headClothingObject.transform);
-        dome.transform.localPosition = new Vector3(0, 0.35f, 0);
-        dome.transform.localScale = new Vector3(1.15f, 0.5f, 1.15f);
+        dome.transform.localPosition = new Vector3(0, 0.175f, 0);
+        dome.transform.localScale = new Vector3(0.575f, 0.25f, 0.575f);
         dome.GetComponent<Renderer>().material = capMat;
         Object.Destroy(dome.GetComponent<Collider>());
 
-        // Cap visor/brim (front only)
+        // Cap visor/brim (half size)
         GameObject visor = GameObject.CreatePrimitive(PrimitiveType.Cube);
         visor.name = "CapVisor";
         visor.transform.SetParent(headClothingObject.transform);
-        visor.transform.localPosition = new Vector3(0, 0.25f, 0.5f);
+        visor.transform.localPosition = new Vector3(0, 0.125f, 0.25f);
         visor.transform.localRotation = Quaternion.Euler(-15, 0, 0);
-        visor.transform.localScale = new Vector3(0.8f, 0.05f, 0.5f);
+        visor.transform.localScale = new Vector3(0.4f, 0.025f, 0.25f);
         visor.GetComponent<Renderer>().material = capMat;
         Object.Destroy(visor.GetComponent<Collider>());
 
-        // Cap button on top
+        // Cap button on top (half size)
         Material whiteMat = new Material(Shader.Find("Standard"));
         whiteMat.color = Color.white;
 
         GameObject button = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         button.name = "CapButton";
         button.transform.SetParent(headClothingObject.transform);
-        button.transform.localPosition = new Vector3(0, 0.55f, 0);
-        button.transform.localScale = Vector3.one * 0.15f;
+        button.transform.localPosition = new Vector3(0, 0.275f, 0);
+        button.transform.localScale = Vector3.one * 0.075f;
         button.GetComponent<Renderer>().material = whiteMat;
         Object.Destroy(button.GetComponent<Collider>());
     }
@@ -224,33 +246,33 @@ public class PlayerClothingVisuals : MonoBehaviour
         hatMat.color = new Color(0.1f, 0.1f, 0.1f); // Black
         hatMat.SetFloat("_Glossiness", 0.7f);
 
-        // Hat brim
+        // Hat brim (half size)
         GameObject brim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         brim.name = "TopHatBrim";
         brim.transform.SetParent(headClothingObject.transform);
-        brim.transform.localPosition = new Vector3(0, 0.35f, 0);
-        brim.transform.localScale = new Vector3(1.5f, 0.04f, 1.5f);
+        brim.transform.localPosition = new Vector3(0, 0.175f, 0);
+        brim.transform.localScale = new Vector3(0.75f, 0.02f, 0.75f);
         brim.GetComponent<Renderer>().material = hatMat;
         Object.Destroy(brim.GetComponent<Collider>());
 
-        // Tall crown
+        // Tall crown (half size)
         GameObject crown = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         crown.name = "TopHatCrown";
         crown.transform.SetParent(headClothingObject.transform);
-        crown.transform.localPosition = new Vector3(0, 0.7f, 0);
-        crown.transform.localScale = new Vector3(0.9f, 0.4f, 0.9f);
+        crown.transform.localPosition = new Vector3(0, 0.35f, 0);
+        crown.transform.localScale = new Vector3(0.45f, 0.2f, 0.45f);
         crown.GetComponent<Renderer>().material = hatMat;
         Object.Destroy(crown.GetComponent<Collider>());
 
-        // Satin band
+        // Satin band (half size)
         Material bandMat = new Material(Shader.Find("Standard"));
         bandMat.color = new Color(0.6f, 0.1f, 0.1f); // Dark red
 
         GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         band.name = "TopHatBand";
         band.transform.SetParent(headClothingObject.transform);
-        band.transform.localPosition = new Vector3(0, 0.45f, 0);
-        band.transform.localScale = new Vector3(0.95f, 0.06f, 0.95f);
+        band.transform.localPosition = new Vector3(0, 0.225f, 0);
+        band.transform.localScale = new Vector3(0.475f, 0.03f, 0.475f);
         band.GetComponent<Renderer>().material = bandMat;
         Object.Destroy(band.GetComponent<Collider>());
     }
@@ -304,141 +326,259 @@ public class PlayerClothingVisuals : MonoBehaviour
 
     void CreateCoconutBra()
     {
-        if (torso == null) return;
+        if (torso == null || torsoRenderer == null) return;
 
-        topClothingObject = new GameObject("CoconutBra");
-        topClothingObject.transform.SetParent(torso.transform);
-        topClothingObject.transform.localPosition = Vector3.zero;
+        // Apply coconut bra as texture on torso - skin with coconut colored areas
+        // Create a procedural texture for the coconut bra pattern
+        Texture2D braTex = CreateCoconutBraTexture();
+        torsoRenderer.material.mainTexture = braTex;
+        torsoRenderer.material.color = Color.white; // Let texture show through
+    }
 
-        Material coconutMat = new Material(Shader.Find("Standard"));
-        coconutMat.color = new Color(0.55f, 0.35f, 0.2f);
+    Texture2D CreateCoconutBraTexture()
+    {
+        // Coconut bra texture - coconuts on FRONT (chest), straps only on BACK
+        // Texture wraps around capsule: x=0-0.25 is back-left, 0.25-0.75 is front, 0.75-1.0 is back-right
+        int size = 64;
+        Texture2D tex = new Texture2D(size, size);
+        Color skin = new Color(0.85f, 0.7f, 0.55f);
+        Color coconut = new Color(0.55f, 0.35f, 0.2f);
+        Color coconutDark = new Color(0.4f, 0.25f, 0.15f);  // Darker coconut detail
+        Color rope = new Color(0.6f, 0.5f, 0.35f);
 
-        // Two coconut halves
-        for (int side = -1; side <= 1; side += 2)
+        // Fill with skin color
+        for (int y = 0; y < size; y++)
         {
-            GameObject coconut = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            coconut.name = "Coconut";
-            coconut.transform.SetParent(topClothingObject.transform);
-            coconut.transform.localPosition = new Vector3(side * 0.22f, 0.15f, 0.52f);
-            coconut.transform.localScale = new Vector3(0.4f, 0.35f, 0.25f);
-            coconut.GetComponent<Renderer>().material = coconutMat;
-            Object.Destroy(coconut.GetComponent<Collider>());
+            for (int x = 0; x < size; x++)
+            {
+                tex.SetPixel(x, y, skin);
+            }
         }
 
-        // String/rope
-        Material ropeMat = new Material(Shader.Find("Standard"));
-        ropeMat.color = new Color(0.6f, 0.5f, 0.35f);
+        // Coconuts on FRONT only (middle 50% of texture = x from 16 to 48 on 64px texture)
+        // Front area: x = 16 to 48 (center of texture wrap)
+        int coconutRadius = 8;
+        int leftCoconutX = 24;   // Left coconut on front
+        int rightCoconutX = 40;  // Right coconut on front
+        int coconutY = size / 2 + 4;
 
-        GameObject rope = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        rope.name = "BraRope";
-        rope.transform.SetParent(topClothingObject.transform);
-        rope.transform.localPosition = new Vector3(0, 0.15f, 0.4f);
-        rope.transform.localRotation = Quaternion.Euler(0, 0, 90);
-        rope.transform.localScale = new Vector3(0.03f, 0.45f, 0.03f);
-        rope.GetComponent<Renderer>().material = ropeMat;
-        Object.Destroy(rope.GetComponent<Collider>());
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                // Only draw coconuts in front area (x between 16 and 48)
+                if (x >= 12 && x <= 52)
+                {
+                    // Left coconut
+                    float distLeft = Mathf.Sqrt((x - leftCoconutX) * (x - leftCoconutX) + (y - coconutY) * (y - coconutY));
+                    if (distLeft < coconutRadius)
+                    {
+                        // Add some texture variation to coconut
+                        float shade = 1f - distLeft / coconutRadius * 0.3f;
+                        tex.SetPixel(x, y, Color.Lerp(coconutDark, coconut, shade));
+                    }
+
+                    // Right coconut
+                    float distRight = Mathf.Sqrt((x - rightCoconutX) * (x - rightCoconutX) + (y - coconutY) * (y - coconutY));
+                    if (distRight < coconutRadius)
+                    {
+                        float shade = 1f - distRight / coconutRadius * 0.3f;
+                        tex.SetPixel(x, y, Color.Lerp(coconutDark, coconut, shade));
+                    }
+                }
+            }
+        }
+
+        // Draw rope/straps that go AROUND the torso (full width for straps at back)
+        int ropeY = coconutY + coconutRadius;
+        for (int x = 0; x < size; x++)
+        {
+            // Horizontal strap across top (goes all around)
+            for (int y = ropeY - 1; y <= ropeY + 1; y++)
+            {
+                if (y >= 0 && y < size)
+                    tex.SetPixel(x, y, rope);
+            }
+        }
+
+        // Vertical straps on the BACK (x < 12 or x > 52 = back area)
+        // Two diagonal straps that cross in an X pattern on back
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                // Back left area (x < 12)
+                if (x < 14)
+                {
+                    // Diagonal strap going up-right
+                    int targetY1 = coconutY + (int)((12 - x) * 0.8f);
+                    if (Mathf.Abs(y - targetY1) < 2)
+                        tex.SetPixel(x, y, rope);
+                }
+                // Back right area (x > 50)
+                if (x > 50)
+                {
+                    // Diagonal strap going up-left
+                    int targetY2 = coconutY + (int)((x - 52) * 0.8f);
+                    if (Mathf.Abs(y - targetY2) < 2)
+                        tex.SetPixel(x, y, rope);
+                }
+            }
+        }
+
+        // Center back strap (vertical line at x=0 and x=63 which wrap together)
+        for (int y = coconutY - 5; y < size; y++)
+        {
+            if (y >= 0 && y < size)
+            {
+                tex.SetPixel(0, y, rope);
+                tex.SetPixel(1, y, rope);
+                tex.SetPixel(62, y, rope);
+                tex.SetPixel(63, y, rope);
+            }
+        }
+
+        tex.Apply();
+        tex.filterMode = FilterMode.Point;
+        return tex;
     }
 
     void CreateLumberjackShirt()
     {
         if (torso == null || torsoRenderer == null) return;
 
-        // Base red color
-        torsoRenderer.material.color = new Color(0.75f, 0.12f, 0.08f);
+        // Apply red/black checkerboard texture to torso
+        Texture2D lumberjackTex = CreateLumberjackTexture();
+        torsoRenderer.material.mainTexture = lumberjackTex;
+        torsoRenderer.material.color = Color.white; // Let texture show through
+    }
 
-        topClothingObject = new GameObject("LumberjackPattern");
-        topClothingObject.transform.SetParent(torso.transform);
-        topClothingObject.transform.localPosition = Vector3.zero;
-        topClothingObject.transform.localRotation = Quaternion.identity;
+    Texture2D CreateLumberjackTexture()
+    {
+        int size = 64;
+        int checkSize = 8; // Size of each checker square
+        Texture2D tex = new Texture2D(size, size);
+        Color red = new Color(0.75f, 0.12f, 0.08f);
+        Color black = new Color(0.1f, 0.08f, 0.05f);
 
-        Material blackMat = new Material(Shader.Find("Standard"));
-        blackMat.color = new Color(0.1f, 0.08f, 0.05f);
-
-        // Horizontal stripes
-        for (int i = 0; i < 3; i++)
+        for (int y = 0; y < size; y++)
         {
-            GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            stripe.name = "HStripe" + i;
-            stripe.transform.SetParent(topClothingObject.transform);
-            stripe.transform.localPosition = new Vector3(0, -0.15f + i * 0.15f, 0.01f);
-            stripe.transform.localScale = new Vector3(1.05f, 0.03f, 1.02f);
-            stripe.GetComponent<Renderer>().material = blackMat;
-            Object.Destroy(stripe.GetComponent<Collider>());
+            for (int x = 0; x < size; x++)
+            {
+                // Determine which checker square we're in
+                int checkX = x / checkSize;
+                int checkY = y / checkSize;
+
+                // Alternate colors based on position
+                bool isRed = (checkX + checkY) % 2 == 0;
+                tex.SetPixel(x, y, isRed ? red : black);
+            }
         }
 
-        // Vertical stripes
-        for (int i = 0; i < 2; i++)
-        {
-            GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            stripe.name = "VStripe" + i;
-            stripe.transform.SetParent(topClothingObject.transform);
-            stripe.transform.localPosition = new Vector3(-0.15f + i * 0.3f, 0, 0.015f);
-            stripe.transform.localScale = new Vector3(0.03f, 1.05f, 1.01f);
-            stripe.GetComponent<Renderer>().material = blackMat;
-            Object.Destroy(stripe.GetComponent<Collider>());
-        }
+        tex.Apply();
+        tex.filterMode = FilterMode.Point;
+        tex.wrapMode = TextureWrapMode.Repeat;
+        return tex;
     }
 
     void CreateTuxedoTop()
     {
         if (torso == null || torsoRenderer == null) return;
 
-        // Black jacket
-        torsoRenderer.material.color = new Color(0.08f, 0.08f, 0.08f);
+        // Apply tuxedo texture to torso - black jacket with white shirt front and tie
+        Texture2D tuxedoTex = CreateTuxedoTexture();
+        torsoRenderer.material.mainTexture = tuxedoTex;
+        torsoRenderer.material.color = Color.white; // Let texture show through
+    }
 
-        topClothingObject = new GameObject("TuxedoTop");
-        topClothingObject.transform.SetParent(torso.transform);
-        topClothingObject.transform.localPosition = Vector3.zero;
+    Texture2D CreateTuxedoTexture()
+    {
+        int size = 64;
+        Texture2D tex = new Texture2D(size, size);
+        Color black = new Color(0.08f, 0.08f, 0.08f);
+        Color white = new Color(0.95f, 0.95f, 0.95f);
+        Color darkGray = new Color(0.05f, 0.05f, 0.05f);
+        Color lapelGray = new Color(0.12f, 0.12f, 0.12f);
 
-        // White shirt front (visible under jacket)
-        Material whiteMat = new Material(Shader.Find("Standard"));
-        whiteMat.color = new Color(0.95f, 0.95f, 0.95f);
-
-        GameObject shirtFront = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        shirtFront.name = "ShirtFront";
-        shirtFront.transform.SetParent(topClothingObject.transform);
-        shirtFront.transform.localPosition = new Vector3(0, 0, 0.52f);
-        shirtFront.transform.localScale = new Vector3(0.35f, 0.9f, 0.02f);
-        shirtFront.GetComponent<Renderer>().material = whiteMat;
-        Object.Destroy(shirtFront.GetComponent<Collider>());
-
-        // Black tie
-        Material tieMat = new Material(Shader.Find("Standard"));
-        tieMat.color = new Color(0.05f, 0.05f, 0.05f);
-
-        GameObject tie = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        tie.name = "Tie";
-        tie.transform.SetParent(topClothingObject.transform);
-        tie.transform.localPosition = new Vector3(0, -0.1f, 0.54f);
-        tie.transform.localScale = new Vector3(0.12f, 0.6f, 0.02f);
-        tie.GetComponent<Renderer>().material = tieMat;
-        Object.Destroy(tie.GetComponent<Collider>());
-
-        // Tie knot
-        GameObject knot = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        knot.name = "TieKnot";
-        knot.transform.SetParent(topClothingObject.transform);
-        knot.transform.localPosition = new Vector3(0, 0.25f, 0.54f);
-        knot.transform.localScale = new Vector3(0.15f, 0.1f, 0.03f);
-        knot.GetComponent<Renderer>().material = tieMat;
-        Object.Destroy(knot.GetComponent<Collider>());
-
-        // Lapels
-        Material lapelMat = new Material(Shader.Find("Standard"));
-        lapelMat.color = new Color(0.06f, 0.06f, 0.06f);
-        lapelMat.SetFloat("_Glossiness", 0.5f);
-
-        for (int side = -1; side <= 1; side += 2)
+        // Fill with black (jacket)
+        for (int y = 0; y < size; y++)
         {
-            GameObject lapel = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            lapel.name = "Lapel";
-            lapel.transform.SetParent(topClothingObject.transform);
-            lapel.transform.localPosition = new Vector3(side * 0.25f, 0.1f, 0.53f);
-            lapel.transform.localRotation = Quaternion.Euler(0, 0, side * -15);
-            lapel.transform.localScale = new Vector3(0.2f, 0.5f, 0.02f);
-            lapel.GetComponent<Renderer>().material = lapelMat;
-            Object.Destroy(lapel.GetComponent<Collider>());
+            for (int x = 0; x < size; x++)
+            {
+                tex.SetPixel(x, y, black);
+            }
         }
+
+        // White shirt front (center strip)
+        int shirtLeft = size / 2 - 8;
+        int shirtRight = size / 2 + 8;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = shirtLeft; x < shirtRight; x++)
+            {
+                tex.SetPixel(x, y, white);
+            }
+        }
+
+        // Black tie (center of white shirt)
+        int tieLeft = size / 2 - 3;
+        int tieRight = size / 2 + 3;
+        for (int y = 0; y < size - 10; y++)
+        {
+            for (int x = tieLeft; x < tieRight; x++)
+            {
+                tex.SetPixel(x, y, darkGray);
+            }
+        }
+
+        // Tie knot (wider at top)
+        int knotTop = size - 12;
+        for (int y = knotTop; y < knotTop + 6; y++)
+        {
+            for (int x = size / 2 - 5; x < size / 2 + 5; x++)
+            {
+                tex.SetPixel(x, y, darkGray);
+            }
+        }
+
+        // Lapels (diagonal darker areas on sides of shirt)
+        for (int y = size / 3; y < size; y++)
+        {
+            // Left lapel
+            int lapelX = shirtLeft - (size - y) / 4;
+            for (int x = Mathf.Max(0, lapelX - 4); x < lapelX + 4 && x < shirtLeft; x++)
+            {
+                if (x >= 0) tex.SetPixel(x, y, lapelGray);
+            }
+
+            // Right lapel
+            lapelX = shirtRight + (size - y) / 4;
+            for (int x = shirtRight; x < lapelX + 4 && x < size; x++)
+            {
+                tex.SetPixel(x, y, lapelGray);
+            }
+        }
+
+        // Buttons on shirt (3 small dots)
+        Color buttonColor = new Color(0.8f, 0.8f, 0.8f);
+        int[] buttonYs = { size / 4, size / 2, size * 3 / 4 };
+        foreach (int by in buttonYs)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int px = size / 2 + dx;
+                    int py = by + dy;
+                    if (px >= 0 && px < size && py >= 0 && py < size)
+                        tex.SetPixel(px, py, buttonColor);
+                }
+            }
+        }
+
+        tex.Apply();
+        tex.filterMode = FilterMode.Point;
+        return tex;
     }
 
     void RemoveTopClothing()
@@ -447,6 +587,12 @@ public class PlayerClothingVisuals : MonoBehaviour
         {
             Destroy(topClothingObject);
             topClothingObject = null;
+        }
+
+        // Clear any texture on torso
+        if (torsoRenderer != null)
+        {
+            torsoRenderer.material.mainTexture = null;
         }
     }
 
@@ -752,11 +898,55 @@ public class PlayerClothingVisuals : MonoBehaviour
     {
         if (parrotObject == null) return;
 
+        // Initialize fly timer
+        if (nextFlyTime == 0f)
+        {
+            nextFlyTime = Time.time + Random.Range(20f, 40f);
+        }
+
+        // Check for ESC to dismiss message
+        if (!string.IsNullOrEmpty(parrotMessage) && Input.GetKeyDown(KeyCode.Escape))
+        {
+            parrotMessage = "";
+            parrotMessageTimer = 0f;
+        }
+
+        // Update message timer
+        if (parrotMessageTimer > 0f)
+        {
+            parrotMessageTimer -= Time.deltaTime;
+            if (parrotMessageTimer <= 0f)
+            {
+                parrotMessage = "";
+            }
+        }
+
+        // Check if it's time to fly away
+        if (!parrotFlying && Time.time >= nextFlyTime)
+        {
+            StartParrotFlight();
+        }
+
+        if (parrotFlying)
+        {
+            AnimateParrotFlight();
+        }
+        else
+        {
+            // Normal shoulder animation
+            AnimateParrotOnShoulder();
+        }
+    }
+
+    void AnimateParrotOnShoulder()
+    {
         // Gentle bobbing and head turning
         float bob = Mathf.Sin(Time.time * 2f) * 0.01f;
         float headTurn = Mathf.Sin(Time.time * 0.5f) * 15f;
 
+        parrotObject.transform.SetParent(torso);
         parrotObject.transform.localPosition = new Vector3(0.35f, 0.35f + bob, 0.05f);
+        parrotObject.transform.localRotation = Quaternion.identity;
 
         Transform parrotHead = parrotObject.transform.Find("ParrotHead");
         if (parrotHead != null)
@@ -773,6 +963,155 @@ public class PlayerClothingVisuals : MonoBehaviour
             {
                 float flap = Mathf.Sin(flapCycle * 30f) * 20f;
                 wing.localRotation = Quaternion.Euler(0, -20, 15 + flap);
+            }
+        }
+    }
+
+    void StartParrotFlight()
+    {
+        parrotFlying = true;
+        parrotReturning = false;
+        flyProgress = 0f;
+        parrotStartPos = parrotObject.transform.position;
+
+        // Unparent from player for world-space flight
+        parrotObject.transform.SetParent(null);
+
+        // Pick a random direction to fly
+        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float distance = Random.Range(8f, 15f);
+        float height = Random.Range(5f, 10f);
+        parrotFlyTarget = parrotStartPos + new Vector3(Mathf.Cos(angle) * distance, height, Mathf.Sin(angle) * distance);
+
+        // Squawk when flying away
+        parrotMessage = "SQUAWK! I'll be back!";
+        parrotMessageTimer = 2f;
+    }
+
+    void AnimateParrotFlight()
+    {
+        Transform wing = parrotObject.transform.Find("ParrotWing");
+
+        if (!parrotReturning)
+        {
+            // Flying away
+            flyProgress += Time.deltaTime * 0.5f;
+
+            if (flyProgress >= 1f)
+            {
+                // Start returning after a delay
+                parrotReturning = true;
+                flyProgress = 0f;
+                parrotStartPos = parrotFlyTarget;
+            }
+            else
+            {
+                // Fly to target with arc
+                float arc = Mathf.Sin(flyProgress * Mathf.PI) * 3f;
+                Vector3 newPos = Vector3.Lerp(parrotStartPos, parrotFlyTarget, flyProgress);
+                newPos.y += arc;
+                parrotObject.transform.position = newPos;
+
+                // Face flying direction
+                Vector3 dir = (parrotFlyTarget - parrotStartPos).normalized;
+                if (dir.magnitude > 0.1f)
+                {
+                    parrotObject.transform.rotation = Quaternion.LookRotation(dir);
+                }
+
+                // Constant wing flapping while flying
+                if (wing != null)
+                {
+                    float flap = Mathf.Sin(Time.time * 20f) * 45f;
+                    wing.localRotation = Quaternion.Euler(0, -20, 15 + flap);
+                }
+            }
+        }
+        else
+        {
+            // Flying back to player
+            flyProgress += Time.deltaTime * 0.6f;
+
+            Vector3 playerShoulderPos = torso != null ? torso.position + torso.right * 0.35f + torso.up * 0.35f + torso.forward * 0.05f : transform.position;
+
+            if (flyProgress >= 1f)
+            {
+                // Land on shoulder
+                parrotFlying = false;
+                parrotObject.transform.SetParent(torso);
+                parrotObject.transform.localPosition = new Vector3(0.35f, 0.35f, 0.05f);
+                parrotObject.transform.localRotation = Quaternion.identity;
+
+                // Schedule next flight
+                nextFlyTime = Time.time + Random.Range(30f, 60f);
+
+                // Say something when landing
+                parrotMessage = parrotPhrases[Random.Range(0, parrotPhrases.Length)];
+                parrotMessageTimer = 3f;
+            }
+            else
+            {
+                // Fly back to player
+                float arc = Mathf.Sin(flyProgress * Mathf.PI) * 2f;
+                Vector3 newPos = Vector3.Lerp(parrotStartPos, playerShoulderPos, flyProgress);
+                newPos.y += arc;
+                parrotObject.transform.position = newPos;
+
+                // Face player
+                Vector3 dir = (playerShoulderPos - parrotObject.transform.position).normalized;
+                if (dir.magnitude > 0.1f)
+                {
+                    parrotObject.transform.rotation = Quaternion.LookRotation(dir);
+                }
+
+                // Wing flapping
+                if (wing != null)
+                {
+                    float flap = Mathf.Sin(Time.time * 20f) * 45f;
+                    wing.localRotation = Quaternion.Euler(0, -20, 15 + flap);
+                }
+            }
+        }
+    }
+
+    void OnGUI()
+    {
+        // Draw parrot speech bubble
+        if (!string.IsNullOrEmpty(parrotMessage) && parrotObject != null && MainMenu.GameStarted)
+        {
+            Vector3 screenPos = Camera.main != null ? Camera.main.WorldToScreenPoint(parrotObject.transform.position + Vector3.up * 0.5f) : Vector3.zero;
+
+            if (screenPos.z > 0)
+            {
+                float bubbleWidth = 180;
+                float bubbleHeight = 50;
+                float bubbleX = screenPos.x - bubbleWidth / 2;
+                float bubbleY = Screen.height - screenPos.y - bubbleHeight - 20;
+
+                // Speech bubble background
+                GUI.color = new Color(1f, 1f, 0.8f, 0.95f);
+                GUI.DrawTexture(new Rect(bubbleX, bubbleY, bubbleWidth, bubbleHeight), Texture2D.whiteTexture);
+                GUI.color = new Color(0.3f, 0.3f, 0.2f);
+                GUI.DrawTexture(new Rect(bubbleX + 2, bubbleY + 2, bubbleWidth - 4, bubbleHeight - 4), Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 1f, 0.8f);
+                GUI.DrawTexture(new Rect(bubbleX + 4, bubbleY + 4, bubbleWidth - 8, bubbleHeight - 8), Texture2D.whiteTexture);
+
+                // Message text
+                GUIStyle msgStyle = new GUIStyle();
+                msgStyle.fontSize = 11;
+                msgStyle.fontStyle = FontStyle.Bold;
+                msgStyle.alignment = TextAnchor.MiddleCenter;
+                msgStyle.normal.textColor = new Color(0.2f, 0.15f, 0.1f);
+                msgStyle.wordWrap = true;
+                GUI.color = Color.white;
+                GUI.Label(new Rect(bubbleX + 8, bubbleY + 8, bubbleWidth - 16, bubbleHeight - 16), parrotMessage, msgStyle);
+
+                // ESC hint
+                GUIStyle hintStyle = new GUIStyle();
+                hintStyle.fontSize = 9;
+                hintStyle.alignment = TextAnchor.MiddleCenter;
+                hintStyle.normal.textColor = new Color(0.5f, 0.5f, 0.4f);
+                GUI.Label(new Rect(bubbleX, bubbleY + bubbleHeight + 2, bubbleWidth, 14), "[ESC to dismiss]", hintStyle);
             }
         }
     }

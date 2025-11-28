@@ -31,16 +31,21 @@ public class WeedBagCollectible : MonoBehaviour
         bag.GetComponent<Renderer>().sharedMaterial = bagMat;
         Object.Destroy(bag.GetComponent<Collider>());
 
-        // Green glow effect
+        // GOLDEN glow effect - faint but visible
         Material glowMat = new Material(Shader.Find("Standard"));
-        glowMat.color = new Color(0.2f, 0.8f, 0.3f, 0.3f);
+        glowMat.color = new Color(1f, 0.85f, 0.3f, 0.4f);
         glowMat.EnableKeyword("_EMISSION");
-        glowMat.SetColor("_EmissionColor", new Color(0.2f, 0.6f, 0.2f) * 2f);
+        glowMat.SetColor("_EmissionColor", new Color(1f, 0.8f, 0.2f) * 1.5f); // Golden glow
+        glowMat.SetFloat("_Mode", 3); // Transparent
+        glowMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        glowMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        glowMat.EnableKeyword("_ALPHABLEND_ON");
+        glowMat.renderQueue = 3000;
 
         glowEffect = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         glowEffect.transform.SetParent(transform);
         glowEffect.transform.localPosition = Vector3.zero;
-        glowEffect.transform.localScale = Vector3.one * 0.5f;
+        glowEffect.transform.localScale = Vector3.one * 0.6f;
         glowEffect.GetComponent<Renderer>().sharedMaterial = glowMat;
         Object.Destroy(glowEffect.GetComponent<Collider>());
     }
