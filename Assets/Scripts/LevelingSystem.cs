@@ -211,4 +211,13 @@ public class LevelingSystem : MonoBehaviour
     {
         return 1000;
     }
+
+    // Reset progress on death (keeps cosmetics)
+    public void ResetProgress()
+    {
+        Debug.Log($"Resetting XP progress - lost level {currentLevel} and {currentXP:N0} XP");
+        currentXP = 0;
+        currentLevel = 1;
+        bonusLevels = 0;
+    }
 }

@@ -9,20 +9,29 @@ public class UIManager : MonoBehaviour
     private bool inventoryOpen = false;
     private bool shopOpen = false;
     private int selectedRodIndex = 0;
-    private int currentTab = 0; // 0=Equipment, 1=Quests, 2=Shop
+    private int currentTab = 0; // 0=Equipment, 1=Quests, 2=Shop, 3=Wardrobe
+
+    // Wardrobe data - tracks owned clothing items
+    private List<WardrobeItem> ownedClothing = new List<WardrobeItem>();
+    private float wardrobeScrollPos = 0f;
 
     private List<HighscoreEntry> highscores = new List<HighscoreEntry>();
 
-    // Rod data
-    private string[] rodNames = { "Basic Rod", "Bronze Rod", "Silver Rod", "Golden Rod", "Legendary Rod" };
+    // Rod data - Basic (brown), Bronze (bronze metallic), Silver (silver metallic), Golden (golden glow), Legendary (purple glow), Epic (yellow smoke/glow)
+    private string[] rodNames = { "Basic Rod", "Bronze Rod", "Silver Rod", "Golden Rod", "Legendary Rod", "Epic Rod" };
     private Color[] rodColors = {
-        new Color(0.6f, 0.4f, 0.2f),
-        new Color(0.8f, 0.5f, 0.2f),
-        new Color(0.75f, 0.75f, 0.8f),
-        new Color(1f, 0.85f, 0.3f),
-        new Color(0.8f, 0.4f, 1f)
+        new Color(0.45f, 0.30f, 0.15f),   // Basic - brown wood
+        new Color(0.80f, 0.50f, 0.20f),   // Bronze - bronze metallic
+        new Color(0.85f, 0.85f, 0.90f),   // Silver - silver metallic
+        new Color(1f, 0.85f, 0.30f),      // Golden - golden
+        new Color(0.70f, 0.30f, 1f),      // Legendary - purple glow
+        new Color(1f, 0.95f, 0.20f)       // Epic - bright yellow
     };
-    private bool[] rodsUnlocked = { true, false, false, false, false };
+    private float[] rodMetallic = { 0.1f, 0.7f, 0.85f, 0.9f, 0.6f, 0.95f };  // Metallic sheen per rod
+    private float[] rodGlossiness = { 0.3f, 0.6f, 0.8f, 0.85f, 0.7f, 0.9f }; // Glossiness per rod
+    private bool[] rodHasGlow = { false, false, false, true, true, true };   // Whether rod glows
+    private bool[] rodHasSmoke = { false, false, false, false, false, true }; // Whether rod has smoke effect (Epic only)
+    private bool[] rodsUnlocked = { true, false, false, false, false, false };
 
     // Shop items
     private ShopItem[] shopItems;
@@ -58,6 +67,12 @@ public class UIManager : MonoBehaviour
     // NPC Dialog
     private bool npcDialogOpen = false;
     private string currentNPCName = "";
+
+    // Quest tracker visibility
+    private bool questTrackerHidden = false;
+
+    // Close button style
+    private GUIStyle closeButtonStyle;
 
     void Awake()
     {
@@ -108,6 +123,7 @@ public class UIManager : MonoBehaviour
             new ShopItem("Silver Rod", "Good quality rod", 500, ShopItemType.Rod),
             new ShopItem("Golden Rod", "Excellent rod", 2000, ShopItemType.Rod),
             new ShopItem("Legendary Rod", "The best rod money can buy", 10000, ShopItemType.Rod),
+            new ShopItem("Epic Rod", "Glowing yellow masterpiece!", 100000, ShopItemType.Rod),
             new ShopItem("XP Boost (1hr)", "Double XP for 1 hour", 1000, ShopItemType.Consumable),
             new ShopItem("Fish Finder", "Shows fish locations for 5 min", 750, ShopItemType.Consumable),
             new ShopItem("Tackle Box", "Store more bait types", 1500, ShopItemType.Consumable),
@@ -158,6 +174,19 @@ public class UIManager : MonoBehaviour
         tabActiveStyle = new GUIStyle(buttonStyle);
         tabActiveStyle.normal.background = tabActiveTex;
         tabActiveStyle.normal.textColor = new Color(1f, 0.95f, 0.7f);
+
+        // Close button style (X button)
+        Texture2D closeTex = MakeTexture(2, 2, new Color(0.6f, 0.15f, 0.1f, 0.9f));
+        Texture2D closeHoverTex = MakeTexture(2, 2, new Color(0.8f, 0.2f, 0.15f, 0.95f));
+        closeButtonStyle = new GUIStyle();
+        closeButtonStyle.normal.background = closeTex;
+        closeButtonStyle.hover.background = closeHoverTex;
+        closeButtonStyle.active.background = closeHoverTex;
+        closeButtonStyle.normal.textColor = Color.white;
+        closeButtonStyle.hover.textColor = Color.white;
+        closeButtonStyle.fontSize = 11;
+        closeButtonStyle.fontStyle = FontStyle.Bold;
+        closeButtonStyle.alignment = TextAnchor.MiddleCenter;
 
         stylesInitialized = true;
     }
@@ -214,12 +243,13 @@ public class UIManager : MonoBehaviour
             if (coins >= 500) rodsUnlocked[2] = true;
             if (coins >= 2000) rodsUnlocked[3] = true;
             if (coins >= 10000) rodsUnlocked[4] = true;
+            if (coins >= 100000) rodsUnlocked[5] = true;
         }
 
-        // Check for epic rod from bottle
+        // Check for epic rod from bottle (unlocks Legendary when obtained this way)
         if (BottleEventSystem.Instance != null && BottleEventSystem.Instance.hasEpicFishingRod)
         {
-            rodsUnlocked[4] = true;
+            rodsUnlocked[4] = true; // Legendary rod from bottle
         }
 
         // Update notification timers
@@ -411,55 +441,66 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        // Close X button in corner
-        if (GUI.Button(new Rect(dialogX + dialogWidth - 35, dialogY + 5, 30, 25), "X", buttonStyle))
+        // Close X button in corner (top-left as requested)
+        if (GUI.Button(new Rect(dialogX + 5, dialogY + 5, 25, 22), "X", closeButtonStyle))
         {
             CloseNPCDialog();
+        }
+
+        // Right-click outside dialog to close
+        if (Input.GetMouseButtonDown(1))
+        {
+            Vector2 mousePos = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+            Rect dialogRect = new Rect(dialogX, dialogY, dialogWidth, dialogHeight);
+            if (!dialogRect.Contains(mousePos))
+            {
+                CloseNPCDialog();
+            }
         }
     }
 
     void DrawHUD()
     {
-        // Bottom center action bar
-        float barWidth = 380;
-        float barHeight = 70;
+        // Bottom center action bar (scaled down ~85%)
+        float barWidth = 320;
+        float barHeight = 58;
         float barX = (Screen.width - barWidth) / 2;
-        float barY = Screen.height - barHeight - 10;
+        float barY = Screen.height - barHeight - 8;
 
-        GUI.Box(new Rect(barX - 10, barY - 5, barWidth + 20, barHeight + 10), "", frameStyle);
+        GUI.Box(new Rect(barX - 8, barY - 4, barWidth + 16, barHeight + 8), "", frameStyle);
 
         // Rod slot
-        DrawEquipmentSlot(new Rect(barX, barY, 55, 55), "ROD", rodColors[selectedRodIndex]);
+        DrawEquipmentSlot(new Rect(barX, barY, 46, 46), "ROD", rodColors[selectedRodIndex]);
 
         // Wallet
-        DrawWalletSlot(new Rect(barX + 60, barY, 55, 55));
+        DrawWalletSlot(new Rect(barX + 50, barY, 46, 46));
 
         // Fish count
-        DrawFishCountSlot(new Rect(barX + 120, barY, 55, 55));
+        DrawFishCountSlot(new Rect(barX + 100, barY, 46, 46));
 
         // Level display
-        DrawLevelSlot(new Rect(barX + 180, barY, 70, 55));
+        DrawLevelSlot(new Rect(barX + 150, barY, 58, 46));
 
         // Buttons
-        if (GUI.Button(new Rect(barX + 260, barY + 5, 50, 22), "BAG", buttonStyle))
+        if (GUI.Button(new Rect(barX + 216, barY + 4, 42, 18), "BAG", buttonStyle))
         {
             inventoryOpen = !inventoryOpen;
             currentTab = 0;
         }
-        if (GUI.Button(new Rect(barX + 315, barY + 5, 55, 22), "SHOP", buttonStyle))
+        if (GUI.Button(new Rect(barX + 262, barY + 4, 48, 18), "SHOP", buttonStyle))
         {
             inventoryOpen = true;
             currentTab = 2;
         }
-        if (GUI.Button(new Rect(barX + 260, barY + 32, 110, 22), "QUESTS", buttonStyle))
+        if (GUI.Button(new Rect(barX + 216, barY + 26, 94, 18), "QUESTS", buttonStyle))
         {
             inventoryOpen = true;
             currentTab = 1;
         }
 
-        // Controls (top left)
-        GUI.Label(new Rect(10, 10, 200, 20), "WASD - Move | SPACE - Jump", labelStyle);
-        GUI.Label(new Rect(10, 28, 200, 20), "LEFT CLICK - Fish | I - Menu", labelStyle);
+        // Controls (top left - smaller text)
+        GUI.Label(new Rect(8, 8, 180, 16), "WASD - Move | SPACE - Jump", labelStyle);
+        GUI.Label(new Rect(8, 22, 180, 16), "LEFT CLICK - Fish | I - Menu", labelStyle);
 
         // XP Bar (top center)
         DrawXPBar();
@@ -551,10 +592,10 @@ public class UIManager : MonoBehaviour
     {
         if (LevelingSystem.Instance == null) return;
 
-        float barWidth = 300;
-        float barHeight = 18;
+        float barWidth = 250;
+        float barHeight = 15;
         float barX = (Screen.width - barWidth) / 2;
-        float barY = 8;
+        float barY = 6;
 
         // Background
         GUI.DrawTexture(new Rect(barX, barY, barWidth, barHeight), MakeTexture(2, 2, new Color(0.1f, 0.1f, 0.1f, 0.8f)));
@@ -567,23 +608,24 @@ public class UIManager : MonoBehaviour
         // Text
         GUIStyle xpStyle = new GUIStyle();
         xpStyle.normal.textColor = Color.white;
-        xpStyle.fontSize = 11;
+        xpStyle.fontSize = 9;
         xpStyle.alignment = TextAnchor.MiddleCenter;
 
         long currentXP = LevelingSystem.Instance.GetCurrentXP();
         long toNext = LevelingSystem.Instance.GetXPToNextLevel();
         int level = LevelingSystem.Instance.GetLevel();
 
-        string xpText = $"Level {level} | {FormatNumber(currentXP)} XP | {FormatNumber(toNext)} to next";
+        string xpText = $"Lv{level} | {FormatNumber(currentXP)} XP | {FormatNumber(toNext)} to next";
         GUI.Label(new Rect(barX, barY, barWidth, barHeight), xpText, xpStyle);
     }
 
     void DrawQuestTracker()
     {
         if (QuestSystem.Instance == null) return;
+        if (questTrackerHidden) return; // Allow hiding
 
-        float x = Screen.width - 220;
-        float y = 50;
+        float x = Screen.width - 185;
+        float y = 160; // Moved lower down
 
         bool hasActiveQuest = QuestSystem.Instance.HasActiveQuest();
         bool hasPendingQuest = QuestSystem.Instance.HasPendingQuest();
@@ -592,38 +634,50 @@ public class UIManager : MonoBehaviour
         {
             Quest quest = QuestSystem.Instance.GetActiveQuest();
 
-            GUI.Box(new Rect(x - 5, y - 5, 215, 60), "", frameStyle);
+            GUI.Box(new Rect(x - 4, y - 4, 180, 50), "", frameStyle);
+
+            // X close button
+            if (GUI.Button(new Rect(x - 4, y - 4, 18, 16), "X", closeButtonStyle))
+            {
+                questTrackerHidden = true;
+            }
 
             GUIStyle titleStyle = new GUIStyle();
             titleStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
-            titleStyle.fontSize = 12;
+            titleStyle.fontSize = 10;
             titleStyle.fontStyle = FontStyle.Bold;
 
-            GUI.Label(new Rect(x, y, 200, 18), "Active Quest:", titleStyle);
+            GUI.Label(new Rect(x + 16, y, 150, 14), "Active Quest:", titleStyle);
 
             GUIStyle questStyle = new GUIStyle();
             questStyle.normal.textColor = new Color(0.9f, 0.9f, 0.8f);
-            questStyle.fontSize = 11;
+            questStyle.fontSize = 9;
 
-            GUI.Label(new Rect(x, y + 18, 200, 16), quest.questName, questStyle);
+            GUI.Label(new Rect(x, y + 14, 170, 14), quest.questName, questStyle);
 
             GUIStyle progressStyle = new GUIStyle();
             progressStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
-            progressStyle.fontSize = 11;
+            progressStyle.fontSize = 9;
 
-            GUI.Label(new Rect(x, y + 34, 200, 16), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
+            GUI.Label(new Rect(x, y + 28, 170, 14), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
         }
         else if (hasPendingQuest)
         {
             // Show hint to talk to NPC
-            GUI.Box(new Rect(x - 5, y - 5, 215, 40), "", frameStyle);
+            GUI.Box(new Rect(x - 4, y - 4, 180, 34), "", frameStyle);
+
+            // X close button
+            if (GUI.Button(new Rect(x - 4, y - 4, 18, 16), "X", closeButtonStyle))
+            {
+                questTrackerHidden = true;
+            }
 
             GUIStyle hintStyle = new GUIStyle();
             hintStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
-            hintStyle.fontSize = 11;
+            hintStyle.fontSize = 9;
             hintStyle.alignment = TextAnchor.MiddleCenter;
 
-            GUI.Label(new Rect(x, y, 200, 30), "Quest available!\nTalk to the Old Captain", hintStyle);
+            GUI.Label(new Rect(x + 12, y, 155, 26), "Quest available!\nTalk to the Old Captain", hintStyle);
         }
     }
 
@@ -663,8 +717,8 @@ public class UIManager : MonoBehaviour
         // Overlay
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), MakeTexture(2, 2, new Color(0, 0, 0, 0.6f)));
 
-        float panelWidth = 650;
-        float panelHeight = 480;
+        float panelWidth = 520;
+        float panelHeight = 380;
         float panelX = (Screen.width - panelWidth) / 2;
         float panelY = (Screen.height - panelHeight) / 2;
 
@@ -672,87 +726,105 @@ public class UIManager : MonoBehaviour
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight),
             MakeTexture(2, 2, new Color(0.08f, 0.06f, 0.04f, 0.98f)));
 
-        // Tabs
-        string[] tabs = { "Equipment", "Quests", "Shop" };
+        // Close button (top-left)
+        if (GUI.Button(new Rect(panelX + 4, panelY + 6, 22, 18), "X", closeButtonStyle))
+        {
+            inventoryOpen = false;
+        }
+
+        // Right-click outside panel to close
+        if (Input.GetMouseButtonDown(1))
+        {
+            Vector2 mousePos = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+            Rect panelRect = new Rect(panelX, panelY, panelWidth, panelHeight);
+            if (!panelRect.Contains(mousePos))
+            {
+                inventoryOpen = false;
+            }
+        }
+
+        // Tabs (shifted to accommodate close button)
+        string[] tabs = { "Equipment", "Quests", "Shop", "Wardrobe" };
         for (int i = 0; i < tabs.Length; i++)
         {
             GUIStyle style = (i == currentTab) ? tabActiveStyle : tabStyle;
-            if (GUI.Button(new Rect(panelX + 10 + i * 105, panelY + 10, 100, 28), tabs[i], style))
+            if (GUI.Button(new Rect(panelX + 30 + i * 75, panelY + 8, 70, 22), tabs[i], style))
             {
                 currentTab = i;
             }
         }
 
-        // Close button
-        if (GUI.Button(new Rect(panelX + panelWidth - 40, panelY + 10, 30, 28), "X", buttonStyle))
+        // Also keep a close button on right for convenience
+        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 8, 24, 22), "X", closeButtonStyle))
         {
             inventoryOpen = false;
         }
 
         // Content area
-        Rect contentRect = new Rect(panelX + 10, panelY + 50, panelWidth - 20, panelHeight - 60);
+        Rect contentRect = new Rect(panelX + 8, panelY + 38, panelWidth - 16, panelHeight - 46);
 
         switch (currentTab)
         {
             case 0: DrawEquipmentTab(contentRect); break;
             case 1: DrawQuestsTab(contentRect); break;
             case 2: DrawShopTab(contentRect); break;
+            case 3: DrawWardrobeTab(contentRect); break;
         }
     }
 
     void DrawEquipmentTab(Rect rect)
     {
         // Left side - Rods
-        GUI.Label(new Rect(rect.x, rect.y, 150, 22), "FISHING RODS", headerStyle);
+        GUI.Label(new Rect(rect.x, rect.y, 120, 18), "FISHING RODS", headerStyle);
 
         for (int i = 0; i < rodNames.Length; i++)
         {
-            DrawRodSlot(new Rect(rect.x, rect.y + 30 + i * 50, 280, 45), i);
+            DrawRodSlot(new Rect(rect.x, rect.y + 22 + i * 38, 220, 35), i);
         }
 
         // Right side - Stats & Special Items
-        float rightX = rect.x + 300;
+        float rightX = rect.x + 235;
 
-        GUI.Label(new Rect(rightX, rect.y, 150, 22), "PLAYER STATS", headerStyle);
+        GUI.Label(new Rect(rightX, rect.y, 120, 18), "PLAYER STATS", headerStyle);
 
         GUIStyle statStyle = new GUIStyle(labelStyle);
-        statStyle.fontSize = 12;
+        statStyle.fontSize = 10;
 
         int level = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetEffectiveLevel() : 1;
         long xp = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetCurrentXP() : 0;
         int questsDone = QuestSystem.Instance != null ? QuestSystem.Instance.GetCompletedQuestCount() : 0;
 
-        GUI.Label(new Rect(rightX, rect.y + 30, 300, 18), $"Level: {level}", statStyle);
-        GUI.Label(new Rect(rightX, rect.y + 48, 300, 18), $"Total XP: {FormatNumber(xp)}", statStyle);
-        GUI.Label(new Rect(rightX, rect.y + 66, 300, 18), $"Quests Completed: {questsDone}", statStyle);
+        GUI.Label(new Rect(rightX, rect.y + 22, 250, 14), $"Level: {level}", statStyle);
+        GUI.Label(new Rect(rightX, rect.y + 36, 250, 14), $"Total XP: {FormatNumber(xp)}", statStyle);
+        GUI.Label(new Rect(rightX, rect.y + 50, 250, 14), $"Quests Completed: {questsDone}", statStyle);
 
         // Special Items
-        GUI.Label(new Rect(rightX, rect.y + 100, 150, 22), "SPECIAL ITEMS", headerStyle);
+        GUI.Label(new Rect(rightX, rect.y + 72, 120, 18), "SPECIAL ITEMS", headerStyle);
 
-        float itemY = rect.y + 130;
+        float itemY = rect.y + 94;
         if (BottleEventSystem.Instance != null)
         {
             if (BottleEventSystem.Instance.hasGoldenFishingHat)
             {
-                GUI.Label(new Rect(rightX, itemY, 300, 18), "★ Golden Fishing Hat", statStyle);
-                itemY += 20;
+                GUI.Label(new Rect(rightX, itemY, 250, 14), "★ Golden Fishing Hat", statStyle);
+                itemY += 16;
             }
             if (BottleEventSystem.Instance.hasGroovyMarlinRing)
             {
                 statStyle.normal.textColor = new Color(0.3f, 1f, 0.8f);
-                GUI.Label(new Rect(rightX, itemY, 300, 18), "★ Groovy Marlin Ring (+10 Levels)", statStyle);
-                itemY += 20;
+                GUI.Label(new Rect(rightX, itemY, 250, 14), "★ Groovy Marlin Ring (+10 Levels)", statStyle);
+                itemY += 16;
             }
             if (BottleEventSystem.Instance.hasEpicFishingRod)
             {
                 statStyle.normal.textColor = new Color(0.8f, 0.4f, 1f);
-                GUI.Label(new Rect(rightX, itemY, 300, 18), "★ Epic Fishing Rod", statStyle);
+                GUI.Label(new Rect(rightX, itemY, 250, 14), "★ Epic Fishing Rod", statStyle);
             }
         }
 
         // Highscores
-        GUI.Label(new Rect(rightX, rect.y + 250, 150, 22), "HIGHSCORES", headerStyle);
-        DrawHighscores(new Rect(rightX, rect.y + 280, 300, 130));
+        GUI.Label(new Rect(rightX, rect.y + 180, 120, 18), "HIGHSCORES", headerStyle);
+        DrawHighscores(new Rect(rightX, rect.y + 200, 250, 100));
     }
 
     void DrawRodSlot(Rect rect, int rodIndex)
@@ -766,29 +838,29 @@ public class UIManager : MonoBehaviour
         GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
 
         Color iconColor = isUnlocked ? rodColors[rodIndex] : new Color(0.3f, 0.3f, 0.3f);
-        GUI.DrawTexture(new Rect(rect.x + 5, rect.y + 5, 35, 35), MakeTexture(2, 2, iconColor));
+        GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 27, 27), MakeTexture(2, 2, iconColor));
 
         GUIStyle nameStyle = new GUIStyle();
         nameStyle.normal.textColor = isUnlocked ? rodColors[rodIndex] : new Color(0.4f, 0.4f, 0.4f);
-        nameStyle.fontSize = 13;
+        nameStyle.fontSize = 11;
         nameStyle.fontStyle = FontStyle.Bold;
-        GUI.Label(new Rect(rect.x + 48, rect.y + 5, 180, 18), rodNames[rodIndex], nameStyle);
+        GUI.Label(new Rect(rect.x + 36, rect.y + 4, 150, 14), rodNames[rodIndex], nameStyle);
 
         GUIStyle statStyle = new GUIStyle();
-        statStyle.fontSize = 10;
+        statStyle.fontSize = 9;
 
         if (isUnlocked)
         {
             statStyle.normal.textColor = new Color(0.4f, 0.8f, 0.4f);
             string bonus = $"Luck: +{rodIndex * 5}%";
             if (rodIndex > 0) bonus += $" | Speed: +{rodIndex * 10}%";
-            GUI.Label(new Rect(rect.x + 48, rect.y + 24, 220, 16), bonus, statStyle);
+            GUI.Label(new Rect(rect.x + 36, rect.y + 19, 180, 14), bonus, statStyle);
         }
         else
         {
             statStyle.normal.textColor = new Color(0.8f, 0.3f, 0.3f);
-            int required = rodIndex == 1 ? 100 : rodIndex == 2 ? 500 : rodIndex == 3 ? 2000 : 10000;
-            GUI.Label(new Rect(rect.x + 48, rect.y + 24, 220, 16), $"Requires: {required} coins", statStyle);
+            int required = rodIndex == 1 ? 100 : rodIndex == 2 ? 500 : rodIndex == 3 ? 2000 : rodIndex == 4 ? 10000 : 100000;
+            GUI.Label(new Rect(rect.x + 36, rect.y + 19, 180, 14), $"Requires: {FormatNumber(required)} coins", statStyle);
         }
 
         if (isUnlocked && GUI.Button(rect, "", GUIStyle.none))
@@ -799,75 +871,116 @@ public class UIManager : MonoBehaviour
 
     void DrawQuestsTab(Rect rect)
     {
-        GUI.Label(new Rect(rect.x, rect.y, 200, 22), "ACTIVE QUEST", headerStyle);
+        GUI.Label(new Rect(rect.x, rect.y, 160, 18), "ACTIVE QUEST", headerStyle);
 
         if (QuestSystem.Instance != null && QuestSystem.Instance.HasActiveQuest())
         {
             Quest quest = QuestSystem.Instance.GetActiveQuest();
 
-            GUI.DrawTexture(new Rect(rect.x, rect.y + 30, 400, 80), MakeTexture(2, 2, new Color(0.12f, 0.1f, 0.08f, 0.9f)));
+            GUI.DrawTexture(new Rect(rect.x, rect.y + 22, 320, 65), MakeTexture(2, 2, new Color(0.12f, 0.1f, 0.08f, 0.9f)));
 
             GUIStyle titleStyle = new GUIStyle();
             titleStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
-            titleStyle.fontSize = 14;
+            titleStyle.fontSize = 11;
             titleStyle.fontStyle = FontStyle.Bold;
 
-            GUI.Label(new Rect(rect.x + 10, rect.y + 35, 380, 20), quest.questName, titleStyle);
+            GUI.Label(new Rect(rect.x + 8, rect.y + 26, 300, 16), quest.questName, titleStyle);
 
             GUIStyle descStyle = new GUIStyle(labelStyle);
-            descStyle.fontSize = 11;
+            descStyle.fontSize = 9;
             descStyle.wordWrap = true;
 
-            GUI.Label(new Rect(rect.x + 10, rect.y + 55, 380, 20), quest.description, descStyle);
+            GUI.Label(new Rect(rect.x + 8, rect.y + 42, 300, 16), quest.description, descStyle);
 
             GUIStyle progressStyle = new GUIStyle();
             progressStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
-            progressStyle.fontSize = 12;
+            progressStyle.fontSize = 10;
 
-            GUI.Label(new Rect(rect.x + 10, rect.y + 80, 200, 20),
+            GUI.Label(new Rect(rect.x + 8, rect.y + 62, 160, 16),
                 $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
 
             GUIStyle rewardStyle = new GUIStyle();
             rewardStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-            rewardStyle.fontSize = 11;
+            rewardStyle.fontSize = 9;
 
-            GUI.Label(new Rect(rect.x + 220, rect.y + 80, 180, 20),
-                $"Reward: {quest.xpReward} XP, {quest.coinReward} coins", rewardStyle);
+            GUI.Label(new Rect(rect.x + 170, rect.y + 62, 150, 16),
+                $"Reward: {quest.xpReward} XP, {quest.coinReward}g", rewardStyle);
         }
         else
         {
-            GUI.Label(new Rect(rect.x + 10, rect.y + 40, 300, 20), "No active quest. Talk to the NPC!", labelStyle);
+            GUI.Label(new Rect(rect.x + 8, rect.y + 30, 250, 16), "No active quest. Talk to the NPC!", labelStyle);
         }
 
         // Completed quests
-        GUI.Label(new Rect(rect.x, rect.y + 130, 200, 22), "COMPLETED QUESTS", headerStyle);
+        GUI.Label(new Rect(rect.x, rect.y + 100, 160, 18), "COMPLETED QUESTS", headerStyle);
 
         int completed = QuestSystem.Instance != null ? QuestSystem.Instance.GetCompletedQuestCount() : 0;
-        GUI.Label(new Rect(rect.x + 10, rect.y + 160, 300, 20), $"Total Completed: {completed}", labelStyle);
+        GUI.Label(new Rect(rect.x + 8, rect.y + 122, 250, 16), $"Total Completed: {completed}", labelStyle);
 
         // Quest NPC hint
-        GUI.Label(new Rect(rect.x, rect.y + 220, 400, 60),
-            "Visit the Quest NPC near the dock to receive new quests!\nComplete quests to earn XP and coins.", labelStyle);
+        GUIStyle hintStyle = new GUIStyle(labelStyle);
+        hintStyle.fontSize = 10;
+        GUI.Label(new Rect(rect.x, rect.y + 160, 320, 50),
+            "Visit the Quest NPC near the dock to receive new quests!\nComplete quests to earn XP and coins.", hintStyle);
     }
+
+    // Shop scroll position
+    private float shopScrollPosition = 0f;
 
     void DrawShopTab(Rect rect)
     {
-        GUI.Label(new Rect(rect.x, rect.y, 200, 22), "FISHING SHOP", headerStyle);
+        GUI.Label(new Rect(rect.x, rect.y, 160, 18), "FISHING SHOP", headerStyle);
 
         int coins = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
 
         GUIStyle coinStyle = new GUIStyle();
         coinStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        coinStyle.fontSize = 14;
+        coinStyle.fontSize = 11;
         coinStyle.fontStyle = FontStyle.Bold;
 
-        GUI.Label(new Rect(rect.x + rect.width - 150, rect.y, 150, 22), $"Your Gold: {FormatNumber(coins)}", coinStyle);
+        GUI.Label(new Rect(rect.x + rect.width - 120, rect.y, 120, 18), $"Gold: {FormatNumber(coins)}", coinStyle);
 
-        float itemY = rect.y + 35;
+        // Scrollable area for items
+        float itemHeight = 32;
+        float visibleHeight = rect.height - 30;
+        float totalHeight = shopItems.Length * (itemHeight + 3);
+        float maxScroll = Mathf.Max(0, totalHeight - visibleHeight);
+
+        // Handle mouse wheel scrolling when mouse is over the shop area
+        Rect scrollArea = new Rect(rect.x, rect.y + 22, rect.width, visibleHeight);
+        if (scrollArea.Contains(Event.current.mousePosition))
+        {
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                shopScrollPosition += Event.current.delta.y * 20f;
+                shopScrollPosition = Mathf.Clamp(shopScrollPosition, 0, maxScroll);
+                Event.current.Use();
+            }
+        }
+
+        // Begin clip area
+        GUI.BeginGroup(scrollArea);
+
+        float itemY = -shopScrollPosition;
         foreach (var item in shopItems)
         {
-            DrawShopItem(new Rect(rect.x, itemY, rect.width - 20, 38), item, coins);
-            itemY += 42;
+            // Only draw visible items
+            if (itemY + itemHeight > 0 && itemY < visibleHeight)
+            {
+                DrawShopItem(new Rect(0, itemY, rect.width - 10, itemHeight), item, coins);
+            }
+            itemY += itemHeight + 3;
+        }
+
+        GUI.EndGroup();
+
+        // Draw scroll indicator if needed
+        if (maxScroll > 0)
+        {
+            float scrollBarHeight = visibleHeight * (visibleHeight / totalHeight);
+            float scrollBarY = (shopScrollPosition / maxScroll) * (visibleHeight - scrollBarHeight);
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 6, rect.y + 22 + scrollBarY, 4, scrollBarHeight),
+                MakeTexture(2, 2, new Color(0.5f, 0.4f, 0.3f, 0.7f)));
         }
     }
 
@@ -879,28 +992,28 @@ public class UIManager : MonoBehaviour
 
         GUIStyle nameStyle = new GUIStyle();
         nameStyle.normal.textColor = canAfford ? new Color(0.9f, 0.9f, 0.8f) : new Color(0.5f, 0.5f, 0.5f);
-        nameStyle.fontSize = 12;
+        nameStyle.fontSize = 10;
         nameStyle.fontStyle = FontStyle.Bold;
 
-        GUI.Label(new Rect(rect.x + 10, rect.y + 4, 200, 18), item.name, nameStyle);
+        GUI.Label(new Rect(rect.x + 6, rect.y + 2, 160, 14), item.name, nameStyle);
 
         GUIStyle descStyle = new GUIStyle();
         descStyle.normal.textColor = new Color(0.6f, 0.6f, 0.5f);
-        descStyle.fontSize = 10;
+        descStyle.fontSize = 8;
 
-        GUI.Label(new Rect(rect.x + 10, rect.y + 20, 250, 16), item.description, descStyle);
+        GUI.Label(new Rect(rect.x + 6, rect.y + 16, 200, 14), item.description, descStyle);
 
         GUIStyle priceStyle = new GUIStyle();
         priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.2f) : new Color(0.8f, 0.3f, 0.3f);
-        priceStyle.fontSize = 12;
+        priceStyle.fontSize = 10;
         priceStyle.fontStyle = FontStyle.Bold;
         priceStyle.alignment = TextAnchor.MiddleRight;
 
-        GUI.Label(new Rect(rect.x + rect.width - 150, rect.y + 4, 60, 30), $"{item.price}g", priceStyle);
+        GUI.Label(new Rect(rect.x + rect.width - 120, rect.y + 2, 50, 28), $"{item.price}g", priceStyle);
 
         if (canAfford)
         {
-            if (GUI.Button(new Rect(rect.x + rect.width - 80, rect.y + 6, 70, 26), "BUY", buttonStyle))
+            if (GUI.Button(new Rect(rect.x + rect.width - 60, rect.y + 4, 52, 22), "BUY", buttonStyle))
             {
                 BuyItem(item);
             }
@@ -924,6 +1037,7 @@ public class UIManager : MonoBehaviour
                 else if (item.name.Contains("Silver")) rodsUnlocked[2] = true;
                 else if (item.name.Contains("Golden")) rodsUnlocked[3] = true;
                 else if (item.name.Contains("Legendary")) rodsUnlocked[4] = true;
+                else if (item.name.Contains("Epic")) rodsUnlocked[5] = true;
                 break;
         }
 
@@ -965,6 +1079,290 @@ public class UIManager : MonoBehaviour
     public int GetSelectedRodIndex() { return selectedRodIndex; }
     public float GetLuckBonus() { return selectedRodIndex * 0.05f; }
     public float GetSpeedBonus() { return selectedRodIndex * 0.10f; }
+
+    // Rod cosmetic data getters for FishingRodAnimator
+    public Color GetRodColor(int index) { return index >= 0 && index < rodColors.Length ? rodColors[index] : rodColors[0]; }
+    public float GetRodMetallic(int index) { return index >= 0 && index < rodMetallic.Length ? rodMetallic[index] : 0.1f; }
+    public float GetRodGlossiness(int index) { return index >= 0 && index < rodGlossiness.Length ? rodGlossiness[index] : 0.3f; }
+    public bool GetRodHasGlow(int index) { return index >= 0 && index < rodHasGlow.Length && rodHasGlow[index]; }
+    public bool GetRodHasSmoke(int index) { return index >= 0 && index < rodHasSmoke.Length && rodHasSmoke[index]; }
+    public string GetRodName(int index) { return index >= 0 && index < rodNames.Length ? rodNames[index] : "Unknown"; }
+
+    // =============== WARDROBE TAB ===============
+
+    void DrawWardrobeTab(Rect rect)
+    {
+        GUI.Label(new Rect(rect.x, rect.y, 200, 20), "YOUR WARDROBE", headerStyle);
+
+        GUIStyle statStyle = new GUIStyle(labelStyle);
+        statStyle.fontSize = 11;
+
+        if (ownedClothing.Count == 0)
+        {
+            statStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+            GUI.Label(new Rect(rect.x, rect.y + 30, rect.width, 40),
+                "You don't own any clothing yet!\nVisit the Old Lady's shop to buy some.", statStyle);
+            return;
+        }
+
+        // Scrollable content area
+        float itemHeight = 55f;
+        float contentHeight = ownedClothing.Count * itemHeight;
+        float visibleHeight = rect.height - 30;
+
+        // Mouse wheel scrolling
+        if (rect.Contains(Event.current.mousePosition))
+        {
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                wardrobeScrollPos += Event.current.delta.y * 20f;
+                wardrobeScrollPos = Mathf.Clamp(wardrobeScrollPos, 0, Mathf.Max(0, contentHeight - visibleHeight));
+                Event.current.Use();
+            }
+        }
+
+        // Content area background
+        GUI.DrawTexture(new Rect(rect.x, rect.y + 25, rect.width, visibleHeight),
+            MakeTexture(2, 2, new Color(0.06f, 0.06f, 0.08f, 0.9f)));
+
+        // Begin scroll area
+        GUI.BeginGroup(new Rect(rect.x, rect.y + 25, rect.width, visibleHeight));
+
+        for (int i = 0; i < ownedClothing.Count; i++)
+        {
+            float itemY = i * itemHeight - wardrobeScrollPos;
+
+            // Skip items outside visible area
+            if (itemY + itemHeight < 0 || itemY > visibleHeight) continue;
+
+            WardrobeItem item = ownedClothing[i];
+            DrawWardrobeItem(new Rect(5, itemY + 5, rect.width - 30, itemHeight - 10), item);
+        }
+
+        GUI.EndGroup();
+
+        // Scrollbar
+        if (contentHeight > visibleHeight)
+        {
+            float scrollBarHeight = visibleHeight * (visibleHeight / contentHeight);
+            float scrollBarY = (wardrobeScrollPos / (contentHeight - visibleHeight)) * (visibleHeight - scrollBarHeight);
+
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 12, rect.y + 25, 10, visibleHeight),
+                MakeTexture(2, 2, new Color(0.15f, 0.15f, 0.15f, 0.8f)));
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 11, rect.y + 25 + scrollBarY, 8, scrollBarHeight),
+                MakeTexture(2, 2, new Color(0.4f, 0.35f, 0.2f, 0.9f)));
+        }
+    }
+
+    void DrawWardrobeItem(Rect rect, WardrobeItem item)
+    {
+        // Item background
+        Color bgColor = item.isEquipped ? new Color(0.2f, 0.25f, 0.15f, 0.95f) : new Color(0.12f, 0.12f, 0.14f, 0.95f);
+        GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
+
+        // Item icon/image
+        Texture2D iconTex = GetClothingIcon(item.itemName, item.slot, item.color);
+        GUI.DrawTexture(new Rect(rect.x + 5, rect.y + 5, 35, 35), iconTex);
+
+        // Item name
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 12;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.normal.textColor = GetSlotColor(item.slot);
+        GUI.Label(new Rect(rect.x + 48, rect.y + 5, 200, 18), item.itemName, nameStyle);
+
+        // Slot type
+        GUIStyle slotStyle = new GUIStyle();
+        slotStyle.fontSize = 9;
+        slotStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+        GUI.Label(new Rect(rect.x + 48, rect.y + 22, 100, 14), item.slot, slotStyle);
+
+        // Equipped indicator or Equip button
+        if (item.isEquipped)
+        {
+            GUIStyle equippedStyle = new GUIStyle();
+            equippedStyle.fontSize = 10;
+            equippedStyle.fontStyle = FontStyle.Bold;
+            equippedStyle.normal.textColor = new Color(0.4f, 0.9f, 0.4f);
+            equippedStyle.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(new Rect(rect.x + rect.width - 70, rect.y + 10, 60, 25), "EQUIPPED", equippedStyle);
+        }
+        else
+        {
+            if (GUI.Button(new Rect(rect.x + rect.width - 70, rect.y + 8, 60, 28), "Equip", buttonStyle))
+            {
+                EquipWardrobeItem(item);
+            }
+        }
+    }
+
+    Texture2D GetClothingIcon(string itemName, string slot, Color itemColor)
+    {
+        string key = $"wardrobe_{itemName}";
+
+        if (!textureCache.ContainsKey(key))
+        {
+            // Create a simple icon texture for the item
+            Texture2D icon = new Texture2D(35, 35);
+            Color[] pixels = new Color[35 * 35];
+
+            // Background
+            Color bg = new Color(0.15f, 0.15f, 0.18f);
+            for (int i = 0; i < pixels.Length; i++) pixels[i] = bg;
+
+            // Draw simple shape based on slot
+            Color mainColor = itemColor;
+
+            if (slot == "Head")
+            {
+                // Hat shape - dome on top
+                for (int y = 0; y < 35; y++)
+                {
+                    for (int x = 0; x < 35; x++)
+                    {
+                        float dx = x - 17.5f;
+                        float dy = y - 20f;
+                        if (dy > 0 && dy < 12 && Mathf.Abs(dx) < 15) pixels[y * 35 + x] = mainColor; // Brim
+                        if (dy >= 12 && dx * dx + (dy - 12) * (dy - 12) < 100) pixels[y * 35 + x] = mainColor; // Crown
+                    }
+                }
+            }
+            else if (slot == "Top")
+            {
+                // Shirt shape - T shape
+                for (int y = 5; y < 30; y++)
+                {
+                    for (int x = 8; x < 27; x++)
+                    {
+                        if (y < 12 || (x > 12 && x < 23)) pixels[y * 35 + x] = mainColor;
+                    }
+                }
+            }
+            else if (slot == "Legs")
+            {
+                // Pants shape - two legs
+                for (int y = 5; y < 30; y++)
+                {
+                    for (int x = 8; x < 27; x++)
+                    {
+                        if (y < 12) pixels[y * 35 + x] = mainColor;
+                        else if (x < 16 || x > 19) pixels[y * 35 + x] = mainColor;
+                    }
+                }
+            }
+            else if (slot == "Accessory")
+            {
+                // Accessory - star/circle
+                for (int y = 0; y < 35; y++)
+                {
+                    for (int x = 0; x < 35; x++)
+                    {
+                        float dx = x - 17.5f;
+                        float dy = y - 17.5f;
+                        if (dx * dx + dy * dy < 144) pixels[y * 35 + x] = mainColor;
+                    }
+                }
+            }
+
+            // Border
+            for (int i = 0; i < 35; i++)
+            {
+                pixels[i] = Color.gray;
+                pixels[34 * 35 + i] = Color.gray;
+                pixels[i * 35] = Color.gray;
+                pixels[i * 35 + 34] = Color.gray;
+            }
+
+            icon.SetPixels(pixels);
+            icon.Apply();
+            textureCache[key] = icon;
+        }
+
+        return textureCache[key];
+    }
+
+    Color GetSlotColor(string slot)
+    {
+        switch (slot)
+        {
+            case "Head": return new Color(0.9f, 0.7f, 0.3f);
+            case "Top": return new Color(0.5f, 0.8f, 1f);
+            case "Legs": return new Color(0.6f, 0.9f, 0.6f);
+            case "Accessory": return new Color(1f, 0.6f, 0.9f);
+            default: return Color.white;
+        }
+    }
+
+    void EquipWardrobeItem(WardrobeItem itemToEquip)
+    {
+        // Unequip any item in the same slot
+        foreach (WardrobeItem item in ownedClothing)
+        {
+            if (item.slot == itemToEquip.slot)
+            {
+                item.isEquipped = false;
+            }
+        }
+
+        // Equip this item
+        itemToEquip.isEquipped = true;
+
+        // Update player visuals
+        if (PlayerClothingVisuals.Instance != null)
+        {
+            PlayerClothingVisuals.Instance.EquipClothing(itemToEquip.slot, itemToEquip.itemName, itemToEquip.color);
+        }
+
+        // Update character panel
+        if (CharacterPanel.Instance != null)
+        {
+            int slotIndex = GetSlotIndex(itemToEquip.slot);
+            if (slotIndex >= 0)
+            {
+                CharacterPanel.Instance.SetEquipment(slotIndex, itemToEquip.itemName);
+            }
+        }
+
+        Debug.Log($"Equipped {itemToEquip.itemName} from wardrobe");
+    }
+
+    int GetSlotIndex(string slot)
+    {
+        switch (slot)
+        {
+            case "Head": return 0;
+            case "Top": return 1;
+            case "Legs": return 2;
+            case "Accessory": return 3;
+            default: return -1;
+        }
+    }
+
+    // Called by ClothingShopNPC when an item is purchased
+    public void AddToWardrobe(string itemName, string slot, Color color)
+    {
+        // Check if already owned
+        foreach (WardrobeItem item in ownedClothing)
+        {
+            if (item.itemName == itemName && item.slot == slot)
+            {
+                return; // Already owned
+            }
+        }
+
+        WardrobeItem newItem = new WardrobeItem(itemName, slot, color);
+        ownedClothing.Add(newItem);
+        Debug.Log($"Added {itemName} to wardrobe");
+    }
+
+    public bool IsInWardrobe(string itemName)
+    {
+        foreach (WardrobeItem item in ownedClothing)
+        {
+            if (item.itemName == itemName) return true;
+        }
+        return false;
+    }
 }
 
 [System.Serializable]
@@ -990,3 +1388,20 @@ public class ShopItem
 }
 
 public enum ShopItemType { Consumable, Rod, Cosmetic }
+
+[System.Serializable]
+public class WardrobeItem
+{
+    public string itemName;
+    public string slot;       // Head, Top, Legs, Accessory
+    public Color color;
+    public bool isEquipped;
+
+    public WardrobeItem(string name, string s, Color c)
+    {
+        itemName = name;
+        slot = s;
+        color = c;
+        isEquipped = false;
+    }
+}
