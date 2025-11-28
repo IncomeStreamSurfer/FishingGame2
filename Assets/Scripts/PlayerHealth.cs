@@ -4,7 +4,7 @@ using System.Collections.Generic;
 /// <summary>
 /// Player Health System
 /// - Starts at 100 HP
-/// - Loses 1 HP every 10 minutes
+/// - Loses 1 HP every 5 seconds (hunger)
 /// - Displays HP bar and heartbeat sensor in top right
 /// - Death resets stats/fish but keeps cosmetics and gold
 /// </summary>
@@ -16,12 +16,24 @@ public class PlayerHealth : MonoBehaviour
     private float maxHealth = 100f;
     private float currentHealth = 100f;
     private float healthDecayTimer = 0f;
-    private float healthDecayInterval = 600f; // 10 minutes = 600 seconds
+    private float healthDecayInterval = 5f; // 5 seconds
 
     // Death state
     private bool isDead = false;
     private float deathTimer = 0f;
     private float respawnDelay = 3f;
+
+    // Low health warning
+    private bool showLowHealthWarning = false;
+    private float warningPulse = 0f;
+
+    // Tutorial tip for new players
+    private bool showTutorialTip = true;
+    private float tutorialTimer = 0f;
+
+    // Max health buff (from special fish)
+    private bool hasMaxHealthBuff = false;
+    private float maxHealthBuffTimeRemaining = 0f;
 
     // ECG/Heartbeat visualization
     private float[] ecgHistory = new float[100];
@@ -103,13 +115,51 @@ public class PlayerHealth : MonoBehaviour
             return;
         }
 
-        // Health decay - 1 HP every 10 minutes
+        // Health decay - 1 HP every 5 seconds (hunger)
         healthDecayTimer += Time.deltaTime;
         if (healthDecayTimer >= healthDecayInterval)
         {
             healthDecayTimer = 0f;
             TakeDamage(1f);
-            Debug.Log("Health decayed by 1 HP due to hunger");
+        }
+
+        // Check for low health warning
+        showLowHealthWarning = currentHealth <= 5f && currentHealth > 0f;
+        if (showLowHealthWarning)
+        {
+            warningPulse += Time.deltaTime * 5f;
+        }
+
+        // Tutorial tip for level 1-2 players
+        if (showTutorialTip)
+        {
+            tutorialTimer += Time.deltaTime;
+            // Check if player is above level 2
+            if (LevelingSystem.Instance != null && LevelingSystem.Instance.GetLevel() > 2)
+            {
+                showTutorialTip = false;
+            }
+            // Or if they close it by pressing any key after 5 seconds
+            if (tutorialTimer > 5f && Input.anyKeyDown)
+            {
+                showTutorialTip = false;
+            }
+        }
+
+        // Max health buff timer
+        if (hasMaxHealthBuff)
+        {
+            maxHealthBuffTimeRemaining -= Time.deltaTime;
+            // Keep health at max while buff is active
+            currentHealth = maxHealth;
+            if (maxHealthBuffTimeRemaining <= 0f)
+            {
+                hasMaxHealthBuff = false;
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification("Max health buff expired!", new Color(0.8f, 0.6f, 0.3f));
+                }
+            }
         }
 
         // Update ECG
@@ -223,6 +273,23 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    public void HealToFull()
+    {
+        if (isDead) return;
+        currentHealth = maxHealth;
+    }
+
+    public void ApplyMaxHealthBuff(float duration)
+    {
+        hasMaxHealthBuff = true;
+        maxHealthBuffTimeRemaining = duration;
+        currentHealth = maxHealth;
+        Debug.Log($"Max health buff applied for {duration} seconds!");
+    }
+
+    public bool HasMaxHealthBuff() => hasMaxHealthBuff;
+    public float GetMaxHealthBuffTimeRemaining() => maxHealthBuffTimeRemaining;
+
     void Die()
     {
         isDead = true;
@@ -301,6 +368,101 @@ public class PlayerHealth : MonoBehaviour
         {
             DrawDeathScreen();
         }
+
+        // Low health warning
+        if (showLowHealthWarning)
+        {
+            DrawLowHealthWarning();
+        }
+
+        // Tutorial tip for new players
+        if (showTutorialTip && !isDead)
+        {
+            DrawTutorialTip();
+        }
+    }
+
+    void DrawLowHealthWarning()
+    {
+        // Pulsing red warning
+        float pulse = 0.7f + Mathf.Sin(warningPulse) * 0.3f;
+
+        float boxWidth = 350;
+        float boxHeight = 60;
+        float boxX = (Screen.width - boxWidth) / 2;
+        float boxY = Screen.height * 0.35f;
+
+        // Red background with pulse
+        GUI.color = new Color(0.8f, 0.1f, 0.1f, pulse * 0.9f);
+        GUI.DrawTexture(new Rect(boxX, boxY, boxWidth, boxHeight), GetTexture("white"));
+        GUI.color = Color.white;
+
+        // Warning icon
+        GUIStyle iconStyle = new GUIStyle();
+        iconStyle.fontSize = 28;
+        iconStyle.fontStyle = FontStyle.Bold;
+        iconStyle.alignment = TextAnchor.MiddleCenter;
+        iconStyle.normal.textColor = new Color(1f, 1f, 0.3f, pulse);
+        GUI.Label(new Rect(boxX + 10, boxY, 40, boxHeight), "!", iconStyle);
+
+        // Warning text
+        GUIStyle warnStyle = new GUIStyle();
+        warnStyle.fontSize = 16;
+        warnStyle.fontStyle = FontStyle.Bold;
+        warnStyle.alignment = TextAnchor.MiddleCenter;
+        warnStyle.normal.textColor = Color.white;
+        warnStyle.wordWrap = true;
+
+        GUI.Label(new Rect(boxX + 50, boxY, boxWidth - 60, boxHeight),
+            "LOW HEALTH! Eat some fish from the BBQ now!", warnStyle);
+    }
+
+    void DrawTutorialTip()
+    {
+        // Cute speech bubble
+        float bubbleWidth = 320;
+        float bubbleHeight = 100;
+        float bubbleX = 20;
+        float bubbleY = Screen.height - 180;
+
+        // Bubble background (cream colored)
+        GUI.color = new Color(1f, 0.98f, 0.9f, 0.95f);
+        GUI.DrawTexture(new Rect(bubbleX, bubbleY, bubbleWidth, bubbleHeight), GetTexture("white"));
+
+        // Border
+        GUI.color = new Color(0.3f, 0.5f, 0.7f, 1f);
+        GUI.DrawTexture(new Rect(bubbleX - 2, bubbleY - 2, bubbleWidth + 4, 2), GetTexture("white"));
+        GUI.DrawTexture(new Rect(bubbleX - 2, bubbleY + bubbleHeight, bubbleWidth + 4, 2), GetTexture("white"));
+        GUI.DrawTexture(new Rect(bubbleX - 2, bubbleY, 2, bubbleHeight), GetTexture("white"));
+        GUI.DrawTexture(new Rect(bubbleX + bubbleWidth, bubbleY, 2, bubbleHeight), GetTexture("white"));
+        GUI.color = Color.white;
+
+        // Title
+        GUIStyle titleStyle = new GUIStyle();
+        titleStyle.fontSize = 12;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(0.2f, 0.4f, 0.6f);
+        GUI.Label(new Rect(bubbleX, bubbleY + 8, bubbleWidth, 16), "~ Wetsuit Pete says ~", titleStyle);
+
+        // Tip text
+        GUIStyle tipStyle = new GUIStyle();
+        tipStyle.fontSize = 14;
+        tipStyle.fontStyle = FontStyle.Italic;
+        tipStyle.alignment = TextAnchor.MiddleCenter;
+        tipStyle.normal.textColor = new Color(0.15f, 0.15f, 0.15f);
+        tipStyle.wordWrap = true;
+        tipStyle.padding = new RectOffset(15, 15, 0, 0);
+
+        GUI.Label(new Rect(bubbleX, bubbleY + 28, bubbleWidth, 50),
+            "\"You are losing health! You must cook the fishy on the barby to stay alive...\"", tipStyle);
+
+        // Dismiss hint
+        GUIStyle hintStyle = new GUIStyle();
+        hintStyle.fontSize = 10;
+        hintStyle.alignment = TextAnchor.MiddleCenter;
+        hintStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+        GUI.Label(new Rect(bubbleX, bubbleY + bubbleHeight - 20, bubbleWidth, 16), "(press any key to dismiss)", hintStyle);
     }
 
     void DrawHealthUI()
@@ -308,6 +470,12 @@ public class PlayerHealth : MonoBehaviour
         float panelX = Screen.width - 180;
         float panelY = 10;
         float panelWidth = 170;
+
+        // Show buff timer if active
+        if (hasMaxHealthBuff)
+        {
+            DrawBuffTimer(panelX, panelY - 30, panelWidth);
+        }
 
         // HP Bar section
         float hpBarHeight = 22;
@@ -396,6 +564,27 @@ public class PlayerHealth : MonoBehaviour
         bpmStyle.fontSize = (int)(12 * pulse);
         bpmStyle.normal.textColor = new Color(1f, 0.3f, 0.3f);
         GUI.Label(new Rect(rect.x + rect.width - 20, rect.y + 2, 20, 16), "<3", bpmStyle);
+    }
+
+    void DrawBuffTimer(float x, float y, float width)
+    {
+        // Golden background for buff timer
+        GUI.color = new Color(1f, 0.85f, 0.3f, 0.9f);
+        GUI.DrawTexture(new Rect(x, y, width, 22), GetTexture("white"));
+        GUI.color = Color.white;
+
+        // Format time remaining
+        int mins = (int)(maxHealthBuffTimeRemaining / 60);
+        int secs = (int)(maxHealthBuffTimeRemaining % 60);
+        string timeStr = mins > 0 ? $"{mins}m {secs}s" : $"{secs}s";
+
+        GUIStyle buffStyle = new GUIStyle();
+        buffStyle.fontSize = 11;
+        buffStyle.fontStyle = FontStyle.Bold;
+        buffStyle.alignment = TextAnchor.MiddleCenter;
+        buffStyle.normal.textColor = new Color(0.3f, 0.2f, 0f);
+
+        GUI.Label(new Rect(x, y, width, 22), $"MAX HP: {timeStr}", buffStyle);
     }
 
     void DrawLine(Vector2 start, Vector2 end, Texture2D tex, float width)

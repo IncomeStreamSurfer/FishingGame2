@@ -11,7 +11,7 @@ public class DockRadio : MonoBehaviour
     public static DockRadio Instance { get; private set; }
 
     [Header("Audio Settings")]
-    public float maxVolume = 0.35f;  // Slightly quieter than shop radio
+    public float maxVolume = 0.175f;  // 50% reduced volume
 
     [Header("Visual Settings")]
     public Color radioColor = new Color(0.3f, 0.35f, 0.4f);  // Blueish gray

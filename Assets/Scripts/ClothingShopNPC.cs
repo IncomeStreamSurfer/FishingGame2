@@ -208,6 +208,9 @@ public class ClothingShopNPC : MonoBehaviour
         clothingItems.Add(new ClothingItem("Pimp Cane", "Accessory", 1000, "Walk with style!", new Color(0.85f, 0.7f, 0.2f)));
         clothingItems.Add(new ClothingItem("Shoulder Parrot", "Accessory", 200000, "A loyal feathered friend!", new Color(0.2f, 0.8f, 0.3f)));
 
+        // === CONSUMABLES ===
+        clothingItems.Add(new ClothingItem("Lunch Box", "Consumable", 50, "Store fish! Use for 10 mins max HP!", new Color(0.7f, 0.4f, 0.2f)));
+
         // === SPECIAL: OUTFIT SETS ===
         // Fancy Tuxedo fills BOTH Top and Legs slots
         clothingItems.Add(new ClothingItem("Fancy Tuxedo", "Top", 2500, "Elegant black suit + white shirt", new Color(0.1f, 0.1f, 0.1f), true));
@@ -591,6 +594,25 @@ public class ClothingShopNPC : MonoBehaviour
             if (GameManager.Instance.GetCoins() >= item.price)
             {
                 GameManager.Instance.AddCoins(-item.price);
+
+                // Special handling for consumables (Lunch Box)
+                if (item.slot == "Consumable")
+                {
+                    if (item.name == "Lunch Box")
+                    {
+                        if (FoodInventory.Instance != null)
+                        {
+                            FoodInventory.Instance.AddLunchBox();
+                            if (UIManager.Instance != null)
+                            {
+                                UIManager.Instance.ShowLootNotification("Lunch Box purchased! Press L to open.", new Color(0.7f, 0.4f, 0.2f));
+                            }
+                        }
+                    }
+                    Debug.Log($"Bought consumable: {item.name}");
+                    return; // Don't add to wardrobe
+                }
+
                 ownedItems.Add(item.name);
 
                 // Add to wardrobe system
@@ -678,6 +700,15 @@ public class ClothingShopNPC : MonoBehaviour
         if (PlayerClothingVisuals.Instance != null)
         {
             PlayerClothingVisuals.Instance.EquipClothing(item.slot, item.name, item.previewColor);
+        }
+
+        // Special handling for Shoulder Parrot
+        if (item.name == "Shoulder Parrot")
+        {
+            if (ShoulderParrot.Instance != null)
+            {
+                ShoulderParrot.Instance.EquipParrot();
+            }
         }
 
         Debug.Log($"Equipped {item.name}");

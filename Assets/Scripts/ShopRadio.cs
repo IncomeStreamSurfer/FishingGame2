@@ -9,7 +9,7 @@ public class ShopRadio : MonoBehaviour
     public static ShopRadio Instance { get; private set; }
 
     [Header("Audio Settings")]
-    public float maxVolume = 0.4f;
+    public float maxVolume = 0.2f;
 
     [Header("Visual Settings")]
     public Color radioColor = new Color(0.4f, 0.25f, 0.15f);

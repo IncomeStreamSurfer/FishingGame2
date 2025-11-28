@@ -231,12 +231,13 @@ public class MainMenu : MonoBehaviour
         GUI.color = new Color(1, 1, 1, menuAlpha);
         GUI.Label(new Rect(0, 60 + bobOffset, Screen.width, 80), "FISHING GAME", titleStyle);
 
-        // Subtitle
+        // Subtitle - Quote from Wetsuit Pete
         GUIStyle subStyle = new GUIStyle(GUI.skin.label);
-        subStyle.fontSize = 24;
+        subStyle.fontSize = 22;
+        subStyle.fontStyle = FontStyle.Italic;
         subStyle.alignment = TextAnchor.MiddleCenter;
         subStyle.normal.textColor = new Color(0.6f, 0.8f, 1f, menuAlpha);
-        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "Cast your line, catch your dreams", subStyle);
+        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "\"Don't drown, eat fish\" - Wetsuit Pete", subStyle);
     }
 
     void DrawMainMenu()

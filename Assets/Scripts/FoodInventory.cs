@@ -17,8 +17,14 @@ public class FoodInventory : MonoBehaviour
     // Cooked fish hotbar (4 slots)
     public InventoryFish[] hotbar = new InventoryFish[4];
 
+    // Lunch Box - holds up to 10 fish, gives 10 min max health when consumed
+    public int lunchBoxCount = 0;
+    public int lunchBoxFishCount = 0;
+    public const int LUNCHBOX_CAPACITY = 10;
+
     // UI State
     private bool inventoryOpen = false;
+    private bool lunchBoxOpen = false;
     private float inventoryScrollPos = 0f;
 
     // Health values per fish rarity
@@ -166,10 +172,10 @@ public class FoodInventory : MonoBehaviour
     {
         if (!MainMenu.GameStarted || !initialized) return;
 
-        // Toggle inventory with F key (when not near BBQ or other interactables)
-        if (Input.GetKeyDown(KeyCode.F) && !BBQStation.Instance?.IsOpen() == true)
+        // Toggle lunch box with L key
+        if (Input.GetKeyDown(KeyCode.L) && lunchBoxCount > 0)
         {
-            // F is used for other things, let's use a different key or integrate with existing UI
+            lunchBoxOpen = !lunchBoxOpen;
         }
 
         // Consume hotbar items with number keys 1-4
@@ -178,6 +184,74 @@ public class FoodInventory : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.Alpha1 + i))
             {
                 ConsumeFromHotbar(i);
+            }
+        }
+    }
+
+    public void AddLunchBox()
+    {
+        lunchBoxCount++;
+        Debug.Log($"Added Lunch Box! Total: {lunchBoxCount}");
+    }
+
+    public void AddFishToLunchBox()
+    {
+        if (lunchBoxCount <= 0) return;
+        if (lunchBoxFishCount >= LUNCHBOX_CAPACITY)
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Lunch Box is full! (10/10)", new Color(1f, 0.5f, 0.2f));
+            }
+            return;
+        }
+
+        // Add a cooked fish from hotbar if available
+        for (int i = 0; i < hotbar.Length; i++)
+        {
+            if (hotbar[i] != null)
+            {
+                lunchBoxFishCount++;
+                hotbar[i] = null;
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification($"Added fish to Lunch Box ({lunchBoxFishCount}/{LUNCHBOX_CAPACITY})", new Color(0.7f, 0.5f, 0.3f));
+                }
+                return;
+            }
+        }
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("No cooked fish to add! Cook some first.", new Color(1f, 0.5f, 0.2f));
+        }
+    }
+
+    public void ConsumeLunchBox()
+    {
+        if (lunchBoxCount <= 0) return;
+        if (lunchBoxFishCount < LUNCHBOX_CAPACITY)
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Lunch Box not full! ({lunchBoxFishCount}/{LUNCHBOX_CAPACITY})", new Color(1f, 0.5f, 0.2f));
+            }
+            return;
+        }
+
+        // Consume the lunch box
+        lunchBoxCount--;
+        lunchBoxFishCount = 0;
+        lunchBoxOpen = false;
+
+        // Apply 10 minute max health buff
+        if (PlayerHealth.Instance != null)
+        {
+            PlayerHealth.Instance.ApplyMaxHealthBuff(600f); // 10 minutes
+            PlayMunchSound();
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Lunch Box consumed! MAX HEALTH FOR 10 MINS!", new Color(0.3f, 1f, 0.5f));
             }
         }
     }
@@ -304,6 +378,125 @@ public class FoodInventory : MonoBehaviour
         if (BBQStation.Instance != null && BBQStation.Instance.IsOpen())
         {
             DrawFishInventory();
+        }
+
+        // Draw lunch box UI when open
+        if (lunchBoxOpen && lunchBoxCount > 0)
+        {
+            DrawLunchBoxUI();
+        }
+
+        // Show lunch box hint if player has one
+        if (lunchBoxCount > 0 && !lunchBoxOpen)
+        {
+            DrawLunchBoxHint();
+        }
+    }
+
+    void DrawLunchBoxHint()
+    {
+        GUIStyle hintStyle = new GUIStyle();
+        hintStyle.fontSize = 10;
+        hintStyle.fontStyle = FontStyle.Bold;
+        hintStyle.alignment = TextAnchor.MiddleCenter;
+        hintStyle.normal.textColor = new Color(0.7f, 0.5f, 0.3f);
+        GUI.Label(new Rect(Screen.width - 150, Screen.height - 30, 140, 20), $"[L] Lunch Box ({lunchBoxFishCount}/{LUNCHBOX_CAPACITY})", hintStyle);
+    }
+
+    void DrawLunchBoxUI()
+    {
+        float panelWidth = 250;
+        float panelHeight = 180;
+        float panelX = Screen.width - panelWidth - 20;
+        float panelY = Screen.height / 2 - panelHeight / 2;
+
+        // Background
+        GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("border"));
+        GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("invBg"));
+
+        // Title
+        GUIStyle titleStyle = new GUIStyle();
+        titleStyle.fontSize = 16;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(0.8f, 0.5f, 0.2f);
+        GUI.Label(new Rect(panelX, panelY + 10, panelWidth, 24), "LUNCH BOX", titleStyle);
+
+        // Close hint
+        GUIStyle closeStyle = new GUIStyle();
+        closeStyle.fontSize = 9;
+        closeStyle.alignment = TextAnchor.MiddleRight;
+        closeStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+        GUI.Label(new Rect(panelX, panelY + 10, panelWidth - 10, 20), "[L] Close", closeStyle);
+
+        // Lunch box icon (brown box)
+        Texture2D boxTex = GetOrCreateColorTexture(new Color(0.6f, 0.4f, 0.2f));
+        GUI.DrawTexture(new Rect(panelX + panelWidth/2 - 30, panelY + 45, 60, 40), boxTex);
+
+        // Fish count display
+        GUIStyle countStyle = new GUIStyle();
+        countStyle.fontSize = 20;
+        countStyle.fontStyle = FontStyle.Bold;
+        countStyle.alignment = TextAnchor.MiddleCenter;
+        bool isFull = lunchBoxFishCount >= LUNCHBOX_CAPACITY;
+        countStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.9f, 0.5f);
+        GUI.Label(new Rect(panelX, panelY + 90, panelWidth, 30), $"{lunchBoxFishCount} / {LUNCHBOX_CAPACITY} fish", countStyle);
+
+        // Status text
+        GUIStyle statusStyle = new GUIStyle();
+        statusStyle.fontSize = 10;
+        statusStyle.alignment = TextAnchor.MiddleCenter;
+        statusStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(0.6f, 0.6f, 0.6f);
+        string statusText = isFull ? "READY TO CONSUME!" : "Add cooked fish from hotbar";
+        GUI.Label(new Rect(panelX, panelY + 115, panelWidth, 16), statusText, statusStyle);
+
+        // Buttons
+        float btnWidth = 100;
+        float btnHeight = 30;
+        float btnY = panelY + 140;
+
+        // Add Fish button
+        Texture2D addBtnTex = GetOrCreateColorTexture(new Color(0.3f, 0.5f, 0.7f));
+        Rect addBtnRect = new Rect(panelX + 20, btnY, btnWidth, btnHeight);
+        GUI.DrawTexture(addBtnRect, addBtnTex);
+
+        GUIStyle btnStyle = new GUIStyle();
+        btnStyle.fontSize = 11;
+        btnStyle.fontStyle = FontStyle.Bold;
+        btnStyle.alignment = TextAnchor.MiddleCenter;
+        btnStyle.normal.textColor = Color.white;
+        GUI.Label(addBtnRect, "Add Fish", btnStyle);
+
+        if (GUI.Button(addBtnRect, "", GUIStyle.none))
+        {
+            AddFishToLunchBox();
+        }
+
+        // Consume button (only enabled when full)
+        Texture2D consumeBtnTex = GetOrCreateColorTexture(isFull ? new Color(0.2f, 0.7f, 0.3f) : new Color(0.3f, 0.3f, 0.3f));
+        Rect consumeBtnRect = new Rect(panelX + panelWidth - btnWidth - 20, btnY, btnWidth, btnHeight);
+        GUI.DrawTexture(consumeBtnRect, consumeBtnTex);
+
+        GUIStyle consumeStyle = new GUIStyle();
+        consumeStyle.fontSize = 11;
+        consumeStyle.fontStyle = FontStyle.Bold;
+        consumeStyle.alignment = TextAnchor.MiddleCenter;
+        consumeStyle.normal.textColor = isFull ? Color.white : new Color(0.5f, 0.5f, 0.5f);
+        GUI.Label(consumeBtnRect, "Consume", consumeStyle);
+
+        if (isFull && GUI.Button(consumeBtnRect, "", GUIStyle.none))
+        {
+            ConsumeLunchBox();
+        }
+
+        // Boxes remaining count
+        if (lunchBoxCount > 1)
+        {
+            GUIStyle boxCountStyle = new GUIStyle();
+            boxCountStyle.fontSize = 9;
+            boxCountStyle.alignment = TextAnchor.MiddleCenter;
+            boxCountStyle.normal.textColor = new Color(0.6f, 0.5f, 0.4f);
+            GUI.Label(new Rect(panelX, panelY + panelHeight - 15, panelWidth, 14), $"({lunchBoxCount} lunch boxes owned)", boxCountStyle);
         }
     }
 
