@@ -672,12 +672,6 @@ public class UIManager : MonoBehaviour
                 questTrackerHidden = true;
             }
 
-            GUIStyle hintStyle = new GUIStyle();
-            hintStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
-            hintStyle.fontSize = 9;
-            hintStyle.alignment = TextAnchor.MiddleCenter;
-
-            GUI.Label(new Rect(x + 12, y, 155, 26), "Quest available!\nTalk to the Old Captain", hintStyle);
         }
     }
 

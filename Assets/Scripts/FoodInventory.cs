@@ -428,12 +428,17 @@ public class FoodInventory : MonoBehaviour
         titleStyle.normal.textColor = new Color(0.8f, 0.5f, 0.2f);
         GUI.Label(new Rect(panelX, panelY + 10, panelWidth, 24), "LUNCH BOX", titleStyle);
 
-        // Close hint
-        GUIStyle closeStyle = new GUIStyle();
-        closeStyle.fontSize = 9;
-        closeStyle.alignment = TextAnchor.MiddleRight;
-        closeStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-        GUI.Label(new Rect(panelX, panelY + 10, panelWidth - 10, 20), "[L] Close", closeStyle);
+        // Red X close button
+        GUIStyle xButtonStyle = new GUIStyle();
+        xButtonStyle.fontSize = 14;
+        xButtonStyle.fontStyle = FontStyle.Bold;
+        xButtonStyle.alignment = TextAnchor.MiddleCenter;
+        xButtonStyle.normal.textColor = Color.white;
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 26, panelY + 8, 20, 20), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
+        if (GUI.Button(new Rect(panelX + panelWidth - 26, panelY + 8, 20, 20), "X", xButtonStyle))
+        {
+            lunchBoxOpen = false;
+        }
 
         // Lunch box icon (brown box)
         Texture2D boxTex = GetOrCreateColorTexture(new Color(0.6f, 0.4f, 0.2f));

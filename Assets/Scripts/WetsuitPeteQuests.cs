@@ -110,6 +110,11 @@ public class WetsuitPeteQuests : MonoBehaviour
                 dialogOpen = true;
                 dialogTimer = dialogDuration;
                 PlayHumm();
+                // Enable fish selling
+                if (FishInventoryPanel.Instance != null)
+                {
+                    FishInventoryPanel.Instance.EnableSellMode("Wetsuit Pete");
+                }
             }
         }
 
@@ -120,6 +125,11 @@ public class WetsuitPeteQuests : MonoBehaviour
             if (dialogTimer <= 0 || Input.GetKeyDown(KeyCode.Escape))
             {
                 dialogOpen = false;
+                // Disable fish selling
+                if (FishInventoryPanel.Instance != null)
+                {
+                    FishInventoryPanel.Instance.DisableSellMode();
+                }
             }
         }
 
@@ -561,6 +571,8 @@ public class WetsuitPeteQuests : MonoBehaviour
     {
         return currentState == QuestState.SalmonActive && salmonCaught < salmonRequired;
     }
+
+    public bool IsDialogueOpen() => dialogOpen;
 
     void OnDestroy()
     {

@@ -270,11 +270,21 @@ public class ClothingShopNPC : MonoBehaviour
         shopOpen = true;
         // Play the old lady's greeting
         PlayHelloSound();
+        // Enable fish selling
+        if (FishInventoryPanel.Instance != null)
+        {
+            FishInventoryPanel.Instance.EnableSellMode("Granny");
+        }
     }
 
     void CloseShop()
     {
         shopOpen = false;
+        // Disable fish selling
+        if (FishInventoryPanel.Instance != null)
+        {
+            FishInventoryPanel.Instance.DisableSellMode();
+        }
     }
 
     void OnGUI()
@@ -326,6 +336,18 @@ public class ClothingShopNPC : MonoBehaviour
         // Panel border and background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
+
+        // Red X close button
+        GUIStyle xButtonStyle = new GUIStyle();
+        xButtonStyle.fontSize = 16;
+        xButtonStyle.fontStyle = FontStyle.Bold;
+        xButtonStyle.alignment = TextAnchor.MiddleCenter;
+        xButtonStyle.normal.textColor = Color.white;
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 32, panelY + 8, 24, 24), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
+        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 8, 24, 24), "X", xButtonStyle))
+        {
+            CloseShop();
+        }
 
         // Title
         GUIStyle titleStyle = new GUIStyle(GUI.skin.label);
@@ -741,6 +763,8 @@ public class ClothingShopNPC : MonoBehaviour
         }
         textureCache.Clear();
     }
+
+    public bool IsShopOpen() => shopOpen;
 }
 
 [System.Serializable]
