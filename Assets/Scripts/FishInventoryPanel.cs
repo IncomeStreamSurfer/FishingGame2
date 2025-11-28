@@ -201,12 +201,12 @@ public class FishInventoryPanel : MonoBehaviour
                 Texture2D fishTex = GetOrCreateColorTexture(fish.color);
                 GUI.DrawTexture(new Rect(itemRect.x + 8, itemRect.y + (itemHeight - imgSize) / 2 - 2, imgSize, imgSize), fishTex);
 
-                // Fish name
+                // Fish name - smaller for common fish
                 GUIStyle nameStyle = new GUIStyle();
-                nameStyle.fontSize = 13;
-                nameStyle.fontStyle = FontStyle.Bold;
+                nameStyle.fontSize = fish.rarity == Rarity.Common ? 10 : 13;
+                nameStyle.fontStyle = fish.rarity == Rarity.Common ? FontStyle.Normal : FontStyle.Bold;
                 nameStyle.normal.textColor = GetRarityColor(fish.rarity);
-                GUI.Label(new Rect(itemRect.x + 52, itemRect.y + 6, 180, 20), fish.name, nameStyle);
+                GUI.Label(new Rect(itemRect.x + 52, itemRect.y + (fish.rarity == Rarity.Common ? 8 : 6), 180, 20), fish.name, nameStyle);
 
                 // Rarity
                 GUIStyle rarityStyle = new GUIStyle();
