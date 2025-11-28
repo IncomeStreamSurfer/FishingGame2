@@ -30,7 +30,7 @@ public class FoodInventory : MonoBehaviour
     // Health values per fish rarity
     private Dictionary<Rarity, int> fishHealthValues = new Dictionary<Rarity, int>()
     {
-        { Rarity.Common, 5 },
+        { Rarity.Common, 1 },
         { Rarity.Uncommon, 10 },
         { Rarity.Rare, 20 },
         { Rarity.Epic, 35 },
