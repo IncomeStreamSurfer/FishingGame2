@@ -11,9 +11,25 @@ public class FishData
     public int coinValue;
     public float weight;
     public Color fishColor;
+
+    // Special fish properties
+    public bool isSpecialFish = false;      // Can't be BBQ'd, goes to special inventory
+    public int sellToNPC = 0;               // Sell value to Wetsuit Pete
+    public int xpValue = 0;                 // Custom XP override (0 = use default)
+    public HealthBuffType healthBuff = HealthBuffType.None;
+    public float healthBuffDuration = 0f;   // Duration in seconds (0 = instant)
+    public float glowIntensity = 0f;        // 0 = no glow, higher = brighter
+    public Color glowColor = Color.white;
 }
 
 public enum Rarity { Common, Uncommon, Rare, Epic, Legendary, Mythic }
+
+public enum HealthBuffType
+{
+    None,
+    InstantFullHealth,      // Rare fish - instant full health
+    MaxHealthTimed          // Epic/Legendary - max health for duration
+}
 
 public class FishingSystem : MonoBehaviour
 {
@@ -70,6 +86,114 @@ public class FishingSystem : MonoBehaviour
 
         // Special - Humpback Whale (can break your rod!)
         fishDatabase.Add(new FishData { id = "humpback_whale", fishName = "Humpback Whale", rarity = Rarity.Mythic, coinValue = 10000, weight = 0.05f, fishColor = new Color(0.25f, 0.35f, 0.5f) });
+
+        // ============ SPECIAL RARE FISH (5% chance, blue glow) ============
+        // 100 XP, 100g sell to Pete, instant full health, can't be BBQ'd
+        Color rareGlow = new Color(0.3f, 0.5f, 1f);
+        fishDatabase.Add(new FishData {
+            id = "red_snapper", fishName = "Red Snapper", rarity = Rarity.Rare,
+            coinValue = 0, weight = 0, fishColor = new Color(0.9f, 0.3f, 0.3f),
+            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
+            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "blue_marlin", fishName = "Blue Marlin", rarity = Rarity.Rare,
+            coinValue = 0, weight = 0, fishColor = new Color(0.2f, 0.4f, 0.9f),
+            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
+            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "rainbow_trout", fishName = "Rainbow Trout", rarity = Rarity.Rare,
+            coinValue = 0, weight = 0, fishColor = new Color(0.9f, 0.5f, 0.7f),
+            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
+            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "sunshore_od", fishName = "Sunshore Od", rarity = Rarity.Rare,
+            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.8f, 0.3f),
+            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
+            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "icelandic_snubnose", fishName = "Icelandic Grey Finned Snubnose", rarity = Rarity.Rare,
+            coinValue = 0, weight = 0, fishColor = new Color(0.6f, 0.65f, 0.7f),
+            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
+            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
+        });
+
+        // ============ SPECIAL EPIC FISH (0.5% chance, purple glow) ============
+        // 5000 XP, 5000g sell to Pete, 10 min max health, can't be BBQ'd
+        Color epicGlow = new Color(0.7f, 0.2f, 1f);
+        fishDatabase.Add(new FishData {
+            id = "sting_ray", fishName = "Sting Ray", rarity = Rarity.Epic,
+            coinValue = 0, weight = 0, fishColor = new Color(0.5f, 0.4f, 0.6f),
+            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f, // 10 mins
+            glowIntensity = 0.8f, glowColor = epicGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "rainbow_fish", fishName = "Rainbow Fish", rarity = Rarity.Epic,
+            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.5f, 0.8f),
+            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
+            glowIntensity = 0.8f, glowColor = epicGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "hammerhead_special", fishName = "Hammerhead Shark", rarity = Rarity.Epic,
+            coinValue = 0, weight = 0, fishColor = new Color(0.4f, 0.45f, 0.5f),
+            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
+            glowIntensity = 0.8f, glowColor = epicGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "whale_baby", fishName = "Whale Baby", rarity = Rarity.Epic,
+            coinValue = 0, weight = 0, fishColor = new Color(0.35f, 0.45f, 0.7f),
+            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
+            glowIntensity = 0.8f, glowColor = epicGlow
+        });
+        fishDatabase.Add(new FishData {
+            id = "seahorse", fishName = "Seahorse", rarity = Rarity.Epic,
+            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.6f, 0.3f),
+            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
+            glowIntensity = 0.8f, glowColor = epicGlow
+        });
+
+        // ============ LEGENDARY FISH (0.02% chance, golden glow) ============
+        // 100,000 XP, 100,000g sell to Pete, 1 hour max health, special effects
+        Color legendaryGlow = new Color(1f, 0.9f, 0.3f);
+        fishDatabase.Add(new FishData {
+            id = "golden_starfish", fishName = "GOLDEN STARFISH", rarity = Rarity.Legendary,
+            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.85f, 0.2f),
+            isSpecialFish = true, sellToNPC = 100000, xpValue = 100000,
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 3600f, // 1 hour
+            glowIntensity = 2f, glowColor = legendaryGlow
+        });
+    }
+
+    // Special fish inventory (for rare/epic/legendary that can't be BBQ'd)
+    public List<FishData> specialFishInventory = new List<FishData>();
+
+    public void AddSpecialFish(FishData fish)
+    {
+        specialFishInventory.Add(fish);
+        Debug.Log($"Added {fish.fishName} to special fish inventory!");
+    }
+
+    public bool SellSpecialFish(int index)
+    {
+        if (index < 0 || index >= specialFishInventory.Count) return false;
+
+        FishData fish = specialFishInventory[index];
+        if (fish.sellToNPC > 0 && GameManager.Instance != null)
+        {
+            GameManager.Instance.AddCoins(fish.sellToNPC);
+            specialFishInventory.RemoveAt(index);
+            Debug.Log($"Sold {fish.fishName} for {fish.sellToNPC} gold!");
+            return true;
+        }
+        return false;
     }
 
     public bool CanFish()
@@ -169,6 +293,59 @@ public class FishingSystem : MonoBehaviour
             }
         }
 
+        // ========== SPECIAL FISH HANDLING ==========
+        if (fish.isSpecialFish)
+        {
+            // Add to special inventory (can't be BBQ'd)
+            AddSpecialFish(fish);
+
+            // Apply health buff
+            if (PlayerHealth.Instance != null)
+            {
+                if (fish.healthBuff == HealthBuffType.InstantFullHealth)
+                {
+                    PlayerHealth.Instance.HealToFull();
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.ShowLootNotification("FULL HEALTH RESTORED!", new Color(0.3f, 1f, 0.5f));
+                    }
+                }
+                else if (fish.healthBuff == HealthBuffType.MaxHealthTimed)
+                {
+                    PlayerHealth.Instance.ApplyMaxHealthBuff(fish.healthBuffDuration);
+                    string duration = fish.healthBuffDuration >= 3600 ? "1 HOUR" :
+                                     fish.healthBuffDuration >= 60 ? $"{fish.healthBuffDuration / 60f:F0} MINS" :
+                                     $"{fish.healthBuffDuration}s";
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.ShowLootNotification($"MAX HEALTH FOR {duration}!", new Color(1f, 0.8f, 0.3f));
+                    }
+                }
+            }
+
+            // Give custom XP
+            if (LevelingSystem.Instance != null && fish.xpValue > 0)
+            {
+                LevelingSystem.Instance.AddXP(fish.xpValue);
+            }
+
+            // Special effects for legendary fish
+            if (fish.id == "golden_starfish")
+            {
+                SpawnGoldenStarfishEffect(fish);
+            }
+            else
+            {
+                SpawnSpecialFishEffects(fish);
+            }
+
+            Debug.Log($"SPECIAL CATCH: {fish.fishName} - {fish.xpValue} XP! Sell to Pete for {fish.sellToNPC}g!");
+            isFishing = false;
+            StartCoroutine(ResetCooldown());
+            return;
+        }
+
+        // ========== NORMAL FISH HANDLING ==========
         GameManager.Instance.AddCoins(fish.coinValue);
         GameManager.Instance.AddFish(fish);
 
@@ -343,6 +520,231 @@ public class FishingSystem : MonoBehaviour
         {
             StartCoroutine(SpawnCoin(spawnPos, i * 0.08f));
         }
+    }
+
+    void SpawnSpecialFishEffects(FishData fish)
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return;
+
+        Vector3 spawnPos = player.transform.position + player.transform.forward * 3f;
+        spawnPos.y = 1.5f;
+
+        // Create glowing fish model
+        GameObject fishObj = CreateDetailedFish(fish);
+        fishObj.name = "SpecialFish";
+        fishObj.transform.position = spawnPos;
+        fishObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+
+        // Add glow to all parts
+        foreach (Renderer rend in fishObj.GetComponentsInChildren<Renderer>())
+        {
+            rend.material.EnableKeyword("_EMISSION");
+            rend.material.SetColor("_EmissionColor", fish.glowColor * fish.glowIntensity);
+        }
+
+        StartCoroutine(SpecialFishAnimation(fishObj, fish));
+    }
+
+    void SpawnGoldenStarfishEffect(FishData fish)
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return;
+
+        Vector3 spawnPos = player.transform.position + player.transform.forward * 4f;
+        spawnPos.y = 1f; // In water
+
+        // Create golden starfish
+        GameObject starfish = new GameObject("GoldenStarfish");
+        starfish.transform.position = spawnPos;
+
+        // Create star shape with 5 arms
+        Material starMat = new Material(Shader.Find("Standard"));
+        starMat.color = fish.fishColor;
+        starMat.EnableKeyword("_EMISSION");
+        starMat.SetColor("_EmissionColor", fish.glowColor * fish.glowIntensity);
+
+        // Center
+        GameObject center = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        center.name = "Center";
+        center.transform.SetParent(starfish.transform);
+        center.transform.localPosition = Vector3.zero;
+        center.transform.localScale = new Vector3(0.25f, 0.08f, 0.25f);
+        center.GetComponent<Renderer>().material = starMat;
+        Object.Destroy(center.GetComponent<Collider>());
+
+        // 5 arms
+        for (int i = 0; i < 5; i++)
+        {
+            float angle = i * 72f * Mathf.Deg2Rad;
+            Vector3 armDir = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle));
+
+            GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            arm.name = "Arm" + i;
+            arm.transform.SetParent(starfish.transform);
+            arm.transform.localPosition = armDir * 0.2f;
+            arm.transform.localScale = new Vector3(0.08f, 0.05f, 0.25f);
+            arm.transform.localRotation = Quaternion.LookRotation(armDir) * Quaternion.Euler(0, 90, 0);
+            arm.GetComponent<Renderer>().material = starMat;
+            Object.Destroy(arm.GetComponent<Collider>());
+
+            // Arm tip
+            GameObject tip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            tip.name = "Tip" + i;
+            tip.transform.SetParent(starfish.transform);
+            tip.transform.localPosition = armDir * 0.35f;
+            tip.transform.localScale = new Vector3(0.06f, 0.04f, 0.08f);
+            tip.GetComponent<Renderer>().material = starMat;
+            Object.Destroy(tip.GetComponent<Collider>());
+        }
+
+        StartCoroutine(GoldenStarfishAnimation(starfish, fish));
+    }
+
+    IEnumerator SpecialFishAnimation(GameObject fishObj, FishData fish)
+    {
+        // Show popup
+        if (UIManager.Instance != null)
+        {
+            Color rarityColor = GetRarityColor(fish.rarity);
+            UIManager.Instance.ShowLootNotification($"SPECIAL: {fish.fishName}!", rarityColor);
+        }
+
+        Vector3 startPos = fishObj.transform.position;
+        float t = 0;
+
+        // Glowing, floating animation
+        while (t < 2.5f)
+        {
+            t += Time.deltaTime;
+            float floatY = Mathf.Sin(t * 3f) * 0.3f;
+            fishObj.transform.position = startPos + new Vector3(0, floatY + t * 0.3f, 0);
+            fishObj.transform.Rotate(Vector3.up * 120 * Time.deltaTime);
+
+            // Pulse glow
+            float pulse = 1f + Mathf.Sin(t * 6f) * 0.3f;
+            foreach (Renderer rend in fishObj.GetComponentsInChildren<Renderer>())
+            {
+                rend.material.SetColor("_EmissionColor", fish.glowColor * fish.glowIntensity * pulse);
+            }
+
+            yield return null;
+        }
+
+        // Fade out
+        Renderer[] renderers = fishObj.GetComponentsInChildren<Renderer>();
+        foreach (Renderer rend in renderers)
+        {
+            Material mat = rend.material;
+            mat.SetFloat("_Mode", 3);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.renderQueue = 3000;
+        }
+
+        t = 0;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f;
+            foreach (Renderer rend in renderers)
+            {
+                Color c = rend.material.color;
+                c.a = 1 - t;
+                rend.material.color = c;
+            }
+            yield return null;
+        }
+
+        Destroy(fishObj);
+    }
+
+    IEnumerator GoldenStarfishAnimation(GameObject starfish, FishData fish)
+    {
+        // Epic announcement
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("!!! LEGENDARY: GOLDEN STARFISH !!!", new Color(1f, 0.85f, 0.2f));
+        }
+
+        Vector3 startPos = starfish.transform.position;
+        float t = 0;
+
+        // Float in water with sunshine beams
+        List<GameObject> sunBeams = new List<GameObject>();
+
+        // Create sun beams
+        for (int i = 0; i < 8; i++)
+        {
+            GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            beam.name = "SunBeam" + i;
+            beam.transform.SetParent(starfish.transform);
+            float angle = i * 45f * Mathf.Deg2Rad;
+            beam.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.1f, 0.05f, Mathf.Sin(angle) * 0.1f);
+            beam.transform.localScale = new Vector3(0.02f, 0.8f, 0.02f);
+            beam.transform.localRotation = Quaternion.Euler(Mathf.Cos(angle) * 30, 0, Mathf.Sin(angle) * 30);
+
+            Material beamMat = new Material(Shader.Find("Standard"));
+            beamMat.color = new Color(1f, 0.95f, 0.6f, 0.5f);
+            beamMat.EnableKeyword("_EMISSION");
+            beamMat.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.4f) * 3f);
+            beamMat.SetFloat("_Mode", 3);
+            beamMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            beamMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            beamMat.EnableKeyword("_ALPHABLEND_ON");
+            beamMat.renderQueue = 3000;
+            beam.GetComponent<Renderer>().material = beamMat;
+            Object.Destroy(beam.GetComponent<Collider>());
+
+            sunBeams.Add(beam);
+        }
+
+        // Float and glow in water for 3 seconds
+        while (t < 3f)
+        {
+            t += Time.deltaTime;
+            float floatY = Mathf.Sin(t * 2f) * 0.2f;
+            starfish.transform.position = startPos + new Vector3(0, floatY + 0.5f, 0);
+            starfish.transform.Rotate(Vector3.up * 60 * Time.deltaTime);
+
+            // Animate sun beams
+            for (int i = 0; i < sunBeams.Count; i++)
+            {
+                float beamPulse = 0.5f + Mathf.Sin(t * 4f + i) * 0.3f;
+                sunBeams[i].transform.localScale = new Vector3(0.02f, 0.8f + beamPulse * 0.3f, 0.02f);
+            }
+
+            // Pulse main glow
+            float pulse = 2f + Mathf.Sin(t * 8f) * 1f;
+            foreach (Renderer rend in starfish.GetComponentsInChildren<Renderer>())
+            {
+                if (!rend.name.Contains("SunBeam"))
+                {
+                    rend.material.SetColor("_EmissionColor", fish.glowColor * pulse);
+                }
+            }
+
+            yield return null;
+        }
+
+        // Rise up into player inventory
+        Vector3 endPos = startPos + Vector3.up * 3f;
+        t = 0;
+        while (t < 1.5f)
+        {
+            t += Time.deltaTime;
+            float progress = t / 1.5f;
+            starfish.transform.position = Vector3.Lerp(startPos + Vector3.up * 0.5f, endPos, progress);
+            starfish.transform.Rotate(Vector3.up * 180 * Time.deltaTime);
+
+            // Scale down and brighten
+            float scale = 1f - progress * 0.5f;
+            starfish.transform.localScale = Vector3.one * scale;
+
+            yield return null;
+        }
+
+        Destroy(starfish);
     }
 
     GameObject CreateDetailedFish(FishData fish)
@@ -771,8 +1173,72 @@ public class FishingSystem : MonoBehaviour
         canFish = true;
     }
 
+    // Get rod tier bonus for special fish chances
+    float GetRodTierBonus()
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player != null)
+        {
+            FishingRodAnimator rodAnimator = player.GetComponent<FishingRodAnimator>();
+            if (rodAnimator != null)
+            {
+                // Higher tier rods increase special fish chances
+                // Tier 1 = 0%, Tier 2 = 10%, Tier 3 = 25%, Tier 4 = 50%, Tier 5 = 100%
+                int tier = rodAnimator.GetCurrentRodTier();
+                return (tier - 1) * 0.25f; // 0, 0.25, 0.5, 0.75, 1.0
+            }
+        }
+        return 0f;
+    }
+
     FishData GetRandomFish()
     {
+        float rodBonus = GetRodTierBonus();
+
+        // ========== CHECK FOR SPECIAL FISH FIRST ==========
+
+        // LEGENDARY: 0.02% base chance (+ rod bonus)
+        float legendaryChance = 0.02f * (1f + rodBonus);
+        if (Random.Range(0f, 100f) < legendaryChance)
+        {
+            FishData legendary = fishDatabase.Find(f => f.id == "golden_starfish");
+            if (legendary != null)
+            {
+                Debug.Log("!!! LEGENDARY FISH - GOLDEN STARFISH !!!");
+                return legendary;
+            }
+        }
+
+        // EPIC: 0.5% base chance (+ rod bonus)
+        float epicChance = 0.5f * (1f + rodBonus);
+        if (Random.Range(0f, 100f) < epicChance)
+        {
+            string[] epicIds = { "sting_ray", "rainbow_fish", "hammerhead_special", "whale_baby", "seahorse" };
+            string randomEpic = epicIds[Random.Range(0, epicIds.Length)];
+            FishData epic = fishDatabase.Find(f => f.id == randomEpic);
+            if (epic != null)
+            {
+                Debug.Log("!! EPIC FISH - " + epic.fishName + " !!");
+                return epic;
+            }
+        }
+
+        // RARE SPECIAL: 5% base chance (+ rod bonus)
+        float rareSpecialChance = 5f * (1f + rodBonus * 0.5f);
+        if (Random.Range(0f, 100f) < rareSpecialChance)
+        {
+            string[] rareIds = { "red_snapper", "blue_marlin", "rainbow_trout", "sunshore_od", "icelandic_snubnose" };
+            string randomRare = rareIds[Random.Range(0, rareIds.Length)];
+            FishData rare = fishDatabase.Find(f => f.id == randomRare);
+            if (rare != null)
+            {
+                Debug.Log("! RARE SPECIAL FISH - " + rare.fishName + " !");
+                return rare;
+            }
+        }
+
+        // ========== NORMAL FISH SELECTION ==========
+
         // Check if salmon quest is active - 40% chance to get salmon
         if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsSalmonQuestActive())
         {

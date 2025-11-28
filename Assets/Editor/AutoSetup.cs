@@ -122,7 +122,7 @@ public class AutoSetup
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
@@ -1642,11 +1642,15 @@ public class AutoSetup
         bbq.transform.rotation = Quaternion.Euler(0, 90, 0);    // Face sideways
         bbq.AddComponent<BBQStation>();
 
-        // Small radio in front of BBQ, angled
+        // Small radio to the RIGHT of BBQ - visible and interactable
         GameObject dockRadio = new GameObject("DockRadio");
-        dockRadio.transform.position = new Vector3(-13f, 2.5f, 50f);  // In front of BBQ
-        dockRadio.transform.rotation = Quaternion.Euler(0, 45, 0);    // Angled
+        dockRadio.transform.position = new Vector3(-10.5f, 2.5f, 52f);  // Right side of dock, next to BBQ
+        dockRadio.transform.rotation = Quaternion.Euler(0, -30, 0);     // Angled toward player
         dockRadio.AddComponent<DockRadio>();
+
+        // Shoulder Parrot system (spawns when purchased from shop)
+        GameObject parrotSystem = new GameObject("ShoulderParrot");
+        parrotSystem.AddComponent<ShoulderParrot>();
     }
 
     static void CreateQuestNPC()

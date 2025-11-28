@@ -314,6 +314,100 @@ public class WetsuitPeteQuests : MonoBehaviour
         hintStyle.alignment = TextAnchor.MiddleCenter;
         GUI.Label(new Rect(bubbleX, bubbleY + bubbleHeight + pointerSize + 5, bubbleWidth, 18),
             "Press ESC to close", hintStyle);
+
+        // Draw fish selling panel if player has special fish
+        DrawFishSellingPanel(bubbleX, bubbleY + bubbleHeight + pointerSize + 30, bubbleWidth);
+    }
+
+    void DrawFishSellingPanel(float x, float y, float width)
+    {
+        if (FishingSystem.Instance == null) return;
+        if (FishingSystem.Instance.specialFishInventory.Count == 0) return;
+
+        float panelHeight = 120;
+
+        // Panel background
+        GUI.color = new Color(0.15f, 0.2f, 0.3f, 0.95f);
+        GUI.DrawTexture(new Rect(x, y, width, panelHeight), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        // Border
+        GUI.color = new Color(0.3f, 0.5f, 0.7f, 1f);
+        GUI.DrawTexture(new Rect(x - 2, y - 2, width + 4, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x - 2, y + panelHeight, width + 4, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x - 2, y, 2, panelHeight), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x + width, y, 2, panelHeight), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        // Title
+        GUIStyle titleStyle = new GUIStyle();
+        titleStyle.fontSize = 14;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUI.Label(new Rect(x, y + 5, width, 20), "SELL SPECIAL FISH", titleStyle);
+
+        // Fish list with sell buttons
+        GUIStyle fishStyle = new GUIStyle();
+        fishStyle.fontSize = 12;
+        fishStyle.normal.textColor = Color.white;
+
+        GUIStyle priceStyle = new GUIStyle();
+        priceStyle.fontSize = 12;
+        priceStyle.fontStyle = FontStyle.Bold;
+        priceStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+
+        float listY = y + 30;
+        float itemHeight = 22;
+        int maxDisplay = 3;
+        int toRemove = -1;
+
+        for (int i = 0; i < Mathf.Min(FishingSystem.Instance.specialFishInventory.Count, maxDisplay); i++)
+        {
+            FishData fish = FishingSystem.Instance.specialFishInventory[i];
+
+            // Rarity color indicator
+            Color rarityColor = FishingSystem.Instance.GetRarityColor(fish.rarity);
+            GUI.color = rarityColor;
+            GUI.DrawTexture(new Rect(x + 10, listY + 4, 8, itemHeight - 8), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // Fish name
+            GUI.Label(new Rect(x + 25, listY, 180, itemHeight), fish.fishName, fishStyle);
+
+            // Price
+            GUI.Label(new Rect(x + 220, listY, 80, itemHeight), $"{fish.sellToNPC}g", priceStyle);
+
+            // Sell button
+            if (GUI.Button(new Rect(x + width - 70, listY, 60, itemHeight - 2), "SELL"))
+            {
+                toRemove = i;
+            }
+
+            listY += itemHeight;
+        }
+
+        // Handle sell after loop to avoid collection modification
+        if (toRemove >= 0)
+        {
+            FishData soldFish = FishingSystem.Instance.specialFishInventory[toRemove];
+            FishingSystem.Instance.SellSpecialFish(toRemove);
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Sold {soldFish.fishName} for {soldFish.sellToNPC}g!", new Color(1f, 0.85f, 0.3f));
+            }
+        }
+
+        // Show count if more fish
+        if (FishingSystem.Instance.specialFishInventory.Count > maxDisplay)
+        {
+            GUIStyle moreStyle = new GUIStyle();
+            moreStyle.fontSize = 10;
+            moreStyle.alignment = TextAnchor.MiddleCenter;
+            moreStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+            int more = FishingSystem.Instance.specialFishInventory.Count - maxDisplay;
+            GUI.Label(new Rect(x, y + panelHeight - 18, width, 16), $"+ {more} more fish...", moreStyle);
+        }
     }
 
     void DrawInteractionPrompt()

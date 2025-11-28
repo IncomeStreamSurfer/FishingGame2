@@ -110,7 +110,7 @@ public class FishingRodAnimator : MonoBehaviour
 
     System.Collections.IEnumerator GenerateCastSound(float power)
     {
-        // Line whistle and reel unwind sound
+        // Reel unwind sound (no whistle)
         int sampleRate = 44100;
         float duration = 0.4f + power * 0.3f;
         int sampleCount = (int)(sampleRate * duration);
@@ -123,10 +123,6 @@ public class FishingRodAnimator : MonoBehaviour
             float t = (float)i / sampleRate;
             float progress = (float)i / sampleCount;
 
-            // Whistle - descending pitch
-            float whistleFreq = Mathf.Lerp(2000f, 800f, progress) * (0.8f + power * 0.4f);
-            float whistle = Mathf.Sin(2 * Mathf.PI * whistleFreq * t) * 0.15f;
-
             // Reel clicking sound
             float clickFreq = 30f + power * 20f;
             float click = (Mathf.Sin(2 * Mathf.PI * clickFreq * t) > 0.8f) ? 0.2f : 0f;
@@ -137,7 +133,7 @@ public class FishingRodAnimator : MonoBehaviour
             // Envelope
             float envelope = Mathf.Sin(progress * Mathf.PI);
 
-            samples[i] = (whistle + click + noise) * envelope * 0.4f;
+            samples[i] = (click + noise) * envelope * 0.5f;
         }
 
         castClip.SetData(samples, 0);
@@ -279,6 +275,22 @@ public class FishingRodAnimator : MonoBehaviour
 
         currentRodVisual = selectedRod;
         ApplyRodCosmetics(selectedRod);
+    }
+
+    // Get rod tier for bonus calculations (higher tier = better chance at rare fish)
+    public int GetCurrentRodTier()
+    {
+        // Rod tiers based on the rod visual index
+        // Tier 1: Basic rod (index 0)
+        // Tier 2: Upgraded rods (index 1-2)
+        // Tier 3: Advanced rods (index 3-4)
+        // Tier 4: Elite rods (index 5-6)
+        // Tier 5: Legendary rods (index 7+)
+        if (currentRodVisual <= 0) return 1;
+        if (currentRodVisual <= 2) return 2;
+        if (currentRodVisual <= 4) return 3;
+        if (currentRodVisual <= 6) return 4;
+        return 5;
     }
 
     void ApplyRodCosmetics(int rodIndex)
