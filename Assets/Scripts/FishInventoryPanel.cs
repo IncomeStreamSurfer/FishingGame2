@@ -17,6 +17,11 @@ public class FishInventoryPanel : MonoBehaviour
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
 
+    // Sell mode - enabled when near NPC and pressing E
+    public bool sellModeEnabled = false;
+    public string currentNPCName = "";
+    private AudioSource audioSource;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -31,7 +36,49 @@ public class FishInventoryPanel : MonoBehaviour
     void Initialize()
     {
         CreateCachedTextures();
+        SetupAudio();
         initialized = true;
+    }
+
+    void SetupAudio()
+    {
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.spatialBlend = 0f;
+        audioSource.volume = 0.5f;
+        audioSource.playOnAwake = false;
+    }
+
+    void PlayCoinSound()
+    {
+        // Simple coin sound
+        int sampleRate = 44100;
+        float duration = 0.15f;
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip coinClip = AudioClip.Create("CoinSound", sampleCount, 1, sampleRate, false);
+        float[] samples = new float[sampleCount];
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float envelope = 1f - (float)i / sampleCount;
+            samples[i] = Mathf.Sin(2 * Mathf.PI * 1200f * t) * envelope * 0.3f;
+            samples[i] += Mathf.Sin(2 * Mathf.PI * 1800f * t) * envelope * 0.2f;
+        }
+        coinClip.SetData(samples, 0);
+        audioSource.clip = coinClip;
+        audioSource.Play();
+    }
+
+    // Called by NPCs to enable sell mode
+    public void EnableSellMode(string npcName)
+    {
+        sellModeEnabled = true;
+        currentNPCName = npcName;
+    }
+
+    public void DisableSellMode()
+    {
+        sellModeEnabled = false;
+        currentNPCName = "";
     }
 
     void CreateCachedTextures()
@@ -121,15 +168,21 @@ public class FishInventoryPanel : MonoBehaviour
         titleStyle.fontSize = 18;
         titleStyle.fontStyle = FontStyle.Bold;
         titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f);
-        GUI.Label(new Rect(panelX, panelY + 5, panelWidth, 30), "FISH INVENTORY", titleStyle);
+        titleStyle.normal.textColor = sellModeEnabled ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.85f, 0.4f);
+        string title = sellModeEnabled ? $"SELL FISH TO {currentNPCName.ToUpper()}" : "FISH INVENTORY";
+        GUI.Label(new Rect(panelX, panelY + 5, panelWidth, 30), title, titleStyle);
 
-        // Close hint
-        GUIStyle closeStyle = new GUIStyle();
-        closeStyle.fontSize = 10;
-        closeStyle.alignment = TextAnchor.MiddleRight;
-        closeStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-        GUI.Label(new Rect(panelX, panelY + 8, panelWidth - 10, 20), "[F] or [ESC] Close", closeStyle);
+        // Red X close button
+        GUIStyle xButtonStyle = new GUIStyle();
+        xButtonStyle.fontSize = 16;
+        xButtonStyle.fontStyle = FontStyle.Bold;
+        xButtonStyle.alignment = TextAnchor.MiddleCenter;
+        xButtonStyle.normal.textColor = Color.white;
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
+        if (GUI.Button(new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22), "X", xButtonStyle))
+        {
+            isOpen = false;
+        }
 
         // Get fish sorted by value
         List<FishDisplayData> fishList = GetSortedFishList();
@@ -238,6 +291,25 @@ public class FishInventoryPanel : MonoBehaviour
                 int stackValue = fish.coinValue * fish.count;
                 GUI.Label(new Rect(itemRect.x + itemRect.width - 80, itemRect.y + 24, 75, 16), $"({stackValue}g total)", totalStyle);
 
+                // SELL button when in sell mode
+                if (sellModeEnabled && fish.coinValue > 0)
+                {
+                    GUIStyle sellBtnStyle = new GUIStyle();
+                    sellBtnStyle.fontSize = 10;
+                    sellBtnStyle.fontStyle = FontStyle.Bold;
+                    sellBtnStyle.alignment = TextAnchor.MiddleCenter;
+                    sellBtnStyle.normal.textColor = Color.white;
+
+                    Rect sellBtnRect = new Rect(itemRect.x + itemRect.width - 45, itemRect.y + 12, 40, 22);
+                    GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(new Color(0.2f, 0.6f, 0.3f)));
+                    GUI.Label(sellBtnRect, "SELL", sellBtnStyle);
+
+                    if (GUI.Button(sellBtnRect, "", GUIStyle.none))
+                    {
+                        SellFish(fish.id, fish.coinValue);
+                    }
+                }
+
                 itemY += itemHeight;
             }
         }
@@ -304,6 +376,34 @@ public class FishInventoryPanel : MonoBehaviour
             case Rarity.Mythic: return new Color(1f, 0.35f, 0.35f);
             default: return Color.white;
         }
+    }
+
+    void SellFish(string fishId, int coinValue)
+    {
+        if (GameManager.Instance == null) return;
+        if (!GameManager.Instance.fishInventory.ContainsKey(fishId)) return;
+        if (GameManager.Instance.fishInventory[fishId] <= 0) return;
+
+        // Remove one fish from inventory
+        GameManager.Instance.fishInventory[fishId]--;
+        if (GameManager.Instance.fishInventory[fishId] <= 0)
+        {
+            GameManager.Instance.fishInventory.Remove(fishId);
+        }
+
+        // Add coins
+        GameManager.Instance.AddCoins(coinValue);
+
+        // Play coin sound
+        PlayCoinSound();
+
+        // Show notification
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification($"Sold fish for {coinValue}g!", new Color(1f, 0.85f, 0.3f));
+        }
+
+        Debug.Log($"Sold fish {fishId} for {coinValue}g");
     }
 
     void OnDestroy()

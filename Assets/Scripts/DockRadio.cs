@@ -163,7 +163,7 @@ public class DockRadio : MonoBehaviour
         }
 
         // Press F only when near radio to toggle
-        if (playerNearby && Input.GetKeyDown(KeyCode.F))
+        if (playerNearby && Input.GetKeyDown(KeyCode.R))
         {
             ToggleRadio();
         }

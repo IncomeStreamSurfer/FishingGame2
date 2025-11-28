@@ -46,7 +46,8 @@ public class PlayerController : MonoBehaviour
         CheckGrounded();
 
         // Left mouse button to fish (only starts cast, rod animator handles the rest)
-        if (Input.GetMouseButtonDown(0))
+        // Don't cast if any UI window is open
+        if (Input.GetMouseButtonDown(0) && !IsAnyUIOpen())
         {
             FishingRodAnimator rodAnimator = GetComponent<FishingRodAnimator>();
             // Only start fishing if line is not already out AND not already charging
@@ -227,5 +228,19 @@ public class PlayerController : MonoBehaviour
     public bool IsDead()
     {
         return isDead;
+    }
+
+    // Check if any UI window is currently open (blocks fishing)
+    bool IsAnyUIOpen()
+    {
+        // Check all UI panels that could be open
+        if (CharacterPanel.Instance != null && CharacterPanel.Instance.IsOpen()) return true;
+        if (FishDiary.Instance != null && FishDiary.Instance.IsOpen()) return true;
+        if (FishInventoryPanel.Instance != null && FishInventoryPanel.Instance.IsOpen()) return true;
+        if (BBQStation.Instance != null && BBQStation.Instance.IsOpen()) return true;
+        if (ClothingShopNPC.Instance != null && ClothingShopNPC.Instance.IsShopOpen()) return true;
+        if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsDialogueOpen()) return true;
+        if (QuestSystem.Instance != null && QuestSystem.Instance.HasPendingQuest()) return true;
+        return false;
     }
 }

@@ -54,6 +54,7 @@ public class CharacterPanel : MonoBehaviour
     {
         CacheTexture("panelBg", new Color(0.12f, 0.12f, 0.15f, 0.95f));
         CacheTexture("panelBorder", new Color(0.4f, 0.35f, 0.2f, 1f));
+        CacheTexture("closeBtn", new Color(0.8f, 0.2f, 0.2f, 1f));
         CacheTexture("slotBg", new Color(0.2f, 0.2f, 0.25f, 0.9f));
         CacheTexture("divider", new Color(0.4f, 0.35f, 0.2f, 0.8f));
         CacheTexture("modelBg", new Color(0.08f, 0.08f, 0.1f, 1f));
@@ -201,6 +202,18 @@ public class CharacterPanel : MonoBehaviour
         titleStyle.alignment = TextAnchor.MiddleCenter;
         titleStyle.normal.textColor = new Color(1f, 0.9f, 0.6f);
         GUI.Label(new Rect(panelX, panelY + 10, panelWidth, 30), "CHARACTER", titleStyle);
+
+        // Red X close button
+        GUIStyle xButtonStyle = new GUIStyle();
+        xButtonStyle.fontSize = 16;
+        xButtonStyle.fontStyle = FontStyle.Bold;
+        xButtonStyle.alignment = TextAnchor.MiddleCenter;
+        xButtonStyle.normal.textColor = Color.white;
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 32, panelY + 10, 24, 24), GetTexture("closeBtn"));
+        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 10, 24, 24), "X", xButtonStyle))
+        {
+            isOpen = false;
+        }
 
         GUI.DrawTexture(new Rect(panelX + 20, panelY + 45, panelWidth - 40, 2), GetTexture("divider"));
 

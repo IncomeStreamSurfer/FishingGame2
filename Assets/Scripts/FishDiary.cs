@@ -122,6 +122,21 @@ public class FishDiary : MonoBehaviour
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, 60), headerTex);
         GUI.Label(new Rect(panelX, panelY + 10, panelWidth, 40), "FISH DIARY", titleStyle);
 
+        // Red X close button
+        GUIStyle xButtonStyle = new GUIStyle();
+        xButtonStyle.fontSize = 16;
+        xButtonStyle.fontStyle = FontStyle.Bold;
+        xButtonStyle.alignment = TextAnchor.MiddleCenter;
+        xButtonStyle.normal.textColor = Color.white;
+        Texture2D closeBtnTex = new Texture2D(1, 1);
+        closeBtnTex.SetPixel(0, 0, new Color(0.8f, 0.2f, 0.2f));
+        closeBtnTex.Apply();
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 32, panelY + 18, 24, 24), closeBtnTex);
+        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 18, 24, 24), "X", xButtonStyle))
+        {
+            isOpen = false;
+        }
+
         // Total fish caught
         int totalCaught = GameManager.Instance != null ? GameManager.Instance.GetTotalFishCaught() : 0;
         int uniqueTypes = GameManager.Instance != null ? GameManager.Instance.fishInventory.Count : 0;
