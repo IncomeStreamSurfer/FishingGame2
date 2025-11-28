@@ -270,6 +270,86 @@ public class AutoSetup
 
         // Add random BUSHES in the center of the island
         AddBushes(ground.transform, groundY);
+
+        // Add seaweed on the sand/beach areas
+        AddSeaweed(ground.transform, groundY);
+
+        // Add small islands around the main island
+        AddSmallIslands(ground.transform);
+    }
+
+    static void AddSeaweed(Transform parent, float groundY)
+    {
+        Material seaweedMat = new Material(Shader.Find("Standard"));
+        seaweedMat.color = new Color(0.15f, 0.35f, 0.2f); // Dark green seaweed
+
+        Material seaweedMat2 = new Material(Shader.Find("Standard"));
+        seaweedMat2.color = new Color(0.25f, 0.4f, 0.15f); // Lighter seaweed
+
+        // Place seaweed around the beach areas
+        for (int i = 0; i < 60; i++)
+        {
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float dist = Random.Range(38f, 48f); // On the sand area
+            Vector3 pos = new Vector3(Mathf.Cos(angle) * dist, groundY - 0.1f, Mathf.Sin(angle) * dist - 9f);
+
+            // Create seaweed strand
+            GameObject seaweed = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            seaweed.name = "Seaweed";
+            seaweed.transform.SetParent(parent);
+            seaweed.transform.localPosition = pos + new Vector3(0, 0.15f, 0);
+            seaweed.transform.localScale = new Vector3(0.08f, Random.Range(0.2f, 0.4f), 0.04f);
+            seaweed.transform.localRotation = Quaternion.Euler(Random.Range(-15f, 15f), Random.Range(0f, 360f), Random.Range(-15f, 15f));
+            seaweed.GetComponent<Renderer>().sharedMaterial = Random.value > 0.5f ? seaweedMat : seaweedMat2;
+            Object.DestroyImmediate(seaweed.GetComponent<Collider>());
+        }
+    }
+
+    static void AddSmallIslands(Transform parent)
+    {
+        Material sandMat = new Material(Shader.Find("Standard"));
+        sandMat.color = new Color(0.88f, 0.78f, 0.55f);
+
+        Material grassMat = new Material(Shader.Find("Standard"));
+        grassMat.color = new Color(0.25f, 0.5f, 0.2f);
+
+        // Small islands scattered around
+        Vector3[] islandPositions = new Vector3[]
+        {
+            new Vector3(-55f, 0.6f, 20f),
+            new Vector3(60f, 0.5f, -40f),
+            new Vector3(-45f, 0.55f, -50f),
+            new Vector3(50f, 0.6f, 30f),
+            new Vector3(-60f, 0.5f, -20f)
+        };
+
+        foreach (var pos in islandPositions)
+        {
+            float size = Random.Range(4f, 8f);
+
+            // Sand base
+            GameObject island = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            island.name = "SmallIsland";
+            island.transform.SetParent(parent);
+            island.transform.localPosition = pos;
+            island.transform.localScale = new Vector3(size, 0.4f, size);
+            island.GetComponent<Renderer>().sharedMaterial = sandMat;
+
+            // Grass top
+            GameObject grass = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            grass.name = "IslandGrass";
+            grass.transform.SetParent(island.transform);
+            grass.transform.localPosition = new Vector3(0, 0.15f, 0);
+            grass.transform.localScale = new Vector3(0.7f, 0.3f, 0.7f);
+            grass.GetComponent<Renderer>().sharedMaterial = grassMat;
+            Object.DestroyImmediate(grass.GetComponent<Collider>());
+
+            // Small palm or bush
+            if (Random.value > 0.3f)
+            {
+                CreateSimplePalmTree(island.transform, new Vector3(0, 0.4f, 0));
+            }
+        }
     }
 
     static void AddBushes(Transform parent, float groundY)
@@ -541,7 +621,158 @@ public class AutoSetup
 
     static void CreateBridgeToShop()
     {
-        // Bridge removed - simplified terrain
+        // Create wooden bridge to small island with Goldie Banks
+        GameObject bridge = new GameObject("WoodenBridge");
+        bridge.transform.position = new Vector3(25f, 1.2f, -15f);
+
+        Material plankMat = new Material(Shader.Find("Standard"));
+        plankMat.color = new Color(0.45f, 0.32f, 0.18f); // Weathered wood
+
+        Material railMat = new Material(Shader.Find("Standard"));
+        railMat.color = new Color(0.35f, 0.25f, 0.12f); // Darker wood
+
+        // Bridge planks - raised and elongated
+        float bridgeLength = 25f;
+        float bridgeWidth = 2f;
+        float plankCount = 30;
+
+        for (int i = 0; i < plankCount; i++)
+        {
+            GameObject plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plank.name = "BridgePlank";
+            plank.transform.SetParent(bridge.transform);
+            float z = (i / plankCount) * bridgeLength;
+            plank.transform.localPosition = new Vector3(0, 0.05f, z);
+            plank.transform.localScale = new Vector3(bridgeWidth, 0.1f, bridgeLength / plankCount * 0.9f);
+            plank.GetComponent<Renderer>().sharedMaterial = plankMat;
+        }
+
+        // Rails on sides
+        for (int side = 0; side < 2; side++)
+        {
+            float x = side == 0 ? -bridgeWidth / 2 - 0.1f : bridgeWidth / 2 + 0.1f;
+
+            // Rail posts
+            for (int i = 0; i < 6; i++)
+            {
+                float z = i * (bridgeLength / 5);
+                GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                post.name = "RailPost";
+                post.transform.SetParent(bridge.transform);
+                post.transform.localPosition = new Vector3(x, 0.5f, z);
+                post.transform.localScale = new Vector3(0.1f, 1f, 0.1f);
+                post.GetComponent<Renderer>().sharedMaterial = railMat;
+                Object.DestroyImmediate(post.GetComponent<Collider>());
+            }
+
+            // Top rail
+            GameObject rail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rail.name = "TopRail";
+            rail.transform.SetParent(bridge.transform);
+            rail.transform.localPosition = new Vector3(x, 1f, bridgeLength / 2);
+            rail.transform.localScale = new Vector3(0.08f, 0.08f, bridgeLength);
+            rail.GetComponent<Renderer>().sharedMaterial = railMat;
+            Object.DestroyImmediate(rail.GetComponent<Collider>());
+        }
+
+        // Create small island at end of bridge
+        CreateGoldieIsland(new Vector3(25f, 0.8f, bridgeLength + 10f));
+    }
+
+    static void CreateGoldieIsland(Vector3 position)
+    {
+        GameObject island = new GameObject("GoldieIsland");
+        island.transform.position = position;
+
+        // Island ground - small sandy island
+        Material sandMat = new Material(Shader.Find("Standard"));
+        sandMat.color = new Color(0.85f, 0.75f, 0.5f);
+
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        ground.name = "IslandGround";
+        ground.transform.SetParent(island.transform);
+        ground.transform.localPosition = Vector3.zero;
+        ground.transform.localScale = new Vector3(12f, 0.5f, 12f);
+        ground.GetComponent<Renderer>().sharedMaterial = sandMat;
+
+        // Small shack
+        CreateSmallShack(island.transform, new Vector3(-2f, 0.5f, 2f));
+
+        // Bushes
+        Material bushMat = new Material(Shader.Find("Standard"));
+        bushMat.color = new Color(0.2f, 0.45f, 0.15f);
+
+        Vector3[] bushPositions = new Vector3[]
+        {
+            new Vector3(3f, 0.4f, -1f),
+            new Vector3(-3f, 0.3f, -2f),
+            new Vector3(2f, 0.35f, 3f),
+            new Vector3(-1f, 0.4f, -3f)
+        };
+
+        foreach (var pos in bushPositions)
+        {
+            GameObject bush = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            bush.name = "Bush";
+            bush.transform.SetParent(island.transform);
+            bush.transform.localPosition = pos;
+            bush.transform.localScale = new Vector3(1.2f, 0.8f, 1.2f) * Random.Range(0.8f, 1.2f);
+            bush.GetComponent<Renderer>().sharedMaterial = bushMat;
+            Object.DestroyImmediate(bush.GetComponent<Collider>());
+        }
+
+        // Add Goldie Banks NPC
+        GameObject goldie = new GameObject("GoldieBanks");
+        goldie.transform.SetParent(island.transform);
+        goldie.transform.localPosition = new Vector3(0, 0.5f, 0);
+        goldie.transform.localRotation = Quaternion.Euler(0, 180f, 0); // Face toward bridge
+        goldie.AddComponent<GoldieBanksNPC>();
+
+        // Hidden weed bag (behind a bush)
+        GameObject weedBag = new GameObject("WeedBag");
+        weedBag.transform.SetParent(island.transform);
+        weedBag.transform.localPosition = new Vector3(-3.5f, 0.6f, -2.5f); // Hidden behind bush
+        weedBag.AddComponent<WeedBagCollectible>();
+    }
+
+    static void CreateSmallShack(Transform parent, Vector3 localPos)
+    {
+        GameObject shack = new GameObject("Shack");
+        shack.transform.SetParent(parent);
+        shack.transform.localPosition = localPos;
+
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.4f, 0.28f, 0.15f);
+
+        Material roofMat = new Material(Shader.Find("Standard"));
+        roofMat.color = new Color(0.3f, 0.35f, 0.2f); // Thatched roof green
+
+        // Walls
+        GameObject walls = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        walls.transform.SetParent(shack.transform);
+        walls.transform.localPosition = new Vector3(0, 0.75f, 0);
+        walls.transform.localScale = new Vector3(2.5f, 1.5f, 2f);
+        walls.GetComponent<Renderer>().sharedMaterial = woodMat;
+
+        // Roof
+        GameObject roof = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        roof.transform.SetParent(shack.transform);
+        roof.transform.localPosition = new Vector3(0, 1.8f, 0);
+        roof.transform.localScale = new Vector3(3f, 0.3f, 2.5f);
+        roof.transform.localRotation = Quaternion.Euler(0, 0, 5f);
+        roof.GetComponent<Renderer>().sharedMaterial = roofMat;
+        Object.DestroyImmediate(roof.GetComponent<Collider>());
+
+        // Door opening (black cube)
+        Material doorMat = new Material(Shader.Find("Standard"));
+        doorMat.color = new Color(0.05f, 0.05f, 0.05f);
+
+        GameObject door = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        door.transform.SetParent(shack.transform);
+        door.transform.localPosition = new Vector3(0, 0.5f, 1.01f);
+        door.transform.localScale = new Vector3(0.6f, 1f, 0.1f);
+        door.GetComponent<Renderer>().sharedMaterial = doorMat;
+        Object.DestroyImmediate(door.GetComponent<Collider>());
     }
 
     // Scattered islands removed - using unified floor instead

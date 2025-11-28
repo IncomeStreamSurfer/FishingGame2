@@ -15,8 +15,8 @@ public class HorizonBoats : MonoBehaviour
     private List<float> boatBaseY = new List<float>();
 
     private float nextSpawnTime = 0f;
-    private float spawnInterval = 45f;
-    private int maxBoats = 2;
+    private float spawnInterval = 30f;
+    private int maxBoats = 6; // More boats from all angles
 
     private Material boatMaterial;
     private bool initialized = false;
@@ -76,8 +76,9 @@ public class HorizonBoats : MonoBehaviour
             pos.y = boatBaseY[i] + Mathf.Sin(Time.time + i) * 0.2f;
             activeBoats[i].transform.position = pos;
 
-            // Remove if too far
-            if (Mathf.Abs(pos.x) > 150f)
+            // Remove if crossed the island or too far
+            float distFromCenter = new Vector2(pos.x, pos.z).magnitude;
+            if (distFromCenter < 60f || distFromCenter > 200f)
             {
                 Destroy(activeBoats[i]);
                 activeBoats.RemoveAt(i);
@@ -92,11 +93,18 @@ public class HorizonBoats : MonoBehaviour
     {
         if (boatMaterial == null) return;
 
-        float horizonZ = 70f + Random.Range(0f, 30f);
-        float startX = Random.value > 0.5f ? -100f : 100f;
-        float direction = startX > 0 ? -1f : 1f;
+        // Boats spawn much farther away and from various angles
+        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float distance = Random.Range(120f, 180f); // Much farther away
+        float startX = Mathf.Cos(angle) * distance;
+        float startZ = Mathf.Sin(angle) * distance;
 
-        Vector3 spawnPos = new Vector3(startX, 0.5f, horizonZ);
+        // Direction toward center (with some randomness)
+        Vector3 toCenter = new Vector3(-startX, 0, -startZ).normalized;
+        toCenter = Quaternion.Euler(0, Random.Range(-30f, 30f), 0) * toCenter;
+        float direction = toCenter.x > 0 ? 1f : -1f;
+
+        Vector3 spawnPos = new Vector3(startX, 0.5f, startZ);
 
         // Create simple boat (just a cube)
         GameObject boat = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -117,8 +125,8 @@ public class HorizonBoats : MonoBehaviour
         }
 
         activeBoats.Add(boat);
-        boatDirections.Add(new Vector3(direction, 0, 0));
-        boatSpeeds.Add(Random.Range(1.5f, 3f));
+        boatDirections.Add(toCenter); // Use actual direction toward center
+        boatSpeeds.Add(Random.Range(1f, 2f));
         boatBaseY.Add(0.5f);
     }
 
