@@ -237,7 +237,7 @@ public class MainMenu : MonoBehaviour
         subStyle.fontStyle = FontStyle.Italic;
         subStyle.alignment = TextAnchor.MiddleCenter;
         subStyle.normal.textColor = new Color(0.6f, 0.8f, 1f, menuAlpha);
-        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "\"Don't drown, eat fish\" - Wetsuit Pete", subStyle);
+        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "\"eat fish, don't drown\" - wetsuit pete", subStyle);
     }
 
     void DrawMainMenu()
