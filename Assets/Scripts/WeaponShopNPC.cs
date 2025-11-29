@@ -287,6 +287,24 @@ public class WeaponShopNPC : MonoBehaviour
         }
     }
 
+    // Unlock a weapon without purchasing (for quest rewards)
+    public void UnlockWeapon(string weaponName)
+    {
+        if (!ownedWeapons.Contains(weaponName))
+        {
+            ownedWeapons.Add(weaponName);
+
+            // Auto-equip the weapon
+            WeaponData weapon = weapons.Find(w => w.name == weaponName);
+            if (weapon != null)
+            {
+                EquipWeapon(weapon);
+            }
+
+            Debug.Log($"Weapon unlocked: {weaponName}");
+        }
+    }
+
     public bool IsShopOpen()
     {
         return shopOpen;

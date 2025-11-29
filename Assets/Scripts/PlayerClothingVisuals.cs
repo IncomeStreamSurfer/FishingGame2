@@ -173,6 +173,16 @@ public class PlayerClothingVisuals : MonoBehaviour
             case "Fancy Top Hat":
                 CreateTopHat();
                 break;
+            // Ice Realm hats
+            case "Bear Skin Hat":
+                CreateBearSkinHat();
+                break;
+            case "Pirate Hat":
+                CreatePirateHat();
+                break;
+            case "Beret":
+                CreateBeret();
+                break;
         }
     }
 
@@ -326,6 +336,13 @@ public class PlayerClothingVisuals : MonoBehaviour
                 break;
             case "Fancy Tuxedo":
                 CreateTuxedoTop();
+                break;
+            // Ice Realm tops
+            case "Husband Beater":
+                torsoRenderer.material.color = new Color(0.95f, 0.95f, 0.95f); // White
+                break;
+            case "Pink Fur Coat":
+                CreatePinkFurCoat();
                 break;
             default:
                 torsoRenderer.material.color = itemColor;
@@ -651,6 +668,18 @@ public class PlayerClothingVisuals : MonoBehaviour
             case "Fancy Tuxedo":
                 pantsColor = new Color(0.08f, 0.08f, 0.08f);
                 CreateTuxedoPants();
+                break;
+            // Ice Realm pants
+            case "Black Leather Hotpants":
+                pantsColor = new Color(0.08f, 0.08f, 0.08f);
+                CreateLeatherShine();
+                break;
+            case "Whale Bladder Pants":
+                pantsColor = new Color(0.9f, 0.7f, 0.7f);
+                break;
+            case "Pink Leather Pants":
+                pantsColor = new Color(1f, 0.3f, 0.6f);
+                CreateLeatherShine();
                 break;
         }
 
@@ -1158,4 +1187,206 @@ public class PlayerClothingVisuals : MonoBehaviour
     public string GetCurrentTopItem() => currentTopItem;
     public string GetCurrentLegsItem() => currentLegsItem;
     public string GetCurrentAccessory() => currentAccessory;
+
+    // ==================== ICE REALM CLOTHING ====================
+
+    void CreateBearSkinHat()
+    {
+        // White fluffy polar bear hat with 2 ears
+        Material furMat = new Material(Shader.Find("Standard"));
+        furMat.color = new Color(0.95f, 0.95f, 0.98f);
+
+        // Main fluffy hat body
+        GameObject hatBody = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hatBody.name = "BearHatBody";
+        hatBody.transform.SetParent(headClothingObject.transform);
+        hatBody.transform.localPosition = new Vector3(0, 0.15f, 0);
+        hatBody.transform.localScale = new Vector3(0.65f, 0.35f, 0.6f);
+        hatBody.GetComponent<Renderer>().material = furMat;
+        Object.Destroy(hatBody.GetComponent<Collider>());
+
+        // Left ear
+        GameObject leftEar = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        leftEar.name = "LeftEar";
+        leftEar.transform.SetParent(headClothingObject.transform);
+        leftEar.transform.localPosition = new Vector3(-0.2f, 0.35f, 0);
+        leftEar.transform.localScale = new Vector3(0.15f, 0.12f, 0.1f);
+        leftEar.GetComponent<Renderer>().material = furMat;
+        Object.Destroy(leftEar.GetComponent<Collider>());
+
+        // Right ear
+        GameObject rightEar = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        rightEar.name = "RightEar";
+        rightEar.transform.SetParent(headClothingObject.transform);
+        rightEar.transform.localPosition = new Vector3(0.2f, 0.35f, 0);
+        rightEar.transform.localScale = new Vector3(0.15f, 0.12f, 0.1f);
+        rightEar.GetComponent<Renderer>().material = furMat;
+        Object.Destroy(rightEar.GetComponent<Collider>());
+
+        // Fluffy tufts
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * 45f * Mathf.Deg2Rad;
+            GameObject tuft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            tuft.name = "FurTuft";
+            tuft.transform.SetParent(headClothingObject.transform);
+            tuft.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 0.25f,
+                0.1f + Random.Range(0f, 0.1f),
+                Mathf.Sin(angle) * 0.22f
+            );
+            tuft.transform.localScale = Vector3.one * Random.Range(0.08f, 0.12f);
+            tuft.GetComponent<Renderer>().material = furMat;
+            Object.Destroy(tuft.GetComponent<Collider>());
+        }
+    }
+
+    void CreatePirateHat()
+    {
+        // Black tricorn pirate hat with skull
+        Material blackMat = new Material(Shader.Find("Standard"));
+        blackMat.color = new Color(0.08f, 0.08f, 0.1f);
+
+        Material goldMat = new Material(Shader.Find("Standard"));
+        goldMat.color = new Color(0.85f, 0.7f, 0.3f);
+        goldMat.SetFloat("_Metallic", 0.5f);
+
+        // Main hat body
+        GameObject hatBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        hatBody.name = "PirateHatBody";
+        hatBody.transform.SetParent(headClothingObject.transform);
+        hatBody.transform.localPosition = new Vector3(0, 0.2f, 0);
+        hatBody.transform.localScale = new Vector3(0.6f, 0.15f, 0.55f);
+        hatBody.GetComponent<Renderer>().material = blackMat;
+        Object.Destroy(hatBody.GetComponent<Collider>());
+
+        // Tricorn peaks
+        for (int i = 0; i < 3; i++)
+        {
+            float angle = i * 120f * Mathf.Deg2Rad;
+            GameObject peak = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            peak.name = "TricornPeak";
+            peak.transform.SetParent(headClothingObject.transform);
+            peak.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 0.2f,
+                0.3f,
+                Mathf.Sin(angle) * 0.2f
+            );
+            peak.transform.localRotation = Quaternion.Euler(0, -angle * Mathf.Rad2Deg, 30);
+            peak.transform.localScale = new Vector3(0.25f, 0.08f, 0.15f);
+            peak.GetComponent<Renderer>().material = blackMat;
+            Object.Destroy(peak.GetComponent<Collider>());
+        }
+
+        // Gold trim
+        GameObject trim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trim.name = "GoldTrim";
+        trim.transform.SetParent(headClothingObject.transform);
+        trim.transform.localPosition = new Vector3(0, 0.12f, 0);
+        trim.transform.localScale = new Vector3(0.62f, 0.02f, 0.57f);
+        trim.GetComponent<Renderer>().material = goldMat;
+        Object.Destroy(trim.GetComponent<Collider>());
+    }
+
+    void CreateBeret()
+    {
+        // French beret - burgundy red
+        Material beretMat = new Material(Shader.Find("Standard"));
+        beretMat.color = new Color(0.6f, 0.1f, 0.15f);
+
+        // Main beret body (flat and round)
+        GameObject beretBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        beretBody.name = "BeretBody";
+        beretBody.transform.SetParent(headClothingObject.transform);
+        beretBody.transform.localPosition = new Vector3(0.05f, 0.15f, 0);
+        beretBody.transform.localRotation = Quaternion.Euler(0, 0, 15);
+        beretBody.transform.localScale = new Vector3(0.55f, 0.08f, 0.55f);
+        beretBody.GetComponent<Renderer>().material = beretMat;
+        Object.Destroy(beretBody.GetComponent<Collider>());
+
+        // Little stem on top
+        Material blackMat = new Material(Shader.Find("Standard"));
+        blackMat.color = new Color(0.1f, 0.1f, 0.1f);
+
+        GameObject stem = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        stem.name = "BeretStem";
+        stem.transform.SetParent(headClothingObject.transform);
+        stem.transform.localPosition = new Vector3(0.05f, 0.22f, 0);
+        stem.transform.localScale = new Vector3(0.06f, 0.06f, 0.06f);
+        stem.GetComponent<Renderer>().material = blackMat;
+        Object.Destroy(stem.GetComponent<Collider>());
+    }
+
+    void CreatePinkFurCoat()
+    {
+        // Luxurious pink fur coat with fluffy texture
+        Material pinkFurMat = new Material(Shader.Find("Standard"));
+        pinkFurMat.color = new Color(1f, 0.6f, 0.7f);
+
+        // Change torso color
+        torsoRenderer.material.color = new Color(1f, 0.6f, 0.7f);
+
+        topClothingObject = new GameObject("PinkFurCoat");
+        topClothingObject.transform.SetParent(torso);
+        topClothingObject.transform.localPosition = Vector3.zero;
+
+        // Fluffy collar
+        Material lightPinkMat = new Material(Shader.Find("Standard"));
+        lightPinkMat.color = new Color(1f, 0.75f, 0.82f);
+
+        GameObject collar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        collar.name = "FurCollar";
+        collar.transform.SetParent(topClothingObject.transform);
+        collar.transform.localPosition = new Vector3(0, 0.4f, 0);
+        collar.transform.localScale = new Vector3(0.7f, 0.12f, 0.5f);
+        collar.GetComponent<Renderer>().material = lightPinkMat;
+        Object.Destroy(collar.GetComponent<Collider>());
+
+        // Fluffy tufts around collar and body (hairs sticking out)
+        for (int i = 0; i < 12; i++)
+        {
+            float angle = i * 30f * Mathf.Deg2Rad;
+            GameObject tuft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            tuft.name = "FurTuft";
+            tuft.transform.SetParent(topClothingObject.transform);
+            tuft.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 0.35f,
+                0.35f + Random.Range(-0.1f, 0.1f),
+                Mathf.Sin(angle) * 0.25f
+            );
+            tuft.transform.localScale = Vector3.one * Random.Range(0.06f, 0.1f);
+            tuft.GetComponent<Renderer>().material = i % 2 == 0 ? lightPinkMat : pinkFurMat;
+            Object.Destroy(tuft.GetComponent<Collider>());
+        }
+
+        // Fluffy cuffs
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject cuff = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            cuff.name = "FurCuff";
+            cuff.transform.SetParent(topClothingObject.transform);
+            cuff.transform.localPosition = new Vector3(side * 0.45f, -0.1f, 0);
+            cuff.transform.localScale = new Vector3(0.2f, 0.08f, 0.2f);
+            cuff.GetComponent<Renderer>().material = lightPinkMat;
+            Object.Destroy(cuff.GetComponent<Collider>());
+        }
+    }
+
+    void CreateLeatherShine()
+    {
+        // Add glossy/shiny effect to current pants
+        if (hipsRenderer != null)
+        {
+            hipsRenderer.material.SetFloat("_Glossiness", 0.8f);
+            hipsRenderer.material.SetFloat("_Metallic", 0.1f);
+        }
+        foreach (Renderer r in legRenderers)
+        {
+            if (r != null && !r.name.Contains("Foot"))
+            {
+                r.material.SetFloat("_Glossiness", 0.8f);
+                r.material.SetFloat("_Metallic", 0.1f);
+            }
+        }
+    }
 }

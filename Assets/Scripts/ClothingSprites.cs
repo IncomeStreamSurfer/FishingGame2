@@ -50,6 +50,21 @@ public class ClothingSprites : MonoBehaviour
 
         // Consumables
         clothingTextures["Lunch Box"] = CreateLunchBox();
+
+        // === ICE REALM CLOTHING ===
+        // Head items
+        clothingTextures["Bear Skin Hat"] = CreateBearSkinHat();
+        clothingTextures["Pirate Hat"] = CreatePirateHat();
+        clothingTextures["Beret"] = CreateBeret();
+
+        // Top items
+        clothingTextures["Husband Beater"] = CreateHusbandBeater();
+        clothingTextures["Pink Fur Coat"] = CreatePinkFurCoat();
+
+        // Leg items
+        clothingTextures["Black Leather Hotpants"] = CreateLeatherHotpants();
+        clothingTextures["Whale Bladder Pants"] = CreateWhaleBladderPants();
+        clothingTextures["Pink Leather Pants"] = CreatePinkLeatherPants();
     }
 
     public Texture2D GetClothingTexture(string name)
@@ -440,6 +455,338 @@ public class ClothingSprites : MonoBehaviour
 
         // Highlight
         FillRect(tex, 5, 12, 14, 1, metal);
+
+        tex.Apply();
+        return tex;
+    }
+
+    // === ICE REALM CLOTHING SPRITES ===
+
+    Texture2D CreateBearSkinHat()
+    {
+        // White fluffy polar bear hat with 2 small ears
+        Texture2D tex = CreateTexture();
+        Color white = new Color(0.95f, 0.95f, 0.98f);
+        Color lightGray = new Color(0.85f, 0.87f, 0.9f);
+        Color darkGray = new Color(0.7f, 0.72f, 0.75f);
+        Color nose = new Color(0.15f, 0.15f, 0.15f);
+        Color eye = Color.black;
+
+        // Main fluffy body of hat
+        FillRect(tex, 4, 3, 16, 12, white);
+        FillRect(tex, 5, 2, 14, 2, white);
+        FillRect(tex, 6, 1, 12, 1, lightGray);
+
+        // Fluffy texture
+        SetPixel(tex, 5, 10, lightGray);
+        SetPixel(tex, 8, 8, lightGray);
+        SetPixel(tex, 12, 11, lightGray);
+        SetPixel(tex, 15, 7, lightGray);
+        SetPixel(tex, 18, 9, lightGray);
+        SetPixel(tex, 7, 5, lightGray);
+        SetPixel(tex, 14, 4, lightGray);
+
+        // Left ear
+        FillRect(tex, 4, 15, 4, 4, white);
+        FillRect(tex, 5, 16, 2, 2, lightGray);
+
+        // Right ear
+        FillRect(tex, 16, 15, 4, 4, white);
+        FillRect(tex, 17, 16, 2, 2, lightGray);
+
+        // Bear face details
+        // Eyes
+        SetPixel(tex, 8, 8, eye);
+        SetPixel(tex, 9, 8, eye);
+        SetPixel(tex, 14, 8, eye);
+        SetPixel(tex, 15, 8, eye);
+
+        // Nose
+        FillRect(tex, 10, 5, 4, 2, nose);
+        SetPixel(tex, 11, 4, nose);
+        SetPixel(tex, 12, 4, nose);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreatePirateHat()
+    {
+        // Black tricorn pirate hat with skull
+        Texture2D tex = CreateTexture();
+        Color black = new Color(0.08f, 0.08f, 0.1f);
+        Color darkGray = new Color(0.15f, 0.15f, 0.18f);
+        Color gold = new Color(0.85f, 0.7f, 0.3f);
+        Color white = new Color(0.9f, 0.9f, 0.9f);
+        Color bone = new Color(0.85f, 0.82f, 0.75f);
+
+        // Main hat body (tricorn shape)
+        FillRect(tex, 2, 5, 20, 8, black);
+        FillRect(tex, 4, 4, 16, 2, black);
+        FillRect(tex, 6, 3, 12, 1, black);
+
+        // Brim folds
+        FillRect(tex, 1, 5, 3, 6, darkGray);
+        FillRect(tex, 20, 5, 3, 6, darkGray);
+        FillRect(tex, 8, 13, 8, 3, black);
+
+        // Gold trim
+        FillRect(tex, 2, 12, 20, 1, gold);
+
+        // Skull and crossbones
+        FillRect(tex, 9, 7, 6, 4, bone);
+        SetPixel(tex, 10, 9, black); // Left eye
+        SetPixel(tex, 13, 9, black); // Right eye
+        SetPixel(tex, 11, 7, black); // Nose
+        SetPixel(tex, 12, 7, black);
+
+        // Crossbones
+        SetPixel(tex, 7, 6, bone);
+        SetPixel(tex, 8, 7, bone);
+        SetPixel(tex, 15, 7, bone);
+        SetPixel(tex, 16, 6, bone);
+        SetPixel(tex, 7, 10, bone);
+        SetPixel(tex, 8, 9, bone);
+        SetPixel(tex, 15, 9, bone);
+        SetPixel(tex, 16, 10, bone);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreateBeret()
+    {
+        // French beret - red/burgundy
+        Texture2D tex = CreateTexture();
+        Color red = new Color(0.6f, 0.1f, 0.15f);
+        Color darkRed = new Color(0.45f, 0.08f, 0.1f);
+        Color black = new Color(0.1f, 0.1f, 0.1f);
+
+        // Main beret shape (flat and round)
+        FillRect(tex, 4, 6, 16, 6, red);
+        FillRect(tex, 6, 5, 12, 2, red);
+        FillRect(tex, 8, 4, 8, 1, red);
+        FillRect(tex, 3, 8, 18, 4, red);
+        FillRect(tex, 2, 9, 20, 2, red);
+
+        // Shading
+        FillRect(tex, 4, 6, 8, 3, darkRed);
+        SetPixel(tex, 5, 9, darkRed);
+        SetPixel(tex, 6, 10, darkRed);
+
+        // Band
+        FillRect(tex, 3, 5, 18, 1, black);
+
+        // Little stem on top
+        SetPixel(tex, 12, 12, black);
+        SetPixel(tex, 12, 13, black);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreateHusbandBeater()
+    {
+        // White sleeveless vest/tank top
+        Texture2D tex = CreateTexture();
+        Color white = new Color(0.95f, 0.95f, 0.95f);
+        Color offWhite = new Color(0.88f, 0.88f, 0.88f);
+        Color shadow = new Color(0.8f, 0.8f, 0.8f);
+
+        // Main body
+        FillRect(tex, 7, 2, 10, 14, white);
+        FillRect(tex, 6, 4, 12, 10, white);
+
+        // Shoulder straps
+        FillRect(tex, 7, 14, 3, 4, white);
+        FillRect(tex, 14, 14, 3, 4, white);
+
+        // Neckline
+        FillRect(tex, 9, 15, 6, 3, Color.clear);
+        SetPixel(tex, 10, 14, Color.clear);
+        SetPixel(tex, 13, 14, Color.clear);
+
+        // Ribbed texture
+        for (int y = 3; y < 14; y += 2)
+        {
+            FillRect(tex, 7, y, 10, 1, offWhite);
+        }
+
+        // Shadows
+        FillRect(tex, 6, 4, 1, 10, shadow);
+        FillRect(tex, 17, 4, 1, 10, shadow);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreatePinkFurCoat()
+    {
+        // Luxurious pink fur coat with fluffy texture
+        Texture2D tex = CreateTexture();
+        Color pink = new Color(1f, 0.6f, 0.7f);
+        Color lightPink = new Color(1f, 0.75f, 0.82f);
+        Color darkPink = new Color(0.85f, 0.45f, 0.55f);
+        Color white = new Color(1f, 0.95f, 0.95f);
+
+        // Main coat body
+        FillRect(tex, 3, 1, 18, 16, pink);
+
+        // Fluffy collar
+        FillRect(tex, 5, 15, 14, 4, lightPink);
+        FillRect(tex, 4, 16, 16, 3, lightPink);
+
+        // Sleeves
+        FillRect(tex, 1, 6, 4, 8, pink);
+        FillRect(tex, 19, 6, 4, 8, pink);
+
+        // Fur texture (random light spots for fluffiness)
+        SetPixel(tex, 5, 12, lightPink);
+        SetPixel(tex, 8, 8, lightPink);
+        SetPixel(tex, 12, 14, lightPink);
+        SetPixel(tex, 15, 10, lightPink);
+        SetPixel(tex, 18, 6, lightPink);
+        SetPixel(tex, 6, 4, lightPink);
+        SetPixel(tex, 14, 3, lightPink);
+        SetPixel(tex, 10, 11, lightPink);
+        SetPixel(tex, 17, 13, lightPink);
+
+        // Fluffy hairs sticking out (white tips)
+        SetPixel(tex, 4, 19, white);
+        SetPixel(tex, 7, 18, white);
+        SetPixel(tex, 10, 19, white);
+        SetPixel(tex, 14, 18, white);
+        SetPixel(tex, 17, 19, white);
+        SetPixel(tex, 2, 13, white);
+        SetPixel(tex, 21, 12, white);
+        SetPixel(tex, 1, 8, white);
+        SetPixel(tex, 22, 9, white);
+
+        // Center seam
+        FillRect(tex, 11, 1, 2, 14, darkPink);
+
+        // Buttons
+        SetPixel(tex, 12, 4, white);
+        SetPixel(tex, 12, 7, white);
+        SetPixel(tex, 12, 10, white);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreateLeatherHotpants()
+    {
+        // Shiny black leather hotpants
+        Texture2D tex = CreateTexture();
+        Color black = new Color(0.08f, 0.08f, 0.08f);
+        Color darkGray = new Color(0.15f, 0.15f, 0.15f);
+        Color shine = new Color(0.35f, 0.35f, 0.38f);
+        Color silver = new Color(0.7f, 0.7f, 0.75f);
+
+        // Main shorts body
+        FillRect(tex, 4, 8, 16, 10, black);
+        FillRect(tex, 6, 7, 12, 2, black);
+
+        // Left leg
+        FillRect(tex, 4, 2, 7, 7, black);
+
+        // Right leg
+        FillRect(tex, 13, 2, 7, 7, black);
+
+        // Shiny highlights
+        FillRect(tex, 6, 14, 3, 2, shine);
+        FillRect(tex, 15, 13, 2, 3, shine);
+        SetPixel(tex, 5, 5, shine);
+        SetPixel(tex, 17, 4, shine);
+
+        // Waistband
+        FillRect(tex, 4, 16, 16, 2, darkGray);
+
+        // Belt buckle
+        FillRect(tex, 10, 16, 4, 2, silver);
+
+        // Seams
+        FillRect(tex, 11, 8, 2, 8, darkGray);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreateWhaleBladderPants()
+    {
+        // Fleshy pink traditional pants
+        Texture2D tex = CreateTexture();
+        Color flesh = new Color(0.9f, 0.7f, 0.7f);
+        Color darkFlesh = new Color(0.75f, 0.55f, 0.55f);
+        Color vein = new Color(0.7f, 0.5f, 0.6f);
+
+        // Main pants body
+        FillRect(tex, 4, 8, 16, 10, flesh);
+        FillRect(tex, 6, 7, 12, 2, flesh);
+
+        // Left leg
+        FillRect(tex, 4, 1, 7, 8, flesh);
+
+        // Right leg
+        FillRect(tex, 13, 1, 7, 8, flesh);
+
+        // Organic texture (veins/wrinkles)
+        SetPixel(tex, 6, 12, darkFlesh);
+        SetPixel(tex, 7, 11, darkFlesh);
+        SetPixel(tex, 8, 13, darkFlesh);
+        SetPixel(tex, 15, 14, darkFlesh);
+        SetPixel(tex, 16, 12, darkFlesh);
+        SetPixel(tex, 5, 5, vein);
+        SetPixel(tex, 6, 4, vein);
+        SetPixel(tex, 17, 6, vein);
+        SetPixel(tex, 18, 5, vein);
+
+        // Waistband (leather tie)
+        FillRect(tex, 4, 16, 16, 2, darkFlesh);
+        SetPixel(tex, 11, 17, vein);
+        SetPixel(tex, 12, 18, vein);
+        SetPixel(tex, 13, 17, vein);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreatePinkLeatherPants()
+    {
+        // Bright neon pink leather pants
+        Texture2D tex = CreateTexture();
+        Color pink = new Color(1f, 0.3f, 0.6f);
+        Color lightPink = new Color(1f, 0.5f, 0.7f);
+        Color darkPink = new Color(0.8f, 0.2f, 0.45f);
+        Color shine = new Color(1f, 0.7f, 0.85f);
+        Color silver = new Color(0.8f, 0.8f, 0.85f);
+
+        // Main pants body
+        FillRect(tex, 4, 8, 16, 10, pink);
+        FillRect(tex, 6, 7, 12, 2, pink);
+
+        // Left leg
+        FillRect(tex, 4, 1, 7, 8, pink);
+
+        // Right leg
+        FillRect(tex, 13, 1, 7, 8, pink);
+
+        // Shiny highlights
+        FillRect(tex, 6, 12, 2, 4, shine);
+        FillRect(tex, 16, 11, 2, 3, shine);
+        SetPixel(tex, 5, 4, shine);
+        SetPixel(tex, 18, 5, shine);
+
+        // Seams
+        FillRect(tex, 11, 7, 2, 10, darkPink);
+        FillRect(tex, 7, 1, 1, 7, darkPink);
+        FillRect(tex, 16, 1, 1, 7, darkPink);
+
+        // Waistband
+        FillRect(tex, 4, 16, 16, 2, darkPink);
+
+        // Belt buckle
+        FillRect(tex, 10, 16, 4, 2, silver);
 
         tex.Apply();
         return tex;

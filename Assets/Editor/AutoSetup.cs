@@ -3753,7 +3753,33 @@ public class AutoSetup
         weaponSystem.transform.SetParent(iceRealm.transform);
         weaponSystem.AddComponent<WeaponSystem>();
 
-        Debug.Log("Ice Realm created with central ice lake, shops, NPCs, and polar bears!");
+        // === PICKET SIGNS (helpful messages) ===
+        CreatePicketSign(iceRealm.transform, new Vector3(-8f, groundY, -15f),
+            "If it's brown, get down.\nIf it's black, fight back.\nIf it's white, goodnight.");
+        CreatePicketSign(iceRealm.transform, new Vector3(15f, groundY, 8f),
+            "Head on over to\nPik's Weapon Store!");
+        CreatePicketSign(iceRealm.transform, new Vector3(-18f, groundY, 10f),
+            "Speak to the Elder Crone\nfor all fashion needs!");
+        CreatePicketSign(iceRealm.transform, new Vector3(5f, groundY, 18f),
+            "Only fishing\non the docks!");
+
+        // === EXTRA SNOW PILES for atmosphere ===
+        for (int i = 0; i < 25; i++)
+        {
+            float x = Random.Range(-35f, 35f);
+            float z = Random.Range(-35f, 35f);
+            // Avoid center and dock area
+            if (Mathf.Abs(x) < 8f && Mathf.Abs(z) < 8f) continue;
+            if (z > 20f && Mathf.Abs(x) < 5f) continue;
+            CreateSnowPile(iceRealm.transform, new Vector3(x, groundY, z), snowMat);
+        }
+
+        // === FROST ZONE TIP SYSTEM ===
+        GameObject frostTip = new GameObject("FrostZoneTip");
+        frostTip.transform.SetParent(iceRealm.transform);
+        frostTip.AddComponent<FrostZoneTip>();
+
+        Debug.Log("Ice Realm created with central ice lake, shops, NPCs, polar bears, and helpful signs!");
     }
 
     static void CreateCentralIceLake(Transform parent, Vector3 center, float radius, Material waterMat, Material iceMat)
@@ -3830,9 +3856,9 @@ public class AutoSetup
         mountains.transform.SetParent(parent);
         mountains.transform.localPosition = Vector3.zero;
 
-        // Create mountains in a ring around the map
-        float mountainDistance = 80f;
-        int mountainCount = 12;
+        // Create mountains in a ring around the map - FAR out to sea
+        float mountainDistance = 180f;
+        int mountainCount = 16;
 
         for (int i = 0; i < mountainCount; i++)
         {
@@ -5011,6 +5037,68 @@ public class AutoSetup
 
             coneY += height * 0.18f;
             coneSize *= 0.7f;
+        }
+    }
+
+    static void CreatePicketSign(Transform parent, Vector3 localPos, string message)
+    {
+        GameObject sign = new GameObject("PicketSign");
+        sign.transform.SetParent(parent);
+        sign.transform.localPosition = localPos;
+        sign.transform.localRotation = Quaternion.Euler(0, Random.Range(-30f, 30f), 0);
+
+        // Wood materials
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.45f, 0.35f, 0.25f);
+
+        Material signMat = new Material(Shader.Find("Standard"));
+        signMat.color = new Color(0.85f, 0.8f, 0.7f);
+
+        // Post
+        GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        post.name = "Post";
+        post.transform.SetParent(sign.transform);
+        post.transform.localPosition = new Vector3(0, 0.6f, 0);
+        post.transform.localScale = new Vector3(0.08f, 1.2f, 0.08f);
+        post.GetComponent<Renderer>().sharedMaterial = woodMat;
+        Object.DestroyImmediate(post.GetComponent<Collider>());
+
+        // Sign board
+        GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        board.name = "Board";
+        board.transform.SetParent(sign.transform);
+        board.transform.localPosition = new Vector3(0, 1.1f, 0.05f);
+        board.transform.localScale = new Vector3(0.8f, 0.5f, 0.05f);
+        board.GetComponent<Renderer>().sharedMaterial = signMat;
+        Object.DestroyImmediate(board.GetComponent<Collider>());
+
+        // Add the sign text component
+        PicketSignText signText = sign.AddComponent<PicketSignText>();
+        signText.message = message;
+    }
+
+    static void CreateSnowPile(Transform parent, Vector3 localPos, Material snowMat)
+    {
+        GameObject pile = new GameObject("SnowPile");
+        pile.transform.SetParent(parent);
+        pile.transform.localPosition = localPos;
+
+        // Random number of snow lumps
+        int lumps = Random.Range(1, 4);
+        for (int i = 0; i < lumps; i++)
+        {
+            GameObject lump = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            lump.name = "SnowLump";
+            lump.transform.SetParent(pile.transform);
+            lump.transform.localPosition = new Vector3(
+                Random.Range(-0.5f, 0.5f),
+                Random.Range(0.1f, 0.3f),
+                Random.Range(-0.5f, 0.5f)
+            );
+            float size = Random.Range(0.3f, 0.8f);
+            lump.transform.localScale = new Vector3(size, size * 0.4f, size);
+            lump.GetComponent<Renderer>().sharedMaterial = snowMat;
+            Object.DestroyImmediate(lump.GetComponent<Collider>());
         }
     }
 

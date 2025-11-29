@@ -166,6 +166,42 @@ public class BjorkHuntsman : MonoBehaviour
 
         // Spear (held weapon)
         CreateHuntingSpear();
+
+        // Yellow exclamation mark above head (quest indicator)
+        CreateQuestMarker();
+    }
+
+    void CreateQuestMarker()
+    {
+        GameObject marker = new GameObject("QuestMarker");
+        marker.transform.SetParent(transform);
+        marker.transform.localPosition = new Vector3(0, 2.8f, 0);
+
+        Material yellowMat = new Material(Shader.Find("Standard"));
+        yellowMat.color = new Color(1f, 0.9f, 0.1f);
+        yellowMat.EnableKeyword("_EMISSION");
+        yellowMat.SetColor("_EmissionColor", new Color(1f, 0.8f, 0f) * 2f);
+
+        // Exclamation mark body (!)
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        body.name = "ExclamationBody";
+        body.transform.SetParent(marker.transform);
+        body.transform.localPosition = new Vector3(0, 0.15f, 0);
+        body.transform.localScale = new Vector3(0.12f, 0.4f, 0.12f);
+        body.GetComponent<Renderer>().material = yellowMat;
+        Object.Destroy(body.GetComponent<Collider>());
+
+        // Exclamation mark dot
+        GameObject dot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        dot.name = "ExclamationDot";
+        dot.transform.SetParent(marker.transform);
+        dot.transform.localPosition = new Vector3(0, -0.15f, 0);
+        dot.transform.localScale = new Vector3(0.12f, 0.12f, 0.12f);
+        dot.GetComponent<Renderer>().material = yellowMat;
+        Object.Destroy(dot.GetComponent<Collider>());
+
+        // Make it bob up and down
+        marker.AddComponent<QuestMarkerBob>();
     }
 
     void CreateHuntingSpear()
@@ -358,13 +394,23 @@ public class BjorkHuntsman : MonoBehaviour
             GameManager.Instance.AddCoins(reward);
         }
 
+        // Give Dull Knife as quest reward
+        if (WeaponShopNPC.Instance != null)
+        {
+            WeaponShopNPC.Instance.UnlockWeapon("Dull Knife");
+        }
+
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowLootNotification($"+{reward} Gold (Quest Complete!)",
+            UIManager.Instance.ShowLootNotification($"+{reward} Gold + Dull Knife (Quest Complete!)",
                 new Color(1f, 0.85f, 0.3f));
         }
 
-        Debug.Log($"Quest reward: {reward} gold!");
+        Debug.Log($"Quest reward: {reward} gold + Dull Knife!");
+
+        // Hide the exclamation mark after quest complete
+        Transform marker = transform.Find("QuestMarker");
+        if (marker != null) marker.gameObject.SetActive(false);
     }
 
     public bool IsDialogueOpen()
@@ -500,5 +546,35 @@ public class BjorkHuntsman : MonoBehaviour
 
         GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 25, panelRect.width, 20),
             "[ESC] Close", closeStyle);
+    }
+}
+
+/// <summary>
+/// Makes the quest marker bob up and down
+/// </summary>
+public class QuestMarkerBob : MonoBehaviour
+{
+    private float bobSpeed = 2f;
+    private float bobHeight = 0.15f;
+    private float baseY;
+    private float rotateSpeed = 50f;
+
+    void Start()
+    {
+        baseY = transform.localPosition.y;
+    }
+
+    void Update()
+    {
+        // Bob up and down
+        float newY = baseY + Mathf.Sin(Time.time * bobSpeed) * bobHeight;
+        transform.localPosition = new Vector3(
+            transform.localPosition.x,
+            newY,
+            transform.localPosition.z
+        );
+
+        // Rotate slowly
+        transform.Rotate(Vector3.up, rotateSpeed * Time.deltaTime);
     }
 }
