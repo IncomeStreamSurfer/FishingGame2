@@ -32,8 +32,9 @@ public class BBQStation : MonoBehaviour
 
     void Awake()
     {
+        // Allow multiple BBQ instances (one per realm)
+        // Instance points to the nearest active BBQ for UI purposes
         if (Instance == null) Instance = this;
-        else Destroy(gameObject);
     }
 
     void Start()
