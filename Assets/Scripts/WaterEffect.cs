@@ -25,8 +25,9 @@ public class WaterEffect : MonoBehaviour
     public float drowningDistance = 25f; // Player starts drowning
 
     [Header("Water Particles")]
-    public int maxSparkles = 30;
+    public int maxSparkles = 60;
     public int maxFoamParticles = 20;
+    public int maxSunGlints = 25;
 
     private Vector3 startPos;
     private Material waterMat;
@@ -40,6 +41,7 @@ public class WaterEffect : MonoBehaviour
     // Water particle effects
     private List<GameObject> sparkleParticles = new List<GameObject>();
     private List<GameObject> foamParticles = new List<GameObject>();
+    private List<GameObject> sunGlintParticles = new List<GameObject>();
     private GameObject reflectionPlane;
     private float lastSparkleTime;
     private float lastFoamTime;
@@ -86,6 +88,9 @@ public class WaterEffect : MonoBehaviour
         StartCoroutine(SpawnWaterSparkles());
         StartCoroutine(SpawnFoamParticles());
         StartCoroutine(AnimateShimmerRipples());
+
+        // Start spawning bright sun glints (more visible sparkle effect)
+        StartCoroutine(SpawnSunGlints());
     }
 
     // Animated wave objects
@@ -358,29 +363,29 @@ public class WaterEffect : MonoBehaviour
 
     void CreateSparkle()
     {
-        // Random position on water surface
-        float range = 40f;
+        // Random position on water surface - wider range
+        float range = 50f;
         Vector3 pos = new Vector3(
             Random.Range(-range, range),
-            transform.position.y + 0.15f,
+            transform.position.y + 0.18f,
             Random.Range(-range, range)
         );
 
         GameObject sparkle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         sparkle.name = "WaterSparkle";
         sparkle.transform.position = pos;
-        sparkle.transform.localScale = Vector3.one * Random.Range(0.05f, 0.12f);
+        sparkle.transform.localScale = Vector3.one * Random.Range(0.08f, 0.18f); // Larger sparkles
         Destroy(sparkle.GetComponent<Collider>());
 
         Material sparkleMat = new Material(Shader.Find("Standard"));
-        sparkleMat.color = new Color(0.7f, 0.9f, 1f, 0.9f); // Light cyan sparkle instead of white
+        sparkleMat.color = new Color(0.85f, 0.95f, 1f, 0.95f); // Brighter cyan-white sparkle
         sparkleMat.EnableKeyword("_EMISSION");
 
-        // Sparkle color based on time of day - tinted cyan
-        Color sunColor = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetSunColor() : new Color(0.8f, 0.95f, 1f);
-        Color sparkleEmission = new Color(sunColor.r * 0.8f, sunColor.g * 0.95f, sunColor.b * 1f);
-        sparkleMat.SetColor("_EmissionColor", sparkleEmission * 1.5f);
-        sparkleMat.SetFloat("_Metallic", 0.9f);
+        // Sparkle color based on time of day - brighter emission
+        Color sunColor = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetSunColor() : new Color(0.9f, 0.95f, 1f);
+        Color sparkleEmission = new Color(sunColor.r * 0.9f, sunColor.g * 0.98f, sunColor.b * 1f);
+        sparkleMat.SetColor("_EmissionColor", sparkleEmission * 2.5f); // Brighter glow
+        sparkleMat.SetFloat("_Metallic", 0.95f);
         sparkleMat.SetFloat("_Glossiness", 1f);
 
         sparkle.GetComponent<Renderer>().material = sparkleMat;
@@ -415,6 +420,113 @@ public class WaterEffect : MonoBehaviour
         {
             sparkleParticles.Remove(sparkle);
             Destroy(sparkle);
+        }
+    }
+
+    // ========== SUN GLINT SYSTEM - Bright flashing sparkles like sunlight on water ==========
+    IEnumerator SpawnSunGlints()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(Random.Range(0.08f, 0.2f));
+
+            if (!MainMenu.GameStarted) continue;
+
+            // Only spawn during bright daylight
+            float daylight = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetDaylightIntensity() : 1f;
+            if (daylight < 0.5f) continue;
+
+            // Remove dead glints
+            sunGlintParticles.RemoveAll(g => g == null);
+
+            if (sunGlintParticles.Count < maxSunGlints)
+            {
+                CreateSunGlint(daylight);
+            }
+        }
+    }
+
+    void CreateSunGlint(float daylight)
+    {
+        // Sun glints appear more in the direction of the sun reflection
+        Vector3 sunDir = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetSunDirection() : Vector3.up;
+
+        // Bias spawn position towards sun direction
+        float range = 45f;
+        float sunBias = Random.Range(0f, 1f) > 0.3f ? 1f : 0f; // 70% chance to spawn in sun direction
+        Vector3 pos = new Vector3(
+            Random.Range(-range, range) + sunDir.x * 15f * sunBias,
+            transform.position.y + 0.2f,
+            Random.Range(-range, range) + sunDir.z * 15f * sunBias
+        );
+
+        // Create a bright flash point
+        GameObject glint = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        glint.name = "SunGlint";
+        glint.transform.position = pos;
+        glint.transform.localScale = Vector3.one * Random.Range(0.15f, 0.35f); // Larger than regular sparkles
+        Destroy(glint.GetComponent<Collider>());
+
+        // Very bright white-gold material
+        Material glintMat = new Material(Shader.Find("Standard"));
+        Color sunColor = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetSunColor() : Color.white;
+
+        // Blend between white and sun color for realistic glint
+        Color glintColor = Color.Lerp(Color.white, sunColor, 0.3f);
+        glintMat.color = new Color(glintColor.r, glintColor.g, glintColor.b, 1f);
+        glintMat.EnableKeyword("_EMISSION");
+        glintMat.SetColor("_EmissionColor", glintColor * 4f * daylight); // Very bright emission
+        glintMat.SetFloat("_Metallic", 1f);
+        glintMat.SetFloat("_Glossiness", 1f);
+
+        glint.GetComponent<Renderer>().material = glintMat;
+        sunGlintParticles.Add(glint);
+
+        StartCoroutine(AnimateSunGlint(glint, glintMat, daylight));
+    }
+
+    IEnumerator AnimateSunGlint(GameObject glint, Material mat, float daylight)
+    {
+        float lifetime = Random.Range(0.15f, 0.4f); // Quick flash
+        float t = 0;
+        Vector3 startScale = glint.transform.localScale;
+        Color baseEmission = mat.GetColor("_EmissionColor");
+
+        // Random twinkle pattern
+        float twinkleSpeed = Random.Range(15f, 25f);
+        float phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+
+        while (t < lifetime && glint != null)
+        {
+            t += Time.deltaTime;
+            float progress = t / lifetime;
+
+            // Sharp flash pattern - quick on, quick off
+            float flash = Mathf.Sin(progress * Mathf.PI);
+            flash = flash * flash * flash; // Sharpen the curve for more sparkle
+
+            // Add rapid twinkle
+            float twinkle = (Mathf.Sin(t * twinkleSpeed + phaseOffset) * 0.5f + 0.5f);
+            float intensity = flash * (0.7f + twinkle * 0.3f);
+
+            // Scale pulsing
+            float scaleMultiplier = 0.3f + intensity * 0.7f;
+            glint.transform.localScale = startScale * scaleMultiplier;
+
+            // Emission intensity
+            mat.SetColor("_EmissionColor", baseEmission * intensity);
+
+            // Color shift - more yellow at peak
+            Color peakColor = Color.Lerp(baseEmission, new Color(1f, 0.95f, 0.7f) * 5f, intensity * 0.3f);
+            mat.color = new Color(peakColor.r, peakColor.g, peakColor.b, intensity);
+
+            yield return null;
+        }
+
+        if (glint != null)
+        {
+            sunGlintParticles.Remove(glint);
+            Destroy(glint);
         }
     }
 

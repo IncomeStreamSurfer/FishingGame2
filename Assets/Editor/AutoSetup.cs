@@ -10,9 +10,49 @@ public class AutoSetup
         EditorApplication.delayCall += RunSetup;
     }
 
+    [MenuItem("Fishing Game/Reset Scene View Camera")]
+    static void ResetSceneViewCamera()
+    {
+        SceneView sceneView = SceneView.lastActiveSceneView;
+        if (sceneView != null)
+        {
+            // Position camera to see the main game area
+            sceneView.pivot = new Vector3(0, 5, 0);
+            sceneView.rotation = Quaternion.Euler(45, 0, 0);
+            sceneView.size = 30f;
+            sceneView.Repaint();
+            Debug.Log("Scene view camera reset to game area");
+        }
+    }
+
+    [MenuItem("Fishing Game/Focus On Player")]
+    static void FocusOnPlayer()
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player != null)
+        {
+            SceneView sceneView = SceneView.lastActiveSceneView;
+            if (sceneView != null)
+            {
+                sceneView.pivot = player.transform.position;
+                sceneView.rotation = Quaternion.Euler(45, 0, 0);
+                sceneView.size = 15f;
+                sceneView.Repaint();
+                Debug.Log("Scene view focused on player");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("No Player found in scene");
+        }
+    }
+
     [MenuItem("Fishing Game/Setup Scene Now")]
     static void RunSetup()
     {
+        // Reset scene view camera first
+        ResetSceneViewCamera();
+
         // Delete all existing game objects
         CleanupScene();
 
@@ -62,6 +102,9 @@ public class AutoSetup
         GameObject fishSprites = new GameObject("FishSprites");
         fishSprites.AddComponent<FishSprites>();
 
+        GameObject rodSprites = new GameObject("RodSprites");
+        rodSprites.AddComponent<RodSprites>();
+
         // Clothing Sprites (pixel art for shop/wardrobe)
         GameObject clothingSprites = new GameObject("ClothingSprites");
         clothingSprites.AddComponent<ClothingSprites>();
@@ -73,6 +116,10 @@ public class AutoSetup
         // Quest System
         GameObject qs = new GameObject("QuestSystem");
         qs.AddComponent<QuestSystem>();
+
+        // Realm Manager (handles portal teleportation between realms)
+        GameObject rm = new GameObject("RealmManager");
+        rm.AddComponent<RealmManager>();
 
         // Bottle Event System (1/100 chance per cast)
         GameObject bes = new GameObject("BottleEventSystem");
@@ -128,6 +175,9 @@ public class AutoSetup
         // Create 4 mystical portals on the beach
         CreatePortals();
 
+        // Create the Ice Realm (at offset position)
+        CreateIceRealm();
+
         // Create clothing shop island with Granny
         CreateClothingShopIsland();
 
@@ -153,7 +203,7 @@ public class AutoSetup
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "AtmosphericSounds", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot", "Bobber", "FishingLine", "FishSprites", "TutorialCat", "GoldieBanks", "GoldieIsland", "BridgeToShop", "SpawnNPC", "WetsuitPete", "SmallIslands", "WeedBagCollectible", "PauseMenu", "WeatherSystem", "ClothingSprites", "FishDiary" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "AtmosphericSounds", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot", "Bobber", "FishingLine", "FishSprites", "RodSprites", "TutorialCat", "GoldieBanks", "GoldieIsland", "BridgeToShop", "SpawnNPC", "WetsuitPete", "SmallIslands", "WeedBagCollectible", "PauseMenu", "WeatherSystem", "ClothingSprites", "FishDiary", "RealmManager", "IceRealm" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
@@ -2777,14 +2827,20 @@ public class AutoSetup
             new Color(0.4f, 0.8f, 1f),       // Light blue for ice
             new Color(0.6f, 0.2f, 0.8f)      // Purple for void
         };
+        RealmType[] destinations = {
+            RealmType.JungleRealm,
+            RealmType.VolcanicRealm,
+            RealmType.IceRealm,
+            RealmType.VoidRealm
+        };
 
         for (int i = 0; i < 4; i++)
         {
-            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i]);
+            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i], destinations[i]);
         }
     }
 
-    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor)
+    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor, RealmType destination = RealmType.TropicalIsland)
     {
         GameObject portal = new GameObject(name);
         portal.transform.SetParent(parent);
@@ -2795,6 +2851,8 @@ public class AutoSetup
         PortalInteraction portalInteraction = portal.AddComponent<PortalInteraction>();
         portalInteraction.portalName = name.Replace("Portal", " Realm");
         portalInteraction.requiredLevel = requiredLevel;
+        portalInteraction.destinationRealm = destination;
+        portalInteraction.spawnOffset = new Vector3(0, 2f, 5f); // Spawn near return portal
 
         // Portal materials
         Material stoneMat = new Material(Shader.Find("Standard"));
@@ -3114,20 +3172,297 @@ public class AutoSetup
         sign.GetComponent<Renderer>().sharedMaterial = signMat;
         Object.DestroyImmediate(sign.GetComponent<Collider>());
 
-        // Clothing racks (colored boxes to represent clothes)
-        Color[] clothColors = { Color.red, Color.blue, Color.green, Color.yellow, Color.magenta };
+        // Clothing rack with hangers and clothes
+        GameObject clothingRack = new GameObject("ClothingRack");
+        clothingRack.transform.SetParent(shop.transform);
+        clothingRack.transform.localPosition = new Vector3(0, 0, -1.2f);
+
+        Material metalMat = new Material(Shader.Find("Standard"));
+        metalMat.color = new Color(0.3f, 0.3f, 0.35f);
+        metalMat.SetFloat("_Metallic", 0.8f);
+        metalMat.SetFloat("_Glossiness", 0.6f);
+
+        // Rack horizontal bar (top)
+        GameObject rackBar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rackBar.name = "RackBar";
+        rackBar.transform.SetParent(clothingRack.transform);
+        rackBar.transform.localPosition = new Vector3(0, 2.0f, 0);
+        rackBar.transform.localRotation = Quaternion.Euler(0, 0, 90);
+        rackBar.transform.localScale = new Vector3(0.04f, 1.6f, 0.04f);
+        rackBar.GetComponent<Renderer>().sharedMaterial = metalMat;
+        Object.DestroyImmediate(rackBar.GetComponent<Collider>());
+
+        // Rack vertical posts (left and right)
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            post.name = "RackPost";
+            post.transform.SetParent(clothingRack.transform);
+            post.transform.localPosition = new Vector3(side * 1.5f, 1.0f, 0);
+            post.transform.localScale = new Vector3(0.05f, 1.0f, 0.05f);
+            post.GetComponent<Renderer>().sharedMaterial = metalMat;
+            Object.DestroyImmediate(post.GetComponent<Collider>());
+
+            // Rack feet (angled supports)
+            GameObject foot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            foot.name = "RackFoot";
+            foot.transform.SetParent(clothingRack.transform);
+            foot.transform.localPosition = new Vector3(side * 1.5f, 0.15f, 0.2f);
+            foot.transform.localRotation = Quaternion.Euler(30, 0, 0);
+            foot.transform.localScale = new Vector3(0.03f, 0.25f, 0.03f);
+            foot.GetComponent<Renderer>().sharedMaterial = metalMat;
+            Object.DestroyImmediate(foot.GetComponent<Collider>());
+
+            GameObject foot2 = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            foot2.name = "RackFoot2";
+            foot2.transform.SetParent(clothingRack.transform);
+            foot2.transform.localPosition = new Vector3(side * 1.5f, 0.15f, -0.2f);
+            foot2.transform.localRotation = Quaternion.Euler(-30, 0, 0);
+            foot2.transform.localScale = new Vector3(0.03f, 0.25f, 0.03f);
+            foot2.GetComponent<Renderer>().sharedMaterial = metalMat;
+            Object.DestroyImmediate(foot2.GetComponent<Collider>());
+        }
+
+        // Clothes hangers with clothing
+        Color[] clothColors = {
+            new Color(0.85f, 0.15f, 0.1f),   // Red shirt
+            new Color(0.15f, 0.35f, 0.7f),   // Blue shirt
+            new Color(0.2f, 0.6f, 0.25f),    // Green
+            new Color(0.9f, 0.8f, 0.3f),     // Yellow
+            new Color(0.6f, 0.2f, 0.5f)      // Purple
+        };
+        string[] clothTypes = { "TShirt", "Dress", "TShirt", "Blouse", "Jacket" };
+
         for (int i = 0; i < 5; i++)
         {
-            GameObject cloth = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cloth.name = "ClothingDisplay" + i;
-            cloth.transform.SetParent(shop.transform);
-            cloth.transform.localPosition = new Vector3(-1.5f + i * 0.8f, 1.8f, -1.2f);
-            cloth.transform.localScale = new Vector3(0.5f, 0.7f, 0.15f);
+            float xPos = -1.2f + i * 0.6f;
+            GameObject hangerGroup = new GameObject("HangerWithClothes" + i);
+            hangerGroup.transform.SetParent(clothingRack.transform);
+            hangerGroup.transform.localPosition = new Vector3(xPos, 1.95f, 0);
+
+            // Hanger (triangle shape with hook)
+            Material hangerMat = new Material(Shader.Find("Standard"));
+            hangerMat.color = new Color(0.85f, 0.75f, 0.6f); // Wooden hanger color
+
+            // Hanger hook
+            GameObject hook = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            hook.name = "Hook";
+            hook.transform.SetParent(hangerGroup.transform);
+            hook.transform.localPosition = new Vector3(0, 0.08f, 0);
+            hook.transform.localScale = new Vector3(0.015f, 0.08f, 0.015f);
+            hook.GetComponent<Renderer>().sharedMaterial = hangerMat;
+            Object.DestroyImmediate(hook.GetComponent<Collider>());
+
+            // Hanger bar (horizontal)
+            GameObject hangerBar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            hangerBar.name = "HangerBar";
+            hangerBar.transform.SetParent(hangerGroup.transform);
+            hangerBar.transform.localPosition = new Vector3(0, -0.02f, 0);
+            hangerBar.transform.localScale = new Vector3(0.35f, 0.025f, 0.02f);
+            hangerBar.GetComponent<Renderer>().sharedMaterial = hangerMat;
+            Object.DestroyImmediate(hangerBar.GetComponent<Collider>());
+
+            // Hanger shoulders (angled parts)
+            for (int shoulder = -1; shoulder <= 1; shoulder += 2)
+            {
+                GameObject shoulderPart = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                shoulderPart.name = "HangerShoulder";
+                shoulderPart.transform.SetParent(hangerGroup.transform);
+                shoulderPart.transform.localPosition = new Vector3(shoulder * 0.1f, -0.04f, 0);
+                shoulderPart.transform.localRotation = Quaternion.Euler(0, 0, shoulder * -25);
+                shoulderPart.transform.localScale = new Vector3(0.12f, 0.02f, 0.015f);
+                shoulderPart.GetComponent<Renderer>().sharedMaterial = hangerMat;
+                Object.DestroyImmediate(shoulderPart.GetComponent<Collider>());
+            }
+
+            // Create clothing item based on type
             Material clothMat = new Material(Shader.Find("Standard"));
             clothMat.color = clothColors[i];
-            cloth.GetComponent<Renderer>().sharedMaterial = clothMat;
-            Object.DestroyImmediate(cloth.GetComponent<Collider>());
+
+            if (clothTypes[i] == "TShirt" || clothTypes[i] == "Blouse")
+            {
+                // T-shirt body
+                GameObject shirtBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                shirtBody.name = "ShirtBody";
+                shirtBody.transform.SetParent(hangerGroup.transform);
+                shirtBody.transform.localPosition = new Vector3(0, -0.25f, 0);
+                shirtBody.transform.localScale = new Vector3(0.3f, 0.35f, 0.06f);
+                shirtBody.GetComponent<Renderer>().sharedMaterial = clothMat;
+                Object.DestroyImmediate(shirtBody.GetComponent<Collider>());
+
+                // Sleeves
+                for (int sleeve = -1; sleeve <= 1; sleeve += 2)
+                {
+                    GameObject sleeveObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    sleeveObj.name = "Sleeve";
+                    sleeveObj.transform.SetParent(hangerGroup.transform);
+                    sleeveObj.transform.localPosition = new Vector3(sleeve * 0.2f, -0.12f, 0);
+                    sleeveObj.transform.localRotation = Quaternion.Euler(0, 0, sleeve * 45);
+                    sleeveObj.transform.localScale = new Vector3(0.12f, 0.1f, 0.05f);
+                    sleeveObj.GetComponent<Renderer>().sharedMaterial = clothMat;
+                    Object.DestroyImmediate(sleeveObj.GetComponent<Collider>());
+                }
+            }
+            else if (clothTypes[i] == "Dress")
+            {
+                // Dress top
+                GameObject dressTop = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                dressTop.name = "DressTop";
+                dressTop.transform.SetParent(hangerGroup.transform);
+                dressTop.transform.localPosition = new Vector3(0, -0.15f, 0);
+                dressTop.transform.localScale = new Vector3(0.28f, 0.2f, 0.05f);
+                dressTop.GetComponent<Renderer>().sharedMaterial = clothMat;
+                Object.DestroyImmediate(dressTop.GetComponent<Collider>());
+
+                // Dress skirt (flared)
+                GameObject dressSkirt = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                dressSkirt.name = "DressSkirt";
+                dressSkirt.transform.SetParent(hangerGroup.transform);
+                dressSkirt.transform.localPosition = new Vector3(0, -0.42f, 0);
+                dressSkirt.transform.localScale = new Vector3(0.38f, 0.35f, 0.06f);
+                dressSkirt.GetComponent<Renderer>().sharedMaterial = clothMat;
+                Object.DestroyImmediate(dressSkirt.GetComponent<Collider>());
+            }
+            else if (clothTypes[i] == "Jacket")
+            {
+                // Jacket body
+                GameObject jacketBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                jacketBody.name = "JacketBody";
+                jacketBody.transform.SetParent(hangerGroup.transform);
+                jacketBody.transform.localPosition = new Vector3(0, -0.28f, 0);
+                jacketBody.transform.localScale = new Vector3(0.32f, 0.42f, 0.08f);
+                jacketBody.GetComponent<Renderer>().sharedMaterial = clothMat;
+                Object.DestroyImmediate(jacketBody.GetComponent<Collider>());
+
+                // Jacket collar
+                Material collarMat = new Material(Shader.Find("Standard"));
+                collarMat.color = clothColors[i] * 0.7f;
+                for (int collar = -1; collar <= 1; collar += 2)
+                {
+                    GameObject collarPart = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    collarPart.name = "Collar";
+                    collarPart.transform.SetParent(hangerGroup.transform);
+                    collarPart.transform.localPosition = new Vector3(collar * 0.08f, -0.1f, 0.04f);
+                    collarPart.transform.localRotation = Quaternion.Euler(0, 0, collar * -20);
+                    collarPart.transform.localScale = new Vector3(0.08f, 0.1f, 0.03f);
+                    collarPart.GetComponent<Renderer>().sharedMaterial = collarMat;
+                    Object.DestroyImmediate(collarPart.GetComponent<Collider>());
+                }
+
+                // Jacket sleeves (longer)
+                for (int sleeve = -1; sleeve <= 1; sleeve += 2)
+                {
+                    GameObject sleeveObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    sleeveObj.name = "JacketSleeve";
+                    sleeveObj.transform.SetParent(hangerGroup.transform);
+                    sleeveObj.transform.localPosition = new Vector3(sleeve * 0.22f, -0.2f, 0);
+                    sleeveObj.transform.localRotation = Quaternion.Euler(0, 0, sleeve * 30);
+                    sleeveObj.transform.localScale = new Vector3(0.1f, 0.25f, 0.07f);
+                    sleeveObj.GetComponent<Renderer>().sharedMaterial = clothMat;
+                    Object.DestroyImmediate(sleeveObj.GetComponent<Collider>());
+                }
+            }
         }
+
+        // Potted flower decoration
+        GameObject pottedFlower = new GameObject("PottedFlower");
+        pottedFlower.transform.SetParent(shop.transform);
+        pottedFlower.transform.localPosition = new Vector3(-1.6f, 0.2f, 0.8f);
+
+        // Terracotta pot
+        Material potMat = new Material(Shader.Find("Standard"));
+        potMat.color = new Color(0.75f, 0.4f, 0.25f);
+
+        GameObject pot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        pot.name = "Pot";
+        pot.transform.SetParent(pottedFlower.transform);
+        pot.transform.localPosition = Vector3.zero;
+        pot.transform.localScale = new Vector3(0.3f, 0.2f, 0.3f);
+        pot.GetComponent<Renderer>().sharedMaterial = potMat;
+        Object.DestroyImmediate(pot.GetComponent<Collider>());
+
+        // Pot rim
+        GameObject potRim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        potRim.name = "PotRim";
+        potRim.transform.SetParent(pottedFlower.transform);
+        potRim.transform.localPosition = new Vector3(0, 0.18f, 0);
+        potRim.transform.localScale = new Vector3(0.35f, 0.04f, 0.35f);
+        potRim.GetComponent<Renderer>().sharedMaterial = potMat;
+        Object.DestroyImmediate(potRim.GetComponent<Collider>());
+
+        // Soil
+        Material soilMat = new Material(Shader.Find("Standard"));
+        soilMat.color = new Color(0.3f, 0.2f, 0.1f);
+        GameObject soil = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        soil.name = "Soil";
+        soil.transform.SetParent(pottedFlower.transform);
+        soil.transform.localPosition = new Vector3(0, 0.15f, 0);
+        soil.transform.localScale = new Vector3(0.25f, 0.05f, 0.25f);
+        soil.GetComponent<Renderer>().sharedMaterial = soilMat;
+        Object.DestroyImmediate(soil.GetComponent<Collider>());
+
+        // Flower stem
+        Material stemMat = new Material(Shader.Find("Standard"));
+        stemMat.color = new Color(0.2f, 0.5f, 0.15f);
+        GameObject stem = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        stem.name = "Stem";
+        stem.transform.SetParent(pottedFlower.transform);
+        stem.transform.localPosition = new Vector3(0, 0.45f, 0);
+        stem.transform.localScale = new Vector3(0.03f, 0.3f, 0.03f);
+        stem.GetComponent<Renderer>().sharedMaterial = stemMat;
+        Object.DestroyImmediate(stem.GetComponent<Collider>());
+
+        // Leaves
+        for (int leaf = 0; leaf < 3; leaf++)
+        {
+            GameObject leafObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            leafObj.name = "Leaf" + leaf;
+            leafObj.transform.SetParent(pottedFlower.transform);
+            float leafAngle = leaf * 120f * Mathf.Deg2Rad;
+            leafObj.transform.localPosition = new Vector3(Mathf.Cos(leafAngle) * 0.08f, 0.3f + leaf * 0.08f, Mathf.Sin(leafAngle) * 0.08f);
+            leafObj.transform.localScale = new Vector3(0.12f, 0.03f, 0.06f);
+            leafObj.transform.localRotation = Quaternion.Euler(0, -leaf * 120, 20);
+            leafObj.GetComponent<Renderer>().sharedMaterial = stemMat;
+            Object.DestroyImmediate(leafObj.GetComponent<Collider>());
+        }
+
+        // Flower petals (hibiscus style - tropical!)
+        Material petalMat = new Material(Shader.Find("Standard"));
+        petalMat.color = new Color(1f, 0.4f, 0.5f); // Pink hibiscus
+        for (int petal = 0; petal < 5; petal++)
+        {
+            GameObject petalObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            petalObj.name = "Petal" + petal;
+            petalObj.transform.SetParent(pottedFlower.transform);
+            float angle = petal * 72f * Mathf.Deg2Rad;
+            petalObj.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.08f, 0.72f, Mathf.Sin(angle) * 0.08f);
+            petalObj.transform.localScale = new Vector3(0.1f, 0.06f, 0.12f);
+            petalObj.transform.localRotation = Quaternion.Euler(30, -petal * 72, 0);
+            petalObj.GetComponent<Renderer>().sharedMaterial = petalMat;
+            Object.DestroyImmediate(petalObj.GetComponent<Collider>());
+        }
+
+        // Flower center (yellow)
+        Material centerMat = new Material(Shader.Find("Standard"));
+        centerMat.color = new Color(1f, 0.9f, 0.2f);
+        GameObject flowerCenter = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flowerCenter.name = "FlowerCenter";
+        flowerCenter.transform.SetParent(pottedFlower.transform);
+        flowerCenter.transform.localPosition = new Vector3(0, 0.72f, 0);
+        flowerCenter.transform.localScale = new Vector3(0.08f, 0.08f, 0.08f);
+        flowerCenter.GetComponent<Renderer>().sharedMaterial = centerMat;
+        Object.DestroyImmediate(flowerCenter.GetComponent<Collider>());
+
+        // Stamen (center spike)
+        GameObject stamen = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        stamen.name = "Stamen";
+        stamen.transform.SetParent(pottedFlower.transform);
+        stamen.transform.localPosition = new Vector3(0, 0.82f, 0);
+        stamen.transform.localScale = new Vector3(0.02f, 0.1f, 0.02f);
+        Material stamenMat = new Material(Shader.Find("Standard"));
+        stamenMat.color = new Color(0.9f, 0.3f, 0.35f);
+        stamen.GetComponent<Renderer>().sharedMaterial = stamenMat;
+        Object.DestroyImmediate(stamen.GetComponent<Collider>());
 
         // RADIO on the counter - plays Evil Bob's Island music
         GameObject radio = new GameObject("ShopRadio");
@@ -3287,4 +3622,1414 @@ public class AutoSetup
         Object.DestroyImmediate(yarn.GetComponent<Collider>());
     }
 
+    // ==================== ICE REALM ====================
+    static void CreateIceRealm()
+    {
+        // Ice Realm is positioned at X offset of 500
+        Vector3 realmOrigin = RealmManager.IceRealmOrigin;
+
+        GameObject iceRealm = new GameObject("IceRealm");
+        iceRealm.transform.position = realmOrigin;
+
+        // Ice/Snow materials
+        Material snowMat = new Material(Shader.Find("Standard"));
+        snowMat.color = new Color(0.95f, 0.97f, 1f);
+        snowMat.SetFloat("_Glossiness", 0.2f);
+
+        Material iceMat = new Material(Shader.Find("Standard"));
+        iceMat.color = new Color(0.7f, 0.85f, 0.95f);
+        iceMat.SetFloat("_Glossiness", 0.8f);
+        iceMat.SetFloat("_Metallic", 0.1f);
+
+        Material darkIceMat = new Material(Shader.Find("Standard"));
+        darkIceMat.color = new Color(0.4f, 0.6f, 0.75f);
+        darkIceMat.SetFloat("_Glossiness", 0.9f);
+
+        Material frozenWaterMat = new Material(Shader.Find("Standard"));
+        frozenWaterMat.color = new Color(0.3f, 0.5f, 0.7f, 0.9f);
+        frozenWaterMat.SetFloat("_Mode", 3);
+        frozenWaterMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        frozenWaterMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        frozenWaterMat.EnableKeyword("_ALPHABLEND_ON");
+        frozenWaterMat.SetFloat("_Glossiness", 0.95f);
+
+        // === SNOWY GROUND (ring shape with hole in center for ice lake) ===
+        // Create ground as multiple pieces around the central lake
+        float groundY = 1.25f;
+        float lakeRadius = 12f;
+        float mapRadius = 38f;
+
+        // Main ground (large area)
+        GameObject snowGround = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        snowGround.name = "SnowGround";
+        snowGround.transform.SetParent(iceRealm.transform);
+        snowGround.transform.localPosition = new Vector3(0, groundY, 0);
+        snowGround.transform.localScale = new Vector3(mapRadius * 2, 0.5f, mapRadius * 2);
+        snowGround.GetComponent<Renderer>().sharedMaterial = snowMat;
+
+        // === CENTRAL ICE LAKE (fishing hole) ===
+        CreateCentralIceLake(iceRealm.transform, Vector3.zero, lakeRadius, frozenWaterMat, darkIceMat);
+
+        // === DISTANT MOUNTAINS (enclosing feel) ===
+        CreateDistantMountains(iceRealm.transform, snowMat, iceMat);
+
+        // === FROZEN WATER AROUND EDGES ===
+        GameObject frozenWater = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        frozenWater.name = "FrozenWater";
+        frozenWater.transform.SetParent(iceRealm.transform);
+        frozenWater.transform.localPosition = new Vector3(0, 0.3f, 0);
+        frozenWater.transform.localScale = new Vector3(200, 0.3f, 200);
+        frozenWater.GetComponent<Renderer>().sharedMaterial = frozenWaterMat;
+        Object.DestroyImmediate(frozenWater.GetComponent<Collider>());
+
+        // Invisible floor for edges
+        GameObject iceFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        iceFloor.name = "IceFloor";
+        iceFloor.transform.SetParent(iceRealm.transform);
+        iceFloor.transform.localPosition = new Vector3(0, 0.4f, 0);
+        iceFloor.transform.localScale = new Vector3(200, 0.1f, 200);
+        iceFloor.GetComponent<Renderer>().enabled = false;
+
+        // === ICE FORMATIONS scattered around ===
+        CreateIceFormation(iceRealm.transform, new Vector3(-28f, groundY, 18f), iceMat, 5f);
+        CreateIceFormation(iceRealm.transform, new Vector3(30f, groundY, -22f), iceMat, 6f);
+        CreateIceFormation(iceRealm.transform, new Vector3(-18f, groundY, -28f), darkIceMat, 4f);
+        CreateIceFormation(iceRealm.transform, new Vector3(25f, groundY, 25f), iceMat, 5f);
+
+        // === DEAD TREES (leafless, skeletal) ===
+        CreateDeadTree(iceRealm.transform, new Vector3(-22f, groundY, -18f), 7f);
+        CreateDeadTree(iceRealm.transform, new Vector3(18f, groundY, -25f), 8f);
+        CreateDeadTree(iceRealm.transform, new Vector3(-30f, groundY, 8f), 6f);
+        CreateDeadTree(iceRealm.transform, new Vector3(28f, groundY, 15f), 9f);
+        CreateDeadTree(iceRealm.transform, new Vector3(-15f, groundY, 28f), 7f);
+        CreateDeadTree(iceRealm.transform, new Vector3(8f, groundY, -30f), 8f);
+        // Trees for hiding weapon shop
+        CreateDeadTree(iceRealm.transform, new Vector3(-32f, groundY, -25f), 10f);
+        CreateDeadTree(iceRealm.transform, new Vector3(-28f, groundY, -28f), 8f);
+        CreateDeadTree(iceRealm.transform, new Vector3(-35f, groundY, -22f), 9f);
+        // Trees for hiding Bjork
+        CreateDeadTree(iceRealm.transform, new Vector3(30f, groundY, -28f), 9f);
+        CreateDeadTree(iceRealm.transform, new Vector3(33f, groundY, -25f), 7f);
+
+        // === SNOW-COVERED PINE TREES ===
+        CreateSnowyPineTree(iceRealm.transform, new Vector3(-25f, groundY, 5f), 8f);
+        CreateSnowyPineTree(iceRealm.transform, new Vector3(20f, groundY, -8f), 10f);
+        CreateSnowyPineTree(iceRealm.transform, new Vector3(-12f, groundY, -32f), 7f);
+        CreateSnowyPineTree(iceRealm.transform, new Vector3(32f, groundY, 5f), 9f);
+
+        // === RETURN PORTAL (edge of map, not center) ===
+        CreateReturnPortal(iceRealm.transform, new Vector3(0, groundY - 0.75f, -35f), "TropicalPortal", RealmType.TropicalIsland);
+
+        // === IGLOO SHOP (CENTER OF MAP - native old woman inside with fire) ===
+        CreateIglooShop(iceRealm.transform, new Vector3(0, groundY, 0));
+
+        // === ICE REALM DOCK (facing out to sea with BBQ and radio) ===
+        CreateIceRealmDock(iceRealm.transform, groundY);
+
+        // === WEAPON SHOP (Pik, hidden behind dead trees) ===
+        CreateWeaponShop(iceRealm.transform, new Vector3(-30f, groundY, -26f));
+
+        // === BJORK THE HUNTSMAN (hidden behind trees with fire) ===
+        CreateBjorkNPC(iceRealm.transform, new Vector3(32f, groundY, -26f));
+
+        // === POLAR BEARS (3 enemies patrolling) ===
+        CreatePolarBear(iceRealm.transform, new Vector3(-20f, groundY, 15f));
+        CreatePolarBear(iceRealm.transform, new Vector3(22f, groundY, -15f));
+        CreatePolarBear(iceRealm.transform, new Vector3(0f, groundY, -25f));
+
+        // === SNOW PARTICLE SYSTEM ===
+        GameObject snowSystem = new GameObject("SnowParticles");
+        snowSystem.transform.SetParent(iceRealm.transform);
+        snowSystem.transform.localPosition = Vector3.zero;
+        snowSystem.AddComponent<SnowParticles>();
+
+        // === WIND AMBIENCE ===
+        GameObject windObj = new GameObject("WindAmbience");
+        windObj.transform.SetParent(iceRealm.transform);
+        windObj.AddComponent<WindAmbience>();
+
+        // === WEAPON SYSTEM (for Ice Realm combat) ===
+        GameObject weaponSystem = new GameObject("WeaponSystem");
+        weaponSystem.transform.SetParent(iceRealm.transform);
+        weaponSystem.AddComponent<WeaponSystem>();
+
+        Debug.Log("Ice Realm created with central ice lake, shops, NPCs, and polar bears!");
+    }
+
+    static void CreateCentralIceLake(Transform parent, Vector3 center, float radius, Material waterMat, Material iceMat)
+    {
+        GameObject lake = new GameObject("CentralIceLake");
+        lake.transform.SetParent(parent);
+        lake.transform.localPosition = center;
+
+        // Cut a circular hole in the ground (we'll visually cover it)
+        // Water surface (fishable area)
+        GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        water.name = "LakeWater";
+        water.transform.SetParent(lake.transform);
+        water.transform.localPosition = new Vector3(0, 0.5f, 0);
+        water.transform.localScale = new Vector3(radius * 2, 0.3f, radius * 2);
+        water.GetComponent<Renderer>().sharedMaterial = waterMat;
+        Object.DestroyImmediate(water.GetComponent<Collider>());
+
+        // Ice rim around the lake
+        int rimSegments = 16;
+        for (int i = 0; i < rimSegments; i++)
+        {
+            float angle = i * (360f / rimSegments) * Mathf.Deg2Rad;
+            float nextAngle = (i + 1) * (360f / rimSegments) * Mathf.Deg2Rad;
+
+            GameObject iceBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            iceBlock.name = "IceRim" + i;
+            iceBlock.transform.SetParent(lake.transform);
+
+            float x = Mathf.Cos(angle) * (radius + 0.5f);
+            float z = Mathf.Sin(angle) * (radius + 0.5f);
+            iceBlock.transform.localPosition = new Vector3(x, 1f, z);
+            iceBlock.transform.localScale = new Vector3(3f, 1.5f + Random.Range(0f, 0.5f), 2f);
+            iceBlock.transform.localRotation = Quaternion.Euler(
+                Random.Range(-5f, 5f),
+                -angle * Mathf.Rad2Deg + 90,
+                Random.Range(-5f, 5f)
+            );
+            iceBlock.GetComponent<Renderer>().sharedMaterial = iceMat;
+        }
+
+        // Floating ice chunks in the water
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float dist = Random.Range(2f, radius - 2f);
+
+            GameObject chunk = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            chunk.name = "IceChunk" + i;
+            chunk.transform.SetParent(lake.transform);
+            chunk.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * dist,
+                0.7f,
+                Mathf.Sin(angle) * dist
+            );
+            chunk.transform.localScale = new Vector3(
+                Random.Range(0.5f, 1.5f),
+                Random.Range(0.3f, 0.6f),
+                Random.Range(0.5f, 1.5f)
+            );
+            chunk.transform.localRotation = Quaternion.Euler(
+                Random.Range(-10f, 10f),
+                Random.Range(0f, 360f),
+                Random.Range(-10f, 10f)
+            );
+            chunk.GetComponent<Renderer>().sharedMaterial = iceMat;
+            Object.DestroyImmediate(chunk.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateDistantMountains(Transform parent, Material snowMat, Material iceMat)
+    {
+        GameObject mountains = new GameObject("DistantMountains");
+        mountains.transform.SetParent(parent);
+        mountains.transform.localPosition = Vector3.zero;
+
+        // Create mountains in a ring around the map
+        float mountainDistance = 80f;
+        int mountainCount = 12;
+
+        for (int i = 0; i < mountainCount; i++)
+        {
+            float angle = i * (360f / mountainCount) * Mathf.Deg2Rad;
+            float angleVariation = Random.Range(-15f, 15f) * Mathf.Deg2Rad;
+
+            GameObject mountain = new GameObject("Mountain" + i);
+            mountain.transform.SetParent(mountains.transform);
+
+            float x = Mathf.Cos(angle + angleVariation) * (mountainDistance + Random.Range(-10f, 10f));
+            float z = Mathf.Sin(angle + angleVariation) * (mountainDistance + Random.Range(-10f, 10f));
+            mountain.transform.localPosition = new Vector3(x, 0, z);
+
+            // Create mountain shape (multiple peaks)
+            int peaks = Random.Range(1, 4);
+            for (int p = 0; p < peaks; p++)
+            {
+                float peakHeight = Random.Range(25f, 50f);
+                float peakWidth = Random.Range(15f, 30f);
+
+                GameObject peak = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                peak.name = "Peak" + p;
+                peak.transform.SetParent(mountain.transform);
+                peak.transform.localPosition = new Vector3(p * 8f - (peaks - 1) * 4f, peakHeight / 2, 0);
+                peak.transform.localScale = new Vector3(peakWidth, peakHeight, peakWidth * 0.8f);
+                peak.transform.localRotation = Quaternion.Euler(0, Random.Range(-20f, 20f), 0);
+
+                // Gradient color - darker at base, whiter at top
+                Material peakMat = new Material(Shader.Find("Standard"));
+                float whiteness = 0.7f + (peakHeight / 50f) * 0.3f;
+                peakMat.color = new Color(whiteness, whiteness + 0.02f, whiteness + 0.05f);
+                peak.GetComponent<Renderer>().sharedMaterial = peakMat;
+                Object.DestroyImmediate(peak.GetComponent<Collider>());
+
+                // Snow cap
+                GameObject snowCap = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                snowCap.name = "SnowCap";
+                snowCap.transform.SetParent(mountain.transform);
+                snowCap.transform.localPosition = new Vector3(p * 8f - (peaks - 1) * 4f, peakHeight * 0.85f, 0);
+                snowCap.transform.localScale = new Vector3(peakWidth * 0.7f, peakHeight * 0.3f, peakWidth * 0.6f);
+                snowCap.transform.localRotation = peak.transform.localRotation;
+                snowCap.GetComponent<Renderer>().sharedMaterial = snowMat;
+                Object.DestroyImmediate(snowCap.GetComponent<Collider>());
+            }
+        }
+    }
+
+    static void CreateDeadTree(Transform parent, Vector3 localPos, float height)
+    {
+        GameObject tree = new GameObject("DeadTree");
+        tree.transform.SetParent(parent);
+        tree.transform.localPosition = localPos;
+
+        Material barkMat = new Material(Shader.Find("Standard"));
+        barkMat.color = new Color(0.25f, 0.2f, 0.15f);
+
+        // Main trunk
+        GameObject trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(tree.transform);
+        trunk.transform.localPosition = new Vector3(0, height * 0.4f, 0);
+        trunk.transform.localScale = new Vector3(0.25f, height * 0.4f, 0.25f);
+        trunk.transform.localRotation = Quaternion.Euler(Random.Range(-3f, 3f), 0, Random.Range(-3f, 3f));
+        trunk.GetComponent<Renderer>().sharedMaterial = barkMat;
+        Object.DestroyImmediate(trunk.GetComponent<Collider>());
+
+        // Dead branches (skeletal)
+        int branchCount = Random.Range(4, 7);
+        for (int i = 0; i < branchCount; i++)
+        {
+            float branchY = height * (0.3f + i * 0.12f);
+            float branchAngle = i * 60f + Random.Range(-20f, 20f);
+            float branchLength = Random.Range(1f, 2.5f);
+
+            GameObject branch = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            branch.name = "Branch" + i;
+            branch.transform.SetParent(tree.transform);
+
+            float rad = branchAngle * Mathf.Deg2Rad;
+            branch.transform.localPosition = new Vector3(
+                Mathf.Cos(rad) * branchLength * 0.5f,
+                branchY,
+                Mathf.Sin(rad) * branchLength * 0.5f
+            );
+            branch.transform.localScale = new Vector3(0.08f, branchLength * 0.5f, 0.08f);
+            branch.transform.localRotation = Quaternion.Euler(
+                -60 + Random.Range(-20f, 20f),
+                branchAngle,
+                0
+            );
+            branch.GetComponent<Renderer>().sharedMaterial = barkMat;
+            Object.DestroyImmediate(branch.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateIglooShop(Transform parent, Vector3 localPos)
+    {
+        GameObject igloo = new GameObject("IglooShop");
+        igloo.transform.SetParent(parent);
+        igloo.transform.localPosition = localPos;
+
+        // Smooth white snow material like real igloo
+        Material snowMat = new Material(Shader.Find("Standard"));
+        snowMat.color = new Color(0.98f, 0.98f, 1f);
+        snowMat.SetFloat("_Glossiness", 0.15f);
+
+        Material snowShadow = new Material(Shader.Find("Standard"));
+        snowShadow.color = new Color(0.85f, 0.88f, 0.95f);
+
+        Material entranceDarkMat = new Material(Shader.Find("Standard"));
+        entranceDarkMat.color = new Color(0.2f, 0.25f, 0.3f);
+
+        // Main dome - smooth half sphere like reference image
+        GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        dome.name = "IglooDome";
+        dome.transform.SetParent(igloo.transform);
+        dome.transform.localPosition = new Vector3(0, 0, 0);
+        dome.transform.localScale = new Vector3(8f, 5f, 8f);
+        dome.GetComponent<Renderer>().sharedMaterial = snowMat;
+        // Keep collider so player can't walk through
+
+        // Cut out bottom half visually with ground plane
+        GameObject groundCover = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        groundCover.name = "IglooBase";
+        groundCover.transform.SetParent(igloo.transform);
+        groundCover.transform.localPosition = new Vector3(0, -0.1f, 0);
+        groundCover.transform.localScale = new Vector3(8.2f, 0.2f, 8.2f);
+        groundCover.GetComponent<Renderer>().sharedMaterial = snowMat;
+        Object.DestroyImmediate(groundCover.GetComponent<Collider>());
+
+        // Arched entrance tunnel - curved top like reference
+        GameObject entranceTunnel = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        entranceTunnel.name = "EntranceTunnel";
+        entranceTunnel.transform.SetParent(igloo.transform);
+        entranceTunnel.transform.localPosition = new Vector3(0, 1.0f, 5f);
+        entranceTunnel.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        entranceTunnel.transform.localScale = new Vector3(2.5f, 2f, 2f);
+        entranceTunnel.GetComponent<Renderer>().sharedMaterial = snowMat;
+        Object.DestroyImmediate(entranceTunnel.GetComponent<Collider>());
+
+        // Entrance arch top
+        GameObject archTop = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        archTop.name = "EntranceArch";
+        archTop.transform.SetParent(igloo.transform);
+        archTop.transform.localPosition = new Vector3(0, 1.8f, 6f);
+        archTop.transform.localScale = new Vector3(2.8f, 1.5f, 1.2f);
+        archTop.GetComponent<Renderer>().sharedMaterial = snowMat;
+        Object.DestroyImmediate(archTop.GetComponent<Collider>());
+
+        // Dark entrance opening (arched shape)
+        GameObject entranceOpening = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        entranceOpening.name = "EntranceOpening";
+        entranceOpening.transform.SetParent(igloo.transform);
+        entranceOpening.transform.localPosition = new Vector3(0, 0.9f, 6.3f);
+        entranceOpening.transform.localRotation = Quaternion.Euler(0, 0, 0);
+        entranceOpening.transform.localScale = new Vector3(1.8f, 1.2f, 0.5f);
+        entranceOpening.GetComponent<Renderer>().sharedMaterial = entranceDarkMat;
+        Object.DestroyImmediate(entranceOpening.GetComponent<Collider>());
+
+        // === INSIDE THE IGLOO - Elder NPC with roaring fire ===
+
+        // Roaring fire in center of igloo
+        GameObject fire = new GameObject("RoaringFire");
+        fire.transform.SetParent(igloo.transform);
+        fire.transform.localPosition = new Vector3(0, 0.3f, 0);
+
+        // Fire pit stones
+        Material stoneMat = new Material(Shader.Find("Standard"));
+        stoneMat.color = new Color(0.3f, 0.3f, 0.35f);
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * 45f * Mathf.Deg2Rad;
+            GameObject stone = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            stone.name = "FireStone";
+            stone.transform.SetParent(fire.transform);
+            stone.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.5f, 0, Mathf.Sin(angle) * 0.5f);
+            stone.transform.localScale = new Vector3(0.25f, 0.2f, 0.25f);
+            stone.GetComponent<Renderer>().sharedMaterial = stoneMat;
+            Object.DestroyImmediate(stone.GetComponent<Collider>());
+        }
+
+        // Fire flames - multiple for roaring effect
+        Material fireMat = new Material(Shader.Find("Standard"));
+        fireMat.color = new Color(1f, 0.5f, 0.1f);
+        fireMat.EnableKeyword("_EMISSION");
+        fireMat.SetColor("_EmissionColor", new Color(1f, 0.4f, 0.1f) * 5f);
+
+        Material fireOrangeMat = new Material(Shader.Find("Standard"));
+        fireOrangeMat.color = new Color(1f, 0.3f, 0f);
+        fireOrangeMat.EnableKeyword("_EMISSION");
+        fireOrangeMat.SetColor("_EmissionColor", new Color(1f, 0.2f, 0f) * 4f);
+
+        Material fireYellowMat = new Material(Shader.Find("Standard"));
+        fireYellowMat.color = new Color(1f, 0.8f, 0.2f);
+        fireYellowMat.EnableKeyword("_EMISSION");
+        fireYellowMat.SetColor("_EmissionColor", new Color(1f, 0.7f, 0.1f) * 6f);
+
+        // Main flame
+        GameObject mainFlame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        mainFlame.name = "MainFlame";
+        mainFlame.transform.SetParent(fire.transform);
+        mainFlame.transform.localPosition = new Vector3(0, 0.5f, 0);
+        mainFlame.transform.localScale = new Vector3(0.6f, 1.2f, 0.6f);
+        mainFlame.GetComponent<Renderer>().sharedMaterial = fireMat;
+        Object.DestroyImmediate(mainFlame.GetComponent<Collider>());
+
+        // Inner yellow flame
+        GameObject innerFlame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        innerFlame.name = "InnerFlame";
+        innerFlame.transform.SetParent(fire.transform);
+        innerFlame.transform.localPosition = new Vector3(0, 0.4f, 0);
+        innerFlame.transform.localScale = new Vector3(0.35f, 0.8f, 0.35f);
+        innerFlame.GetComponent<Renderer>().sharedMaterial = fireYellowMat;
+        Object.DestroyImmediate(innerFlame.GetComponent<Collider>());
+
+        // Side flames
+        for (int i = 0; i < 3; i++)
+        {
+            float angle = i * 120f * Mathf.Deg2Rad;
+            GameObject sideFlame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sideFlame.name = "SideFlame";
+            sideFlame.transform.SetParent(fire.transform);
+            sideFlame.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.2f, 0.35f, Mathf.Sin(angle) * 0.2f);
+            sideFlame.transform.localScale = new Vector3(0.3f, 0.7f, 0.3f);
+            sideFlame.GetComponent<Renderer>().sharedMaterial = fireOrangeMat;
+            Object.DestroyImmediate(sideFlame.GetComponent<Collider>());
+        }
+
+        // Fire light - bright and warm
+        GameObject lightObj = new GameObject("FireLight");
+        lightObj.transform.SetParent(fire.transform);
+        lightObj.transform.localPosition = new Vector3(0, 0.8f, 0);
+        Light fireLight = lightObj.AddComponent<Light>();
+        fireLight.type = LightType.Point;
+        fireLight.color = new Color(1f, 0.6f, 0.3f);
+        fireLight.intensity = 5f;
+        fireLight.range = 15f;
+
+        // Logs in fire
+        Material logMat = new Material(Shader.Find("Standard"));
+        logMat.color = new Color(0.25f, 0.15f, 0.1f);
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject log = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            log.name = "FireLog";
+            log.transform.SetParent(fire.transform);
+            log.transform.localPosition = new Vector3(0, 0.1f, 0);
+            log.transform.localRotation = Quaternion.Euler(80, i * 45f, 0);
+            log.transform.localScale = new Vector3(0.12f, 0.4f, 0.12f);
+            log.GetComponent<Renderer>().sharedMaterial = logMat;
+            Object.DestroyImmediate(log.GetComponent<Collider>());
+        }
+
+        // Add shop NPC component
+        igloo.AddComponent<IceRealmShopNPC>();
+
+        // Create the native elder NPC model - INSIDE igloo near fire, facing entrance
+        CreateIceRealmShopkeeper(igloo.transform, new Vector3(0, 0, -1.5f));
+    }
+
+    static void CreateIceRealmShopkeeper(Transform parent, Vector3 localPos)
+    {
+        GameObject elder = new GameObject("FrostElder");
+        elder.transform.SetParent(parent);
+        elder.transform.localPosition = localPos;
+        elder.transform.localRotation = Quaternion.Euler(0, 0, 0); // Face the entrance
+
+        Material skinMat = new Material(Shader.Find("Standard"));
+        skinMat.color = new Color(0.7f, 0.55f, 0.45f);
+
+        Material furMat = new Material(Shader.Find("Standard"));
+        furMat.color = new Color(0.5f, 0.4f, 0.35f);
+
+        Material hairMat = new Material(Shader.Find("Standard"));
+        hairMat.color = new Color(0.8f, 0.8f, 0.85f);
+
+        // Body (fur clothing)
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(elder.transform);
+        body.transform.localPosition = new Vector3(0, 0.7f, 0);
+        body.transform.localScale = new Vector3(0.4f, 0.5f, 0.3f);
+        body.GetComponent<Renderer>().sharedMaterial = furMat;
+        Object.DestroyImmediate(body.GetComponent<Collider>());
+
+        // Head
+        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.name = "Head";
+        head.transform.SetParent(elder.transform);
+        head.transform.localPosition = new Vector3(0, 1.35f, 0);
+        head.transform.localScale = new Vector3(0.28f, 0.32f, 0.28f);
+        head.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(head.GetComponent<Collider>());
+
+        // White hair
+        GameObject hair = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hair.name = "Hair";
+        hair.transform.SetParent(elder.transform);
+        hair.transform.localPosition = new Vector3(0, 1.45f, -0.05f);
+        hair.transform.localScale = new Vector3(0.3f, 0.15f, 0.28f);
+        hair.GetComponent<Renderer>().sharedMaterial = hairMat;
+        Object.DestroyImmediate(hair.GetComponent<Collider>());
+
+        // Hood
+        GameObject hood = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hood.name = "Hood";
+        hood.transform.SetParent(elder.transform);
+        hood.transform.localPosition = new Vector3(0, 1.48f, -0.08f);
+        hood.transform.localScale = new Vector3(0.38f, 0.22f, 0.35f);
+        hood.GetComponent<Renderer>().sharedMaterial = furMat;
+        Object.DestroyImmediate(hood.GetComponent<Collider>());
+
+        // Eyes
+        Material eyeMat = new Material(Shader.Find("Standard"));
+        eyeMat.color = new Color(0.3f, 0.35f, 0.4f);
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            eye.name = "Eye";
+            eye.transform.SetParent(elder.transform);
+            eye.transform.localPosition = new Vector3(side * 0.06f, 1.38f, 0.12f);
+            eye.transform.localScale = Vector3.one * 0.04f;
+            eye.GetComponent<Renderer>().sharedMaterial = eyeMat;
+            Object.DestroyImmediate(eye.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateIceRealmDock(Transform parent, float groundY)
+    {
+        // Ice Realm dock - facing out to frozen sea, with BBQ and radio like tropical
+        GameObject dockParent = new GameObject("IceRealmDock");
+        dockParent.transform.SetParent(parent);
+        dockParent.transform.localPosition = new Vector3(0, 0, 25f); // Face out to sea (+Z direction)
+
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.35f, 0.25f, 0.18f); // Darker wood - weathered
+
+        Material darkWood = new Material(Shader.Find("Standard"));
+        darkWood.color = new Color(0.22f, 0.14f, 0.08f);
+
+        Material snowMat = new Material(Shader.Find("Standard"));
+        snowMat.color = new Color(0.95f, 0.97f, 1f);
+
+        // Dock dimensions
+        float dockStartZ = 0f;
+        float dockEndZ = 40f;
+        float dockWidth = 5f;
+        float dockHeight = groundY + 1f;
+        float legHeight = 3.5f;
+
+        // MAIN DOCK SURFACE - HAS COLLIDER for walking
+        GameObject dockSurface = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        dockSurface.name = "DockSurface";
+        dockSurface.transform.SetParent(dockParent.transform);
+        dockSurface.transform.localPosition = new Vector3(0, dockHeight, (dockStartZ + dockEndZ) / 2f);
+        dockSurface.transform.localScale = new Vector3(dockWidth, 0.3f, dockEndZ - dockStartZ);
+        dockSurface.GetComponent<Renderer>().sharedMaterial = woodMat;
+        // KEEP COLLIDER
+
+        // Snow on dock edges
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject snowPile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            snowPile.name = "SnowPile";
+            snowPile.transform.SetParent(dockParent.transform);
+            snowPile.transform.localPosition = new Vector3(side * 2.3f, dockHeight + 0.2f, 20f);
+            snowPile.transform.localScale = new Vector3(0.5f, 0.3f, 15f);
+            snowPile.GetComponent<Renderer>().sharedMaterial = snowMat;
+            Object.DestroyImmediate(snowPile.GetComponent<Collider>());
+        }
+
+        // Support LEGS
+        float[] legPositions = { 5f, 15f, 25f, 35f };
+        foreach (float zPos in legPositions)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                leg.name = "DockLeg";
+                leg.transform.SetParent(dockParent.transform);
+                leg.transform.localPosition = new Vector3(side * 2f, dockHeight - legHeight / 2f, zPos);
+                leg.transform.localScale = new Vector3(0.3f, legHeight / 2f, 0.3f);
+                leg.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(leg.GetComponent<Collider>());
+
+                // Diagonal brace
+                GameObject brace = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                brace.name = "DockBrace";
+                brace.transform.SetParent(dockParent.transform);
+                brace.transform.localPosition = new Vector3(side * 1.5f, dockHeight - 1.2f, zPos);
+                brace.transform.localRotation = Quaternion.Euler(0, 0, side * 35f);
+                brace.transform.localScale = new Vector3(0.12f, 1.2f, 0.12f);
+                brace.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(brace.GetComponent<Collider>());
+            }
+        }
+
+        // Cross beams under dock
+        for (int i = 0; i < 5; i++)
+        {
+            float z = dockStartZ + 5 + i * 8f;
+            GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            beam.name = "CrossBeam";
+            beam.transform.SetParent(dockParent.transform);
+            beam.transform.localPosition = new Vector3(0, dockHeight - 0.3f, z);
+            beam.transform.localScale = new Vector3(dockWidth + 0.5f, 0.15f, 0.2f);
+            beam.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(beam.GetComponent<Collider>());
+        }
+
+        // STAIRCASE from ground to dock
+        float stairStartZ = dockStartZ - 3f;
+        int numSteps = 4;
+        float stepHeight = (dockHeight - groundY) / numSteps;
+        float stepDepth = 0.6f;
+
+        for (int i = 0; i < numSteps; i++)
+        {
+            GameObject step = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            step.name = "DockStair_" + i;
+            step.transform.SetParent(dockParent.transform);
+            float stepY = groundY + stepHeight * (i + 0.5f);
+            float stepZ = stairStartZ + stepDepth * i;
+            step.transform.localPosition = new Vector3(0, stepY, stepZ);
+            step.transform.localScale = new Vector3(dockWidth, stepHeight, stepDepth);
+            step.GetComponent<Renderer>().sharedMaterial = woodMat;
+            // KEEP COLLIDER
+        }
+
+        // === BBQ at end of dock ===
+        GameObject bbq = new GameObject("IceDockBBQ");
+        bbq.transform.SetParent(dockParent.transform);
+        bbq.transform.localPosition = new Vector3(-1.5f, dockHeight + 0.1f, dockEndZ - 3f);
+
+        // BBQ body
+        Material metalMat = new Material(Shader.Find("Standard"));
+        metalMat.color = new Color(0.2f, 0.2f, 0.22f);
+        metalMat.SetFloat("_Metallic", 0.8f);
+
+        GameObject bbqBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        bbqBody.name = "BBQBody";
+        bbqBody.transform.SetParent(bbq.transform);
+        bbqBody.transform.localPosition = new Vector3(0, 0.4f, 0);
+        bbqBody.transform.localScale = new Vector3(0.6f, 0.25f, 0.6f);
+        bbqBody.GetComponent<Renderer>().sharedMaterial = metalMat;
+        Object.DestroyImmediate(bbqBody.GetComponent<Collider>());
+
+        // BBQ legs
+        for (int i = 0; i < 3; i++)
+        {
+            float angle = i * 120f * Mathf.Deg2Rad;
+            GameObject bbqLeg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            bbqLeg.name = "BBQLeg";
+            bbqLeg.transform.SetParent(bbq.transform);
+            bbqLeg.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.25f, 0.15f, Mathf.Sin(angle) * 0.25f);
+            bbqLeg.transform.localScale = new Vector3(0.05f, 0.15f, 0.05f);
+            bbqLeg.GetComponent<Renderer>().sharedMaterial = metalMat;
+            Object.DestroyImmediate(bbqLeg.GetComponent<Collider>());
+        }
+
+        // BBQ grill
+        Material grillMat = new Material(Shader.Find("Standard"));
+        grillMat.color = new Color(0.15f, 0.15f, 0.15f);
+
+        GameObject grill = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        grill.name = "Grill";
+        grill.transform.SetParent(bbq.transform);
+        grill.transform.localPosition = new Vector3(0, 0.55f, 0);
+        grill.transform.localScale = new Vector3(0.55f, 0.02f, 0.55f);
+        grill.GetComponent<Renderer>().sharedMaterial = grillMat;
+        Object.DestroyImmediate(grill.GetComponent<Collider>());
+
+        // === RADIO next to BBQ ===
+        GameObject radio = new GameObject("IceDockRadio");
+        radio.transform.SetParent(dockParent.transform);
+        radio.transform.localPosition = new Vector3(1.5f, dockHeight + 0.1f, dockEndZ - 2f);
+        radio.transform.localRotation = Quaternion.Euler(0, -30, 0);
+
+        // Radio body
+        Material radioMat = new Material(Shader.Find("Standard"));
+        radioMat.color = new Color(0.6f, 0.55f, 0.5f);
+
+        GameObject radioBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        radioBody.name = "RadioBody";
+        radioBody.transform.SetParent(radio.transform);
+        radioBody.transform.localPosition = new Vector3(0, 0.15f, 0);
+        radioBody.transform.localScale = new Vector3(0.4f, 0.25f, 0.15f);
+        radioBody.GetComponent<Renderer>().sharedMaterial = radioMat;
+        Object.DestroyImmediate(radioBody.GetComponent<Collider>());
+
+        // Radio speaker
+        Material speakerMat = new Material(Shader.Find("Standard"));
+        speakerMat.color = new Color(0.2f, 0.2f, 0.2f);
+
+        GameObject speaker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        speaker.name = "Speaker";
+        speaker.transform.SetParent(radio.transform);
+        speaker.transform.localPosition = new Vector3(0, 0.15f, 0.08f);
+        speaker.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        speaker.transform.localScale = new Vector3(0.15f, 0.02f, 0.15f);
+        speaker.GetComponent<Renderer>().sharedMaterial = speakerMat;
+        Object.DestroyImmediate(speaker.GetComponent<Collider>());
+
+        // Radio antenna
+        GameObject antenna = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        antenna.name = "Antenna";
+        antenna.transform.SetParent(radio.transform);
+        antenna.transform.localPosition = new Vector3(0.15f, 0.4f, 0);
+        antenna.transform.localRotation = Quaternion.Euler(0, 0, 10);
+        antenna.transform.localScale = new Vector3(0.02f, 0.25f, 0.02f);
+        antenna.GetComponent<Renderer>().sharedMaterial = metalMat;
+        Object.DestroyImmediate(antenna.GetComponent<Collider>());
+
+        // Rope coil
+        GameObject rope = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rope.name = "RopeCoil";
+        rope.transform.SetParent(dockParent.transform);
+        rope.transform.localPosition = new Vector3(2f, dockHeight + 0.2f, dockEndZ - 5f);
+        rope.transform.localScale = new Vector3(0.5f, 0.1f, 0.5f);
+        Material ropeMat = new Material(Shader.Find("Standard"));
+        ropeMat.color = new Color(0.55f, 0.45f, 0.30f);
+        rope.GetComponent<Renderer>().sharedMaterial = ropeMat;
+        Object.DestroyImmediate(rope.GetComponent<Collider>());
+
+        // Ice fishing hole at end of dock
+        Material waterMat = new Material(Shader.Find("Standard"));
+        waterMat.color = new Color(0.3f, 0.5f, 0.7f, 0.8f);
+        waterMat.SetFloat("_Mode", 3);
+        waterMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        waterMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        waterMat.EnableKeyword("_ALPHABLEND_ON");
+
+        GameObject fishingHole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        fishingHole.name = "FishingHole";
+        fishingHole.transform.SetParent(dockParent.transform);
+        fishingHole.transform.localPosition = new Vector3(0, dockHeight - 0.1f, dockEndZ - 1f);
+        fishingHole.transform.localScale = new Vector3(2f, 0.1f, 2f);
+        fishingHole.GetComponent<Renderer>().sharedMaterial = waterMat;
+        fishingHole.tag = "Water"; // For fishing detection
+        Object.DestroyImmediate(fishingHole.GetComponent<Collider>());
+
+        // Ice around fishing hole
+        Material iceMat = new Material(Shader.Find("Standard"));
+        iceMat.color = new Color(0.8f, 0.9f, 1f);
+        iceMat.SetFloat("_Glossiness", 0.9f);
+
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * 45f * Mathf.Deg2Rad;
+            GameObject iceChunk = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            iceChunk.name = "IceChunk";
+            iceChunk.transform.SetParent(dockParent.transform);
+            iceChunk.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 1.2f,
+                dockHeight + 0.1f,
+                dockEndZ - 1f + Mathf.Sin(angle) * 1.2f
+            );
+            iceChunk.transform.localScale = new Vector3(0.4f, 0.3f, 0.4f);
+            iceChunk.transform.localRotation = Quaternion.Euler(Random.Range(-10f, 10f), Random.Range(0f, 360f), Random.Range(-10f, 10f));
+            iceChunk.GetComponent<Renderer>().sharedMaterial = iceMat;
+            Object.DestroyImmediate(iceChunk.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateWeaponShop(Transform parent, Vector3 localPos)
+    {
+        GameObject shop = new GameObject("WeaponShop");
+        shop.transform.SetParent(parent);
+        shop.transform.localPosition = localPos;
+
+        // BIGGER shelter structure
+        Material furMat = new Material(Shader.Find("Standard"));
+        furMat.color = new Color(0.45f, 0.38f, 0.3f); // Animal hide color
+
+        Material poleMat = new Material(Shader.Find("Standard"));
+        poleMat.color = new Color(0.35f, 0.25f, 0.15f);
+
+        Material snowMat = new Material(Shader.Find("Standard"));
+        snowMat.color = new Color(0.95f, 0.95f, 1f);
+
+        // Large shelter structure - 6 poles in bigger circle
+        for (int i = 0; i < 6; i++)
+        {
+            float angle = i * 60f * Mathf.Deg2Rad;
+            GameObject pole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pole.name = "Pole" + i;
+            pole.transform.SetParent(shop.transform);
+            pole.transform.localPosition = new Vector3(Mathf.Cos(angle) * 3f, 2.5f, Mathf.Sin(angle) * 3f);
+            pole.transform.localScale = new Vector3(0.15f, 2.5f, 0.15f);
+            pole.transform.localRotation = Quaternion.Euler(12, -angle * Mathf.Rad2Deg, 0);
+            pole.GetComponent<Renderer>().sharedMaterial = poleMat;
+            Object.DestroyImmediate(pole.GetComponent<Collider>());
+        }
+
+        // Large fur tent cover
+        GameObject cover = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        cover.name = "TentCover";
+        cover.transform.SetParent(shop.transform);
+        cover.transform.localPosition = new Vector3(0, 3f, 0);
+        cover.transform.localScale = new Vector3(8f, 4f, 8f);
+        cover.GetComponent<Renderer>().sharedMaterial = furMat;
+        Object.DestroyImmediate(cover.GetComponent<Collider>());
+
+        // Snow on top of shelter
+        GameObject snowCap = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        snowCap.name = "SnowCap";
+        snowCap.transform.SetParent(shop.transform);
+        snowCap.transform.localPosition = new Vector3(0, 4f, 0);
+        snowCap.transform.localScale = new Vector3(4f, 1.5f, 4f);
+        snowCap.GetComponent<Renderer>().sharedMaterial = snowMat;
+        Object.DestroyImmediate(snowCap.GetComponent<Collider>());
+
+        // Ground fur/hide mats
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject furMat2 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            furMat2.name = "FurMat";
+            furMat2.transform.SetParent(shop.transform);
+            furMat2.transform.localPosition = new Vector3(i * 1.5f - 1.5f, 0.05f, 0);
+            furMat2.transform.localScale = new Vector3(1.4f, 0.1f, 2f);
+            furMat2.transform.localRotation = Quaternion.Euler(0, Random.Range(-10f, 10f), 0);
+            furMat2.GetComponent<Renderer>().sharedMaterial = furMat;
+            Object.DestroyImmediate(furMat2.GetComponent<Collider>());
+        }
+
+        // Weapon rack (wall of spears/knives) - bigger
+        CreateWeaponRack(shop.transform, new Vector3(0, 0, -2.5f));
+
+        // Campfire inside shelter
+        GameObject fire = new GameObject("ShelterFire");
+        fire.transform.SetParent(shop.transform);
+        fire.transform.localPosition = new Vector3(-2f, 0.3f, 0);
+
+        Material fireMat = new Material(Shader.Find("Standard"));
+        fireMat.color = new Color(1f, 0.5f, 0.1f);
+        fireMat.EnableKeyword("_EMISSION");
+        fireMat.SetColor("_EmissionColor", new Color(1f, 0.4f, 0.1f) * 3f);
+
+        GameObject flames = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flames.name = "Flames";
+        flames.transform.SetParent(fire.transform);
+        flames.transform.localPosition = Vector3.zero;
+        flames.transform.localScale = new Vector3(0.4f, 0.6f, 0.4f);
+        flames.GetComponent<Renderer>().sharedMaterial = fireMat;
+        Object.DestroyImmediate(flames.GetComponent<Collider>());
+
+        GameObject fireLight = new GameObject("FireLight");
+        fireLight.transform.SetParent(fire.transform);
+        Light fl = fireLight.AddComponent<Light>();
+        fl.type = LightType.Point;
+        fl.color = new Color(1f, 0.6f, 0.3f);
+        fl.intensity = 2f;
+        fl.range = 8f;
+
+        // Add NPC component
+        shop.AddComponent<WeaponShopNPC>();
+
+        // Create Pik NPC - positioned visibly in front
+        CreatePikNPC(shop.transform, new Vector3(1.5f, 0, 2f));
+    }
+
+    static void CreateWeaponRack(Transform parent, Vector3 localPos)
+    {
+        GameObject rack = new GameObject("WeaponRack");
+        rack.transform.SetParent(parent);
+        rack.transform.localPosition = localPos;
+
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.4f, 0.28f, 0.18f);
+
+        Material metalMat = new Material(Shader.Find("Standard"));
+        metalMat.color = new Color(0.5f, 0.5f, 0.55f);
+        metalMat.SetFloat("_Metallic", 0.7f);
+
+        // Rack frame
+        GameObject frame = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        frame.name = "RackFrame";
+        frame.transform.SetParent(rack.transform);
+        frame.transform.localPosition = new Vector3(0, 1.2f, 0);
+        frame.transform.localScale = new Vector3(3f, 2f, 0.15f);
+        frame.GetComponent<Renderer>().sharedMaterial = woodMat;
+        Object.DestroyImmediate(frame.GetComponent<Collider>());
+
+        // Display weapons
+        string[] weaponTypes = { "knife", "spear", "rapier", "lance" };
+        for (int i = 0; i < 4; i++)
+        {
+            float x = -1.2f + i * 0.8f;
+            CreateDisplayWeapon(rack.transform, new Vector3(x, 1.2f, 0.1f), weaponTypes[i], metalMat, woodMat);
+        }
+    }
+
+    static void CreateDisplayWeapon(Transform parent, Vector3 pos, string type, Material metalMat, Material woodMat)
+    {
+        GameObject weapon = new GameObject("Display_" + type);
+        weapon.transform.SetParent(parent);
+        weapon.transform.localPosition = pos;
+        weapon.transform.localRotation = Quaternion.Euler(0, 0, -30);
+
+        switch (type)
+        {
+            case "knife":
+                GameObject kBlade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                kBlade.transform.SetParent(weapon.transform);
+                kBlade.transform.localPosition = new Vector3(0, 0.15f, 0);
+                kBlade.transform.localScale = new Vector3(0.03f, 0.25f, 0.06f);
+                kBlade.GetComponent<Renderer>().sharedMaterial = metalMat;
+                Object.DestroyImmediate(kBlade.GetComponent<Collider>());
+
+                GameObject kHandle = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                kHandle.transform.SetParent(weapon.transform);
+                kHandle.transform.localPosition = new Vector3(0, -0.05f, 0);
+                kHandle.transform.localScale = new Vector3(0.04f, 0.1f, 0.04f);
+                kHandle.GetComponent<Renderer>().sharedMaterial = woodMat;
+                Object.DestroyImmediate(kHandle.GetComponent<Collider>());
+                break;
+
+            case "spear":
+                GameObject sShaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                sShaft.transform.SetParent(weapon.transform);
+                sShaft.transform.localPosition = Vector3.zero;
+                sShaft.transform.localScale = new Vector3(0.03f, 0.5f, 0.03f);
+                sShaft.GetComponent<Renderer>().sharedMaterial = woodMat;
+                Object.DestroyImmediate(sShaft.GetComponent<Collider>());
+
+                GameObject sTip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                sTip.transform.SetParent(weapon.transform);
+                sTip.transform.localPosition = new Vector3(0, 0.55f, 0);
+                sTip.transform.localScale = new Vector3(0.04f, 0.12f, 0.02f);
+                sTip.GetComponent<Renderer>().sharedMaterial = metalMat;
+                Object.DestroyImmediate(sTip.GetComponent<Collider>());
+                break;
+
+            case "rapier":
+                GameObject rBlade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                rBlade.transform.SetParent(weapon.transform);
+                rBlade.transform.localPosition = new Vector3(0, 0.25f, 0);
+                rBlade.transform.localScale = new Vector3(0.015f, 0.45f, 0.03f);
+                rBlade.GetComponent<Renderer>().sharedMaterial = metalMat;
+                Object.DestroyImmediate(rBlade.GetComponent<Collider>());
+
+                Material goldMat = new Material(Shader.Find("Standard"));
+                goldMat.color = new Color(0.9f, 0.75f, 0.3f);
+                GameObject rGuard = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                rGuard.transform.SetParent(weapon.transform);
+                rGuard.transform.localPosition = new Vector3(0, 0f, 0);
+                rGuard.transform.localScale = new Vector3(0.12f, 0.02f, 0.06f);
+                rGuard.GetComponent<Renderer>().sharedMaterial = goldMat;
+                Object.DestroyImmediate(rGuard.GetComponent<Collider>());
+                break;
+
+            case "lance":
+                GameObject lShaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                lShaft.transform.SetParent(weapon.transform);
+                lShaft.transform.localPosition = Vector3.zero;
+                lShaft.transform.localScale = new Vector3(0.05f, 0.6f, 0.05f);
+                lShaft.GetComponent<Renderer>().sharedMaterial = woodMat;
+                Object.DestroyImmediate(lShaft.GetComponent<Collider>());
+
+                Material lGoldMat = new Material(Shader.Find("Standard"));
+                lGoldMat.color = new Color(1f, 0.85f, 0.3f);
+                lGoldMat.SetFloat("_Metallic", 0.9f);
+                lGoldMat.EnableKeyword("_EMISSION");
+                lGoldMat.SetColor("_EmissionColor", new Color(0.4f, 0.3f, 0.1f));
+
+                GameObject lTip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                lTip.transform.SetParent(weapon.transform);
+                lTip.transform.localPosition = new Vector3(0, 0.7f, 0);
+                lTip.transform.localScale = new Vector3(0.08f, 0.2f, 0.03f);
+                lTip.GetComponent<Renderer>().sharedMaterial = lGoldMat;
+                Object.DestroyImmediate(lTip.GetComponent<Collider>());
+                break;
+        }
+    }
+
+    static void CreatePikNPC(Transform parent, Vector3 localPos)
+    {
+        GameObject pik = new GameObject("PikNPC");
+        pik.transform.SetParent(parent);
+        pik.transform.localPosition = localPos;
+        pik.transform.localRotation = Quaternion.Euler(0, 180, 0); // Face outward
+
+        Material skinMat = new Material(Shader.Find("Standard"));
+        skinMat.color = new Color(0.65f, 0.5f, 0.4f);
+
+        Material clothMat = new Material(Shader.Find("Standard"));
+        clothMat.color = new Color(0.35f, 0.3f, 0.25f);
+
+        Material furMat = new Material(Shader.Find("Standard"));
+        furMat.color = new Color(0.4f, 0.35f, 0.28f);
+
+        // Body with fur vest
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(pik.transform);
+        body.transform.localPosition = new Vector3(0, 0.6f, 0);
+        body.transform.localScale = new Vector3(0.35f, 0.45f, 0.28f);
+        body.GetComponent<Renderer>().sharedMaterial = furMat;
+        Object.DestroyImmediate(body.GetComponent<Collider>());
+
+        // Fur collar
+        GameObject collar = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        collar.name = "FurCollar";
+        collar.transform.SetParent(pik.transform);
+        collar.transform.localPosition = new Vector3(0, 1.0f, 0);
+        collar.transform.localScale = new Vector3(0.38f, 0.15f, 0.3f);
+        collar.GetComponent<Renderer>().sharedMaterial = furMat;
+        Object.DestroyImmediate(collar.GetComponent<Collider>());
+
+        // Head
+        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.name = "Head";
+        head.transform.SetParent(pik.transform);
+        head.transform.localPosition = new Vector3(0, 1.25f, 0);
+        head.transform.localScale = new Vector3(0.26f, 0.28f, 0.26f);
+        head.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(head.GetComponent<Collider>());
+
+        // Black hair - messy
+        Material hairMat = new Material(Shader.Find("Standard"));
+        hairMat.color = new Color(0.1f, 0.08f, 0.05f);
+
+        GameObject hair = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hair.name = "Hair";
+        hair.transform.SetParent(pik.transform);
+        hair.transform.localPosition = new Vector3(0, 1.38f, -0.02f);
+        hair.transform.localScale = new Vector3(0.28f, 0.15f, 0.26f);
+        hair.GetComponent<Renderer>().sharedMaterial = hairMat;
+        Object.DestroyImmediate(hair.GetComponent<Collider>());
+
+        // Eyes
+        Material eyeMat = new Material(Shader.Find("Standard"));
+        eyeMat.color = Color.black;
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            eye.name = "Eye";
+            eye.transform.SetParent(pik.transform);
+            eye.transform.localPosition = new Vector3(side * 0.06f, 1.28f, 0.12f);
+            eye.transform.localScale = Vector3.one * 0.035f;
+            eye.GetComponent<Renderer>().sharedMaterial = eyeMat;
+            Object.DestroyImmediate(eye.GetComponent<Collider>());
+        }
+
+        // Right arm holding torch
+        GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        arm.name = "RightArm";
+        arm.transform.SetParent(pik.transform);
+        arm.transform.localPosition = new Vector3(-0.25f, 0.85f, 0.1f);
+        arm.transform.localRotation = Quaternion.Euler(0, 0, -45);
+        arm.transform.localScale = new Vector3(0.08f, 0.25f, 0.08f);
+        arm.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(arm.GetComponent<Collider>());
+
+        // === FLAMING TORCH ===
+        GameObject torch = new GameObject("FlamingTorch");
+        torch.transform.SetParent(pik.transform);
+        torch.transform.localPosition = new Vector3(-0.4f, 1.3f, 0.15f);
+
+        // Torch handle
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.35f, 0.22f, 0.12f);
+
+        GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        handle.name = "TorchHandle";
+        handle.transform.SetParent(torch.transform);
+        handle.transform.localPosition = Vector3.zero;
+        handle.transform.localRotation = Quaternion.Euler(0, 0, -30);
+        handle.transform.localScale = new Vector3(0.06f, 0.35f, 0.06f);
+        handle.GetComponent<Renderer>().sharedMaterial = woodMat;
+        Object.DestroyImmediate(handle.GetComponent<Collider>());
+
+        // Torch head (wrapped cloth)
+        Material clothWrap = new Material(Shader.Find("Standard"));
+        clothWrap.color = new Color(0.25f, 0.2f, 0.15f);
+
+        GameObject torchHead = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        torchHead.name = "TorchHead";
+        torchHead.transform.SetParent(torch.transform);
+        torchHead.transform.localPosition = new Vector3(-0.15f, 0.35f, 0);
+        torchHead.transform.localScale = new Vector3(0.12f, 0.15f, 0.12f);
+        torchHead.GetComponent<Renderer>().sharedMaterial = clothWrap;
+        Object.DestroyImmediate(torchHead.GetComponent<Collider>());
+
+        // Torch flame
+        Material flameMat = new Material(Shader.Find("Standard"));
+        flameMat.color = new Color(1f, 0.6f, 0.1f);
+        flameMat.EnableKeyword("_EMISSION");
+        flameMat.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.1f) * 4f);
+
+        GameObject flame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flame.name = "TorchFlame";
+        flame.transform.SetParent(torch.transform);
+        flame.transform.localPosition = new Vector3(-0.15f, 0.5f, 0);
+        flame.transform.localScale = new Vector3(0.15f, 0.25f, 0.15f);
+        flame.GetComponent<Renderer>().sharedMaterial = flameMat;
+        Object.DestroyImmediate(flame.GetComponent<Collider>());
+
+        // Inner bright flame
+        Material innerFlameMat = new Material(Shader.Find("Standard"));
+        innerFlameMat.color = new Color(1f, 0.9f, 0.4f);
+        innerFlameMat.EnableKeyword("_EMISSION");
+        innerFlameMat.SetColor("_EmissionColor", new Color(1f, 0.85f, 0.3f) * 5f);
+
+        GameObject innerFlame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        innerFlame.name = "InnerFlame";
+        innerFlame.transform.SetParent(torch.transform);
+        innerFlame.transform.localPosition = new Vector3(-0.15f, 0.48f, 0);
+        innerFlame.transform.localScale = new Vector3(0.08f, 0.15f, 0.08f);
+        innerFlame.GetComponent<Renderer>().sharedMaterial = innerFlameMat;
+        Object.DestroyImmediate(innerFlame.GetComponent<Collider>());
+
+        // Torch light
+        GameObject torchLight = new GameObject("TorchLight");
+        torchLight.transform.SetParent(torch.transform);
+        torchLight.transform.localPosition = new Vector3(-0.15f, 0.5f, 0);
+        Light tl = torchLight.AddComponent<Light>();
+        tl.type = LightType.Point;
+        tl.color = new Color(1f, 0.6f, 0.3f);
+        tl.intensity = 3f;
+        tl.range = 10f;
+    }
+
+    static void CreateBjorkNPC(Transform parent, Vector3 localPos)
+    {
+        GameObject bjork = new GameObject("BjorkHuntsman");
+        bjork.transform.SetParent(parent);
+        bjork.transform.localPosition = localPos;
+
+        // Add the NPC component (creates its own model and fire)
+        bjork.AddComponent<BjorkHuntsman>();
+    }
+
+    static void CreatePolarBear(Transform parent, Vector3 localPos)
+    {
+        GameObject bear = new GameObject("PolarBear");
+        bear.transform.SetParent(parent);
+        bear.transform.localPosition = localPos;
+
+        // Add AI component (creates its own model)
+        bear.AddComponent<PolarBearAI>();
+    }
+
+    static void CreateIceFormation(Transform parent, Vector3 localPos, Material iceMat, float height)
+    {
+        GameObject formation = new GameObject("IceFormation");
+        formation.transform.SetParent(parent);
+        formation.transform.localPosition = localPos;
+
+        // Main ice spike
+        GameObject spike = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        spike.name = "IceSpike";
+        spike.transform.SetParent(formation.transform);
+        spike.transform.localPosition = new Vector3(0, height / 2, 0);
+        spike.transform.localScale = new Vector3(1.5f, height, 1.5f);
+        spike.transform.localRotation = Quaternion.Euler(Random.Range(-5f, 5f), Random.Range(0f, 360f), Random.Range(-5f, 5f));
+        spike.GetComponent<Renderer>().sharedMaterial = iceMat;
+
+        // Smaller surrounding spikes
+        for (int i = 0; i < 3; i++)
+        {
+            float angle = i * 120f * Mathf.Deg2Rad;
+            float dist = Random.Range(1f, 2f);
+            float spikeHeight = height * Random.Range(0.4f, 0.7f);
+
+            GameObject smallSpike = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            smallSpike.name = "SmallIceSpike";
+            smallSpike.transform.SetParent(formation.transform);
+            smallSpike.transform.localPosition = new Vector3(Mathf.Cos(angle) * dist, spikeHeight / 2, Mathf.Sin(angle) * dist);
+            smallSpike.transform.localScale = new Vector3(0.8f, spikeHeight, 0.8f);
+            smallSpike.transform.localRotation = Quaternion.Euler(Random.Range(-10f, 10f), Random.Range(0f, 360f), Random.Range(-10f, 10f));
+            smallSpike.GetComponent<Renderer>().sharedMaterial = iceMat;
+        }
+    }
+
+    static void CreateSnowyPineTree(Transform parent, Vector3 localPos, float height)
+    {
+        GameObject tree = new GameObject("SnowyPineTree");
+        tree.transform.SetParent(parent);
+        tree.transform.localPosition = localPos;
+
+        // Brown trunk
+        Material trunkMat = new Material(Shader.Find("Standard"));
+        trunkMat.color = new Color(0.35f, 0.25f, 0.15f);
+
+        GameObject trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(tree.transform);
+        trunk.transform.localPosition = new Vector3(0, height * 0.15f, 0);
+        trunk.transform.localScale = new Vector3(0.4f, height * 0.15f, 0.4f);
+        trunk.GetComponent<Renderer>().sharedMaterial = trunkMat;
+        Object.DestroyImmediate(trunk.GetComponent<Collider>());
+
+        // Snow-covered green foliage (cone layers)
+        Material snowyGreenMat = new Material(Shader.Find("Standard"));
+        snowyGreenMat.color = new Color(0.2f, 0.4f, 0.25f); // Dark green
+
+        Material snowCapMat = new Material(Shader.Find("Standard"));
+        snowCapMat.color = new Color(0.95f, 0.97f, 1f); // Snow white
+
+        float coneY = height * 0.3f;
+        float coneSize = height * 0.4f;
+
+        for (int i = 0; i < 3; i++)
+        {
+            // Green cone layer
+            GameObject cone = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            cone.name = "FoliageLayer" + i;
+            cone.transform.SetParent(tree.transform);
+            cone.transform.localPosition = new Vector3(0, coneY, 0);
+            cone.transform.localScale = new Vector3(coneSize, height * 0.12f, coneSize);
+            cone.GetComponent<Renderer>().sharedMaterial = snowyGreenMat;
+            Object.DestroyImmediate(cone.GetComponent<Collider>());
+
+            // Snow cap on top of each layer
+            GameObject snowCap = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            snowCap.name = "SnowCap" + i;
+            snowCap.transform.SetParent(tree.transform);
+            snowCap.transform.localPosition = new Vector3(0, coneY + height * 0.06f, 0);
+            snowCap.transform.localScale = new Vector3(coneSize * 0.9f, 0.05f, coneSize * 0.9f);
+            snowCap.GetComponent<Renderer>().sharedMaterial = snowCapMat;
+            Object.DestroyImmediate(snowCap.GetComponent<Collider>());
+
+            coneY += height * 0.18f;
+            coneSize *= 0.7f;
+        }
+    }
+
+    static void CreateReturnPortal(Transform parent, Vector3 localPos, string name, RealmType destination)
+    {
+        Color portalColor = new Color(1f, 0.9f, 0.4f); // Golden for return portal
+
+        // Create the portal using the same style but pointing back to tropical
+        GameObject portal = new GameObject(name);
+        portal.transform.SetParent(parent);
+        portal.transform.localPosition = localPos;
+        portal.transform.localRotation = Quaternion.Euler(0, 180, 0); // Face the opposite direction
+
+        // Add portal interaction
+        PortalInteraction portalInteraction = portal.AddComponent<PortalInteraction>();
+        portalInteraction.portalName = "Return to Tropical Island";
+        portalInteraction.requiredLevel = 0; // No level requirement for return
+        portalInteraction.destinationRealm = destination;
+        portalInteraction.spawnOffset = new Vector3(5f, 2f, -25f); // Spawn near ice portal on tropical island
+
+        // Portal materials
+        Material stoneMat = new Material(Shader.Find("Standard"));
+        stoneMat.color = new Color(0.5f, 0.55f, 0.6f); // Lighter stone for ice realm
+
+        Material glowMat = new Material(Shader.Find("Standard"));
+        glowMat.color = portalColor;
+        glowMat.EnableKeyword("_EMISSION");
+        glowMat.SetColor("_EmissionColor", portalColor * 0.8f);
+
+        Material portalSurfaceMat = new Material(Shader.Find("Standard"));
+        portalSurfaceMat.SetFloat("_Mode", 3);
+        portalSurfaceMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        portalSurfaceMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        portalSurfaceMat.EnableKeyword("_ALPHABLEND_ON");
+        portalSurfaceMat.color = new Color(portalColor.r, portalColor.g, portalColor.b, 0.6f);
+        portalSurfaceMat.EnableKeyword("_EMISSION");
+        portalSurfaceMat.SetColor("_EmissionColor", portalColor * 0.5f);
+
+        float archWidth = 2.5f;
+        float archHeight = 3.5f;
+        float pillarDepth = 0.4f;
+
+        // Portal pillars
+        GameObject leftPillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        leftPillar.name = "LeftPillar";
+        leftPillar.transform.SetParent(portal.transform);
+        leftPillar.transform.localPosition = new Vector3(-archWidth / 2, archHeight / 2, 0);
+        leftPillar.transform.localScale = new Vector3(pillarDepth, archHeight, pillarDepth);
+        leftPillar.GetComponent<Renderer>().sharedMaterial = stoneMat;
+        Object.DestroyImmediate(leftPillar.GetComponent<Collider>());
+
+        GameObject rightPillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        rightPillar.name = "RightPillar";
+        rightPillar.transform.SetParent(portal.transform);
+        rightPillar.transform.localPosition = new Vector3(archWidth / 2, archHeight / 2, 0);
+        rightPillar.transform.localScale = new Vector3(pillarDepth, archHeight, pillarDepth);
+        rightPillar.GetComponent<Renderer>().sharedMaterial = stoneMat;
+        Object.DestroyImmediate(rightPillar.GetComponent<Collider>());
+
+        // Top arch
+        GameObject topArch = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        topArch.name = "TopArch";
+        topArch.transform.SetParent(portal.transform);
+        topArch.transform.localPosition = new Vector3(0, archHeight + 0.2f, 0);
+        topArch.transform.localScale = new Vector3(archWidth + pillarDepth, 0.4f, pillarDepth);
+        topArch.GetComponent<Renderer>().sharedMaterial = stoneMat;
+        Object.DestroyImmediate(topArch.GetComponent<Collider>());
+
+        // Portal surface
+        GameObject portalSurface = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        portalSurface.name = "PortalSurface";
+        portalSurface.transform.SetParent(portal.transform);
+        portalSurface.transform.localPosition = new Vector3(0, archHeight / 2 + 0.3f, 0.05f);
+        portalSurface.transform.localScale = new Vector3(archWidth - 0.3f, archHeight - 0.5f, 1);
+        portalSurface.GetComponent<Renderer>().sharedMaterial = portalSurfaceMat;
+        Object.DestroyImmediate(portalSurface.GetComponent<Collider>());
+
+        // Glowing runes on pillars
+        for (int pillar = 0; pillar < 2; pillar++)
+        {
+            float pillarX = (pillar == 0) ? -archWidth / 2 : archWidth / 2;
+            for (int r = 0; r < 3; r++)
+            {
+                GameObject rune = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                rune.name = "Rune";
+                rune.transform.SetParent(portal.transform);
+                rune.transform.localPosition = new Vector3(pillarX, 0.8f + r * 1.0f, pillarDepth / 2 + 0.02f);
+                rune.transform.localScale = new Vector3(0.15f, 0.3f, 0.02f);
+                rune.GetComponent<Renderer>().sharedMaterial = glowMat;
+                Object.DestroyImmediate(rune.GetComponent<Collider>());
+            }
+        }
+
+        // Add portal animator
+        portal.AddComponent<PortalAnimator>();
+
+        // "HOME" text above portal
+        GameObject homeMarker = new GameObject("HomeMarker");
+        homeMarker.transform.SetParent(portal.transform);
+        homeMarker.transform.localPosition = new Vector3(0, archHeight + 1f, 0);
+    }
+
+    static void CreateIceFishingDock(Transform parent, Vector3 localPos)
+    {
+        GameObject dock = new GameObject("IceFishingDock");
+        dock.transform.SetParent(parent);
+        dock.transform.localPosition = localPos;
+
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.45f, 0.35f, 0.25f); // Weathered wood
+
+        Material iceMat = new Material(Shader.Find("Standard"));
+        iceMat.color = new Color(0.7f, 0.85f, 0.95f);
+        iceMat.SetFloat("_Glossiness", 0.8f);
+
+        // Wooden platform
+        GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        platform.name = "Platform";
+        platform.transform.SetParent(dock.transform);
+        platform.transform.localPosition = Vector3.zero;
+        platform.transform.localScale = new Vector3(8f, 0.3f, 6f);
+        platform.GetComponent<Renderer>().sharedMaterial = woodMat;
+
+        // Ice hole in front
+        GameObject iceHole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        iceHole.name = "IceHole";
+        iceHole.transform.SetParent(dock.transform);
+        iceHole.transform.localPosition = new Vector3(0, -0.3f, 4f);
+        iceHole.transform.localScale = new Vector3(2f, 0.5f, 2f);
+
+        Material darkWaterMat = new Material(Shader.Find("Standard"));
+        darkWaterMat.color = new Color(0.1f, 0.2f, 0.4f);
+        iceHole.GetComponent<Renderer>().sharedMaterial = darkWaterMat;
+        Object.DestroyImmediate(iceHole.GetComponent<Collider>());
+
+        // Ice blocks around the hole
+        for (int i = 0; i < 4; i++)
+        {
+            float angle = i * 90f * Mathf.Deg2Rad;
+            GameObject iceBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            iceBlock.name = "IceBlock";
+            iceBlock.transform.SetParent(dock.transform);
+            iceBlock.transform.localPosition = new Vector3(Mathf.Cos(angle) * 1.5f, -0.1f, 4f + Mathf.Sin(angle) * 1.5f);
+            iceBlock.transform.localScale = new Vector3(0.5f, 0.4f, 0.5f);
+            iceBlock.transform.localRotation = Quaternion.Euler(Random.Range(-10f, 10f), Random.Range(0f, 360f), Random.Range(-10f, 10f));
+            iceBlock.GetComponent<Renderer>().sharedMaterial = iceMat;
+            Object.DestroyImmediate(iceBlock.GetComponent<Collider>());
+        }
+
+        // Lantern post
+        GameObject lanternPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lanternPost.name = "LanternPost";
+        lanternPost.transform.SetParent(dock.transform);
+        lanternPost.transform.localPosition = new Vector3(-3f, 1f, 0);
+        lanternPost.transform.localScale = new Vector3(0.15f, 2f, 0.15f);
+        lanternPost.GetComponent<Renderer>().sharedMaterial = woodMat;
+        Object.DestroyImmediate(lanternPost.GetComponent<Collider>());
+
+        // Lantern
+        Material lanternMat = new Material(Shader.Find("Standard"));
+        lanternMat.color = new Color(1f, 0.8f, 0.3f);
+        lanternMat.EnableKeyword("_EMISSION");
+        lanternMat.SetColor("_EmissionColor", new Color(1f, 0.7f, 0.2f) * 2f);
+
+        GameObject lantern = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        lantern.name = "Lantern";
+        lantern.transform.SetParent(dock.transform);
+        lantern.transform.localPosition = new Vector3(-3f, 2.2f, 0);
+        lantern.transform.localScale = new Vector3(0.3f, 0.4f, 0.3f);
+        lantern.GetComponent<Renderer>().sharedMaterial = lanternMat;
+        Object.DestroyImmediate(lantern.GetComponent<Collider>());
+    }
+
 }
+

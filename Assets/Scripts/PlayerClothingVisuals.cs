@@ -96,6 +96,15 @@ public class PlayerClothingVisuals : MonoBehaviour
         {
             hipsRenderer = hips.GetComponent<Renderer>();
         }
+
+        // Start with underpants equipped
+        Invoke("EquipStartingClothes", 0.1f);
+    }
+
+    void EquipStartingClothes()
+    {
+        // Player starts with white underpants
+        EquipClothing("Legs", "Underpants", new Color(0.95f, 0.95f, 0.95f));
     }
 
     void Update()
@@ -618,6 +627,15 @@ public class PlayerClothingVisuals : MonoBehaviour
 
         switch (itemName)
         {
+            case "Underpants":
+                // Underpants only cover hips, legs stay skin color
+                pantsColor = itemColor;
+                hipsRenderer.material.color = pantsColor;
+                foreach (Renderer r in legRenderers)
+                {
+                    if (r != null) r.material.color = skinColor;
+                }
+                return; // Early return - don't apply pants color to legs
             case "Red Pants":
                 pantsColor = new Color(0.8f, 0.15f, 0.1f);
                 break;

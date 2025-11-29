@@ -5,6 +5,8 @@ public class PortalInteraction : MonoBehaviour
     public string portalName = "Unknown Realm";
     public int requiredLevel = 50;
     public float interactionRange = 3f;
+    public RealmType destinationRealm = RealmType.TropicalIsland;
+    public Vector3 spawnOffset = new Vector3(0, 2f, 5f); // Where player spawns in destination
 
     private bool isUnlocked = false;
     private bool playerNearby = false;
@@ -47,6 +49,13 @@ public class PortalInteraction : MonoBehaviour
 
     void CheckUnlockStatus()
     {
+        // Auto-unlock portals with level 0 requirement (return portals)
+        if (requiredLevel <= 0 && !isUnlocked)
+        {
+            UnlockPortal();
+            return;
+        }
+
         if (LevelingSystem.Instance != null)
         {
             int playerLevel = LevelingSystem.Instance.GetLevel();
@@ -88,11 +97,15 @@ public class PortalInteraction : MonoBehaviour
         if (isUnlocked)
         {
             Debug.Log($"Entering {portalName}...");
-            // TODO: Load portal destination scene
-            // For now, just log the action
-            if (UIManager.Instance != null)
+
+            // Use RealmManager to teleport
+            if (RealmManager.Instance != null)
             {
-                // Could show a UI message here
+                RealmManager.Instance.TravelToRealm(destinationRealm, spawnOffset);
+            }
+            else
+            {
+                Debug.LogWarning("RealmManager not found!");
             }
         }
         else
