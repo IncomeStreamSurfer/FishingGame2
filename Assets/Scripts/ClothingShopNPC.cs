@@ -837,6 +837,7 @@ public class ClothingItem
     public bool isSetItem;      // Part of a multi-slot outfit
     public bool isHiddenInShop; // Hidden companion piece (like tuxedo pants)
     public bool isSpecial;      // Special reward item
+    public bool isFullBodyOutfit; // Covers both Top and Legs slots
 
     public ClothingItem(string name, string slot, int price, string description, Color color, bool isSet = false, bool hidden = false)
     {
@@ -850,6 +851,7 @@ public class ClothingItem
         this.isSetItem = isSet;
         this.isHiddenInShop = hidden;
         this.isSpecial = false;
+        this.isFullBodyOutfit = false;
         this.statBonus = "";
         this.luckBonus = 0f;
     }

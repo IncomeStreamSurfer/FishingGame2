@@ -65,6 +65,9 @@ public class ClothingSprites : MonoBehaviour
         clothingTextures["Black Leather Hotpants"] = CreateLeatherHotpants();
         clothingTextures["Whale Bladder Pants"] = CreateWhaleBladderPants();
         clothingTextures["Pink Leather Pants"] = CreatePinkLeatherPants();
+
+        // Special full-body items
+        clothingTextures["Bear Skin Overcoat"] = CreateBearSkinOvercoat();
     }
 
     public Texture2D GetClothingTexture(string name)
@@ -787,6 +790,66 @@ public class ClothingSprites : MonoBehaviour
 
         // Belt buckle
         FillRect(tex, 10, 16, 4, 2, silver);
+
+        tex.Apply();
+        return tex;
+    }
+
+    Texture2D CreateBearSkinOvercoat()
+    {
+        // Long white polar bear fur overcoat - covers full body
+        Texture2D tex = CreateTexture();
+        Color white = new Color(0.97f, 0.97f, 0.99f);
+        Color lightGray = new Color(0.9f, 0.91f, 0.93f);
+        Color cream = new Color(0.95f, 0.93f, 0.88f);
+
+        // Main coat body (very long, reaches to bottom)
+        FillRect(tex, 4, 1, 16, 20, white);
+
+        // Collar (fluffy)
+        FillRect(tex, 3, 19, 18, 4, lightGray);
+        FillRect(tex, 5, 20, 14, 3, white);
+
+        // Sleeves
+        FillRect(tex, 1, 10, 4, 8, white);
+        FillRect(tex, 19, 10, 4, 8, white);
+
+        // Fluffy texture throughout
+        SetPixel(tex, 6, 16, lightGray);
+        SetPixel(tex, 10, 14, lightGray);
+        SetPixel(tex, 14, 17, lightGray);
+        SetPixel(tex, 8, 10, lightGray);
+        SetPixel(tex, 16, 12, lightGray);
+        SetPixel(tex, 5, 6, lightGray);
+        SetPixel(tex, 12, 4, lightGray);
+        SetPixel(tex, 18, 8, lightGray);
+        SetPixel(tex, 7, 2, lightGray);
+        SetPixel(tex, 15, 3, lightGray);
+
+        // Cream undertones for realism
+        SetPixel(tex, 9, 8, cream);
+        SetPixel(tex, 13, 15, cream);
+        SetPixel(tex, 6, 12, cream);
+        SetPixel(tex, 17, 5, cream);
+
+        // Fluffy hem at bottom
+        for (int x = 4; x < 20; x++)
+        {
+            if (x % 2 == 0) SetPixel(tex, x, 0, lightGray);
+        }
+
+        // Fluffy cuffs
+        FillRect(tex, 0, 10, 2, 3, lightGray);
+        FillRect(tex, 22, 10, 2, 3, lightGray);
+
+        // Center seam
+        FillRect(tex, 11, 1, 2, 18, lightGray);
+
+        // Fur tufts sticking out
+        SetPixel(tex, 3, 21, white);
+        SetPixel(tex, 20, 20, white);
+        SetPixel(tex, 0, 14, white);
+        SetPixel(tex, 23, 13, white);
 
         tex.Apply();
         return tex;

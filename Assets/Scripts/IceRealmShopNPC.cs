@@ -112,6 +112,14 @@ public class IceRealmShopNPC : MonoBehaviour
         clothingItems.Add(new ClothingItem("Polar Bear Cub", "Special", 250000,
             "An adorable baby polar bear that follows you! Feed it fish with E.",
             new Color(0.98f, 0.98f, 1f)));
+
+        clothingItems.Add(new ClothingItem("Bear Skin Overcoat", "Special", 75000,
+            "A magnificent long white polar bear fur overcoat. Covers entire body! Very warm and fluffy.",
+            new Color(0.97f, 0.97f, 0.99f))
+        {
+            statBonus = "Full Body",
+            isFullBodyOutfit = true
+        });
     }
 
     void CreateUITextures()
@@ -618,7 +626,18 @@ public class IceRealmShopNPC : MonoBehaviour
 
         if (PlayerClothingVisuals.Instance != null)
         {
-            PlayerClothingVisuals.Instance.EquipClothing(actualSlot, item.name, item.previewColor);
+            // Handle full body outfits (covers both Top and Legs)
+            if (item.isFullBodyOutfit)
+            {
+                PlayerClothingVisuals.Instance.EquipClothing("Top", item.name, item.previewColor);
+                PlayerClothingVisuals.Instance.EquipClothing("Legs", item.name, item.previewColor);
+                playerEquipment["Top"] = item.name;
+                playerEquipment["Legs"] = item.name;
+            }
+            else
+            {
+                PlayerClothingVisuals.Instance.EquipClothing(actualSlot, item.name, item.previewColor);
+            }
         }
     }
 

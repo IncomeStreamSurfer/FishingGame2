@@ -344,6 +344,9 @@ public class PlayerClothingVisuals : MonoBehaviour
             case "Pink Fur Coat":
                 CreatePinkFurCoat();
                 break;
+            case "Bear Skin Overcoat":
+                CreateBearSkinOvercoat();
+                break;
             default:
                 torsoRenderer.material.color = itemColor;
                 break;
@@ -1387,6 +1390,134 @@ public class PlayerClothingVisuals : MonoBehaviour
                 r.material.SetFloat("_Glossiness", 0.8f);
                 r.material.SetFloat("_Metallic", 0.1f);
             }
+        }
+    }
+
+    void CreateBearSkinOvercoat()
+    {
+        // Long white polar bear fur overcoat - covers entire body
+        Color furColor = new Color(0.97f, 0.97f, 0.99f);
+        Color lightFur = new Color(0.92f, 0.93f, 0.95f);
+
+        Material furMat = new Material(Shader.Find("Standard"));
+        furMat.color = furColor;
+
+        Material lightFurMat = new Material(Shader.Find("Standard"));
+        lightFurMat.color = lightFur;
+
+        // Change torso color to white fur
+        torsoRenderer.material.color = furColor;
+
+        // Change legs to white fur too (full body coverage)
+        if (hipsRenderer != null) hipsRenderer.material.color = furColor;
+        foreach (Renderer r in legRenderers)
+        {
+            if (r != null && !r.name.Contains("Foot"))
+            {
+                r.material.color = furColor;
+            }
+        }
+
+        topClothingObject = new GameObject("BearSkinOvercoat");
+        topClothingObject.transform.SetParent(torso);
+        topClothingObject.transform.localPosition = Vector3.zero;
+
+        // Big fluffy collar
+        GameObject collar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        collar.name = "FurCollar";
+        collar.transform.SetParent(topClothingObject.transform);
+        collar.transform.localPosition = new Vector3(0, 0.45f, 0);
+        collar.transform.localScale = new Vector3(0.8f, 0.15f, 0.6f);
+        collar.GetComponent<Renderer>().material = lightFurMat;
+        Object.Destroy(collar.GetComponent<Collider>());
+
+        // Fluffy tufts around collar
+        for (int i = 0; i < 10; i++)
+        {
+            float angle = i * 36f * Mathf.Deg2Rad;
+            GameObject tuft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            tuft.name = "CollarTuft";
+            tuft.transform.SetParent(topClothingObject.transform);
+            tuft.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 0.4f,
+                0.45f + Random.Range(-0.05f, 0.1f),
+                Mathf.Sin(angle) * 0.3f
+            );
+            tuft.transform.localScale = Vector3.one * Random.Range(0.08f, 0.14f);
+            tuft.GetComponent<Renderer>().material = i % 2 == 0 ? furMat : lightFurMat;
+            Object.Destroy(tuft.GetComponent<Collider>());
+        }
+
+        // Long coat tails extending down over legs
+        GameObject leftTail = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        leftTail.name = "CoatTailLeft";
+        leftTail.transform.SetParent(topClothingObject.transform);
+        leftTail.transform.localPosition = new Vector3(-0.15f, -0.7f, 0);
+        leftTail.transform.localScale = new Vector3(0.35f, 0.5f, 0.25f);
+        leftTail.GetComponent<Renderer>().material = furMat;
+        Object.Destroy(leftTail.GetComponent<Collider>());
+
+        GameObject rightTail = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        rightTail.name = "CoatTailRight";
+        rightTail.transform.SetParent(topClothingObject.transform);
+        rightTail.transform.localPosition = new Vector3(0.15f, -0.7f, 0);
+        rightTail.transform.localScale = new Vector3(0.35f, 0.5f, 0.25f);
+        rightTail.GetComponent<Renderer>().material = furMat;
+        Object.Destroy(rightTail.GetComponent<Collider>());
+
+        // Back of coat (longer)
+        GameObject backTail = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        backTail.name = "CoatBack";
+        backTail.transform.SetParent(topClothingObject.transform);
+        backTail.transform.localPosition = new Vector3(0, -0.6f, -0.15f);
+        backTail.transform.localScale = new Vector3(0.55f, 0.55f, 0.2f);
+        backTail.GetComponent<Renderer>().material = furMat;
+        Object.Destroy(backTail.GetComponent<Collider>());
+
+        // Fluffy cuffs
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject cuff = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            cuff.name = "FurCuff";
+            cuff.transform.SetParent(topClothingObject.transform);
+            cuff.transform.localPosition = new Vector3(side * 0.5f, -0.15f, 0);
+            cuff.transform.localScale = new Vector3(0.22f, 0.1f, 0.22f);
+            cuff.GetComponent<Renderer>().material = lightFurMat;
+            Object.Destroy(cuff.GetComponent<Collider>());
+
+            // Cuff tufts
+            for (int t = 0; t < 4; t++)
+            {
+                float tAngle = t * 90f * Mathf.Deg2Rad;
+                GameObject cuffTuft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                cuffTuft.name = "CuffTuft";
+                cuffTuft.transform.SetParent(topClothingObject.transform);
+                cuffTuft.transform.localPosition = new Vector3(
+                    side * 0.5f + Mathf.Cos(tAngle) * 0.12f,
+                    -0.15f,
+                    Mathf.Sin(tAngle) * 0.12f
+                );
+                cuffTuft.transform.localScale = Vector3.one * 0.06f;
+                cuffTuft.GetComponent<Renderer>().material = furMat;
+                Object.Destroy(cuffTuft.GetComponent<Collider>());
+            }
+        }
+
+        // Fluffy hem at bottom
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * 45f * Mathf.Deg2Rad;
+            GameObject hemTuft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            hemTuft.name = "HemTuft";
+            hemTuft.transform.SetParent(topClothingObject.transform);
+            hemTuft.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 0.3f,
+                -1.1f + Random.Range(-0.05f, 0.05f),
+                Mathf.Sin(angle) * 0.2f
+            );
+            hemTuft.transform.localScale = Vector3.one * Random.Range(0.06f, 0.1f);
+            hemTuft.GetComponent<Renderer>().material = i % 2 == 0 ? furMat : lightFurMat;
+            Object.Destroy(hemTuft.GetComponent<Collider>());
         }
     }
 }
