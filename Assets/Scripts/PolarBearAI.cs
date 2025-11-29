@@ -655,43 +655,88 @@ public class PolarBearAI : MonoBehaviour
 
     void PlayRoarSound()
     {
-        // Create procedural roar sound
+        // Create procedural growl sound
         if (audioSource != null)
         {
-            // Generate a low growl/roar
-            AudioClip roar = CreateRoarClip();
-            audioSource.PlayOneShot(roar, 0.8f);
+            AudioClip growl = CreateGrowlClip();
+            audioSource.PlayOneShot(growl, 0.9f);
         }
     }
 
-    AudioClip CreateRoarClip()
+    // Separate growl for when bear spots player
+    public void PlayGrowl()
+    {
+        if (audioSource != null)
+        {
+            AudioClip growl = CreateGrowlClip();
+            audioSource.PlayOneShot(growl, 0.7f);
+        }
+    }
+
+    AudioClip CreateGrowlClip()
     {
         int sampleRate = 44100;
-        int samples = sampleRate / 2; // 0.5 second
+        int samples = (int)(sampleRate * 0.8f); // 0.8 second growl
         float[] data = new float[samples];
+
+        // Randomize base frequencies for variety
+        float baseFreq = 60f + Random.Range(-10f, 10f);
 
         for (int i = 0; i < samples; i++)
         {
             float t = (float)i / sampleRate;
-            float envelope = Mathf.Sin(t * Mathf.PI * 2f) * (1f - t * 2f); // Fade out
-            envelope = Mathf.Max(0, envelope);
+            float progress = (float)i / samples;
 
-            // Low frequency growl with harmonics
-            float freq1 = 80f + Random.Range(-10f, 10f);
-            float freq2 = 160f + Random.Range(-20f, 20f);
-            float freq3 = 240f + Random.Range(-30f, 30f);
+            // Growl envelope - starts strong, sustains, then fades
+            float envelope;
+            if (progress < 0.1f)
+            {
+                envelope = progress / 0.1f; // Quick attack
+            }
+            else if (progress < 0.7f)
+            {
+                envelope = 1f - (progress - 0.1f) * 0.2f; // Slow decay during sustain
+            }
+            else
+            {
+                envelope = (1f - progress) / 0.3f * 0.8f; // Release
+            }
 
-            float wave = Mathf.Sin(2 * Mathf.PI * freq1 * t) * 0.5f;
-            wave += Mathf.Sin(2 * Mathf.PI * freq2 * t) * 0.3f;
-            wave += Mathf.Sin(2 * Mathf.PI * freq3 * t) * 0.2f;
+            // Multiple low frequencies for deep growl
+            float freq1 = baseFreq + Mathf.Sin(t * 3f) * 8f; // Wobble
+            float freq2 = baseFreq * 2f + Mathf.Sin(t * 5f) * 12f;
+            float freq3 = baseFreq * 3f;
+            float freq4 = baseFreq * 0.5f; // Sub-bass
 
-            // Add noise for growl texture
-            wave += (Random.value - 0.5f) * 0.3f * envelope;
+            // Main growl tones
+            float wave = Mathf.Sin(2 * Mathf.PI * freq1 * t) * 0.35f;
+            wave += Mathf.Sin(2 * Mathf.PI * freq2 * t) * 0.25f;
+            wave += Mathf.Sin(2 * Mathf.PI * freq3 * t) * 0.15f;
+            wave += Mathf.Sin(2 * Mathf.PI * freq4 * t) * 0.25f; // Deep sub
 
-            data[i] = wave * envelope * 0.5f;
+            // Add rumble/texture (filtered noise)
+            float noise = (Random.value - 0.5f) * 2f;
+            // Simple low-pass by averaging
+            wave += noise * 0.2f * envelope;
+
+            // Vibrato for more realistic growl
+            float vibrato = Mathf.Sin(t * 25f) * 0.15f;
+            wave *= (1f + vibrato);
+
+            // Apply envelope
+            data[i] = wave * envelope * 0.6f;
+
+            // Soft clip for warmth
+            data[i] = Mathf.Clamp(data[i], -0.8f, 0.8f);
         }
 
-        AudioClip clip = AudioClip.Create("BearRoar", samples, 1, sampleRate, false);
+        // Smooth the audio
+        for (int i = 1; i < samples - 1; i++)
+        {
+            data[i] = data[i] * 0.6f + data[i - 1] * 0.2f + data[i + 1] * 0.2f;
+        }
+
+        AudioClip clip = AudioClip.Create("BearGrowl", samples, 1, sampleRate, false);
         clip.SetData(data, 0);
         return clip;
     }

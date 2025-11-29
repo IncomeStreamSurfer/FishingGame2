@@ -4262,89 +4262,18 @@ public class AutoSetup
             // KEEP COLLIDER
         }
 
-        // === BBQ at end of dock ===
-        GameObject bbq = new GameObject("IceDockBBQ");
+        // === BBQ at end of dock (uses BBQStation component - creates its own model) ===
+        GameObject bbq = new GameObject("IceRealmBBQ");
         bbq.transform.SetParent(dockParent.transform);
         bbq.transform.localPosition = new Vector3(-1.5f, dockHeight + 0.1f, dockEndZ - 3f);
+        bbq.AddComponent<BBQStation>(); // Same BBQ as tropical - E to open
 
-        // BBQ body
-        Material metalMat = new Material(Shader.Find("Standard"));
-        metalMat.color = new Color(0.2f, 0.2f, 0.22f);
-        metalMat.SetFloat("_Metallic", 0.8f);
-
-        GameObject bbqBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        bbqBody.name = "BBQBody";
-        bbqBody.transform.SetParent(bbq.transform);
-        bbqBody.transform.localPosition = new Vector3(0, 0.4f, 0);
-        bbqBody.transform.localScale = new Vector3(0.6f, 0.25f, 0.6f);
-        bbqBody.GetComponent<Renderer>().sharedMaterial = metalMat;
-        Object.DestroyImmediate(bbqBody.GetComponent<Collider>());
-
-        // BBQ legs
-        for (int i = 0; i < 3; i++)
-        {
-            float angle = i * 120f * Mathf.Deg2Rad;
-            GameObject bbqLeg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            bbqLeg.name = "BBQLeg";
-            bbqLeg.transform.SetParent(bbq.transform);
-            bbqLeg.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.25f, 0.15f, Mathf.Sin(angle) * 0.25f);
-            bbqLeg.transform.localScale = new Vector3(0.05f, 0.15f, 0.05f);
-            bbqLeg.GetComponent<Renderer>().sharedMaterial = metalMat;
-            Object.DestroyImmediate(bbqLeg.GetComponent<Collider>());
-        }
-
-        // BBQ grill
-        Material grillMat = new Material(Shader.Find("Standard"));
-        grillMat.color = new Color(0.15f, 0.15f, 0.15f);
-
-        GameObject grill = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        grill.name = "Grill";
-        grill.transform.SetParent(bbq.transform);
-        grill.transform.localPosition = new Vector3(0, 0.55f, 0);
-        grill.transform.localScale = new Vector3(0.55f, 0.02f, 0.55f);
-        grill.GetComponent<Renderer>().sharedMaterial = grillMat;
-        Object.DestroyImmediate(grill.GetComponent<Collider>());
-
-        // === RADIO next to BBQ ===
-        GameObject radio = new GameObject("IceDockRadio");
+        // === RADIO next to BBQ (uses DockRadio component - creates its own model) ===
+        GameObject radio = new GameObject("IceRealmRadio");
         radio.transform.SetParent(dockParent.transform);
         radio.transform.localPosition = new Vector3(1.5f, dockHeight + 0.1f, dockEndZ - 2f);
         radio.transform.localRotation = Quaternion.Euler(0, -30, 0);
-
-        // Radio body
-        Material radioMat = new Material(Shader.Find("Standard"));
-        radioMat.color = new Color(0.6f, 0.55f, 0.5f);
-
-        GameObject radioBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        radioBody.name = "RadioBody";
-        radioBody.transform.SetParent(radio.transform);
-        radioBody.transform.localPosition = new Vector3(0, 0.15f, 0);
-        radioBody.transform.localScale = new Vector3(0.4f, 0.25f, 0.15f);
-        radioBody.GetComponent<Renderer>().sharedMaterial = radioMat;
-        Object.DestroyImmediate(radioBody.GetComponent<Collider>());
-
-        // Radio speaker
-        Material speakerMat = new Material(Shader.Find("Standard"));
-        speakerMat.color = new Color(0.2f, 0.2f, 0.2f);
-
-        GameObject speaker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        speaker.name = "Speaker";
-        speaker.transform.SetParent(radio.transform);
-        speaker.transform.localPosition = new Vector3(0, 0.15f, 0.08f);
-        speaker.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        speaker.transform.localScale = new Vector3(0.15f, 0.02f, 0.15f);
-        speaker.GetComponent<Renderer>().sharedMaterial = speakerMat;
-        Object.DestroyImmediate(speaker.GetComponent<Collider>());
-
-        // Radio antenna
-        GameObject antenna = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        antenna.name = "Antenna";
-        antenna.transform.SetParent(radio.transform);
-        antenna.transform.localPosition = new Vector3(0.15f, 0.4f, 0);
-        antenna.transform.localRotation = Quaternion.Euler(0, 0, 10);
-        antenna.transform.localScale = new Vector3(0.02f, 0.25f, 0.02f);
-        antenna.GetComponent<Renderer>().sharedMaterial = metalMat;
-        Object.DestroyImmediate(antenna.GetComponent<Collider>());
+        radio.AddComponent<DockRadio>(); // Same radio as tropical - F to toggle
 
         // Rope coil
         GameObject rope = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
