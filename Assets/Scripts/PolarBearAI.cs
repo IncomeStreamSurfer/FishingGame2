@@ -314,6 +314,12 @@ public class PolarBearAI : MonoBehaviour
                 return; // Player is friend, not foe
             }
 
+            // Bears won't attack players who are playing dead (lying down)
+            if (IsPlayerPlayingDead())
+            {
+                return; // Player is "dead", not a threat
+            }
+
             float distToPlayer = Vector3.Distance(transform.position, playerTransform.position);
 
             if (distToPlayer < aggroRadius && !IsPlayerInSafeZone())
@@ -334,6 +340,13 @@ public class PolarBearAI : MonoBehaviour
 
         // Stop chasing if player has bear cub pet
         if (PolarBearCubPet.Instance != null)
+        {
+            currentState = BearState.Returning;
+            return;
+        }
+
+        // Stop chasing if player plays dead
+        if (IsPlayerPlayingDead())
         {
             currentState = BearState.Returning;
             return;
@@ -795,5 +808,18 @@ public class PolarBearAI : MonoBehaviour
                 GUI.color = Color.white;
             }
         }
+    }
+
+    // Check if player is playing dead (lying down)
+    bool IsPlayerPlayingDead()
+    {
+        if (playerTransform == null) return false;
+
+        PlayerController playerController = playerTransform.GetComponent<PlayerController>();
+        if (playerController != null)
+        {
+            return playerController.IsLyingDown();
+        }
+        return false;
     }
 }
