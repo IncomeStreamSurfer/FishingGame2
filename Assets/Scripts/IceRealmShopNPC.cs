@@ -773,6 +773,13 @@ public class IceRealmShopNPC : MonoBehaviour
             }
 
             GUI.Label(tabRect, slotNames[i], tabStyle);
+
+            // Left mouse button click to select tab
+            if (GUI.Button(tabRect, "", GUIStyle.none))
+            {
+                selectedSlot = i;
+                selectedItemIndex = 0;
+            }
         }
 
         // Items list
@@ -847,6 +854,13 @@ public class IceRealmShopNPC : MonoBehaviour
                 bonusStyle.alignment = TextAnchor.MiddleRight;
                 GUI.Label(new Rect(itemRect.x + itemRect.width - 120, itemRect.y + 45, 110, 18), item.statBonus, bonusStyle);
             }
+
+            // Left mouse button click to select and buy/equip
+            if (GUI.Button(itemRect, "", GUIStyle.none))
+            {
+                selectedItemIndex = i;
+                TryPurchaseItem(item);
+            }
         }
 
         // Instructions
@@ -856,6 +870,6 @@ public class IceRealmShopNPC : MonoBehaviour
         instructStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f);
 
         GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 30, panelRect.width, 25),
-            "[Arrow Keys/WASD] Navigate | [Enter/Space] Buy | [ESC] Close", instructStyle);
+            "[Arrow Keys/WASD or Click] Navigate | [Enter/Space or Click] Buy | [ESC] Close", instructStyle);
     }
 }
