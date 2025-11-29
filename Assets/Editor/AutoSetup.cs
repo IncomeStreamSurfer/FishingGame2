@@ -4527,14 +4527,11 @@ public class AutoSetup
         fishingHole.transform.localPosition = new Vector3(0, dockHeight - 0.1f, dockEndZ - 1f);
         fishingHole.transform.localScale = new Vector3(2f, 0.1f, 2f);
         fishingHole.GetComponent<Renderer>().sharedMaterial = waterMat;
-        fishingHole.tag = "Water"; // For fishing detection
+        // Note: Don't set tag as "Water" tag may not exist - fishing detection uses layer or name
+        fishingHole.name = "FishingHole_Water";
         Object.DestroyImmediate(fishingHole.GetComponent<Collider>());
 
-        // Ice around fishing hole
-        Material iceMat = new Material(Shader.Find("Standard"));
-        iceMat.color = new Color(0.8f, 0.9f, 1f);
-        iceMat.SetFloat("_Glossiness", 0.9f);
-
+        // Ice around fishing hole (reuse existing iceMat from above)
         for (int i = 0; i < 8; i++)
         {
             float angle = i * 45f * Mathf.Deg2Rad;
