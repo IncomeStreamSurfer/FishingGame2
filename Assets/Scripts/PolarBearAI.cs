@@ -305,9 +305,15 @@ public class PolarBearAI : MonoBehaviour
             patrolTarget = GetRandomPatrolPoint();
         }
 
-        // Check for player
+        // Check for player - but don't attack if player has bear cub pet
         if (playerTransform != null)
         {
+            // Bears won't attack players who have a bear cub pet (they recognize family)
+            if (PolarBearCubPet.Instance != null)
+            {
+                return; // Player is friend, not foe
+            }
+
             float distToPlayer = Vector3.Distance(transform.position, playerTransform.position);
 
             if (distToPlayer < aggroRadius && !IsPlayerInSafeZone())
@@ -326,7 +332,14 @@ public class PolarBearAI : MonoBehaviour
             return;
         }
 
-        // Roar when starting chase
+        // Stop chasing if player has bear cub pet
+        if (PolarBearCubPet.Instance != null)
+        {
+            currentState = BearState.Returning;
+            return;
+        }
+
+        // Growl when starting chase
         if (!hasRoared)
         {
             PlayRoarSound();

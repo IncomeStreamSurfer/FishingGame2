@@ -436,6 +436,13 @@ public class WeaponShopNPC : MonoBehaviour
                 GUI.Label(new Rect(itemRect.x + itemRect.width - 100, itemRect.y + 22, 90, 22),
                     $"{weapon.price:N0}g", priceStyle);
             }
+
+            // Left mouse button click to select and buy/equip
+            if (GUI.Button(itemRect, "", GUIStyle.none))
+            {
+                selectedWeaponIndex = i;
+                TryPurchaseWeapon(weapon);
+            }
         }
 
         // Instructions
@@ -445,7 +452,7 @@ public class WeaponShopNPC : MonoBehaviour
         instrStyle.normal.textColor = new Color(0.5f, 0.45f, 0.4f);
 
         GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 30, panelRect.width, 25),
-            "[W/S] Select | [Enter] Buy/Equip | [ESC] Close", instrStyle);
+            "[W/S or Click] Select | [Enter or Click] Buy/Equip | [ESC] Close", instrStyle);
     }
 }
 
