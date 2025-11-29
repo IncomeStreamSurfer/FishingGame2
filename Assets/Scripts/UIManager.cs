@@ -628,8 +628,25 @@ public class UIManager : MonoBehaviour
     {
         GUI.DrawTexture(rect, MakeTexture(2, 2, new Color(0.12f, 0.1f, 0.08f, 0.9f)));
 
-        Rect iconRect = new Rect(rect.x + 6, rect.y + 6, rect.width - 12, rect.height - 18);
-        GUI.DrawTexture(iconRect, MakeTexture(2, 2, itemColor));
+        Rect iconRect = new Rect(rect.x + 6, rect.y + 4, rect.width - 12, rect.height - 16);
+
+        // Draw rod icon if this is the ROD slot
+        if (label == "ROD" && RodSprites.Instance != null)
+        {
+            Texture2D rodIcon = RodSprites.Instance.GetRodTexture(selectedRodIndex);
+            if (rodIcon != null)
+            {
+                GUI.DrawTexture(iconRect, rodIcon);
+            }
+            else
+            {
+                GUI.DrawTexture(iconRect, MakeTexture(2, 2, itemColor));
+            }
+        }
+        else
+        {
+            GUI.DrawTexture(iconRect, MakeTexture(2, 2, itemColor));
+        }
 
         GUIStyle slotLabel = new GUIStyle();
         slotLabel.normal.textColor = new Color(0.6f, 0.55f, 0.4f);
@@ -935,8 +952,18 @@ public class UIManager : MonoBehaviour
 
         GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
 
-        Color iconColor = isUnlocked ? rodColors[rodIndex] : new Color(0.3f, 0.3f, 0.3f);
-        GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 27, 27), MakeTexture(2, 2, iconColor));
+        // Draw rod icon from RodSprites
+        Texture2D rodIcon = RodSprites.Instance != null ? RodSprites.Instance.GetRodTexture(rodIndex) : null;
+        if (rodIcon != null && isUnlocked)
+        {
+            GUI.DrawTexture(new Rect(rect.x + 2, rect.y + 2, 31, 31), rodIcon);
+        }
+        else
+        {
+            // Fallback to colored square if no icon or locked
+            Color iconColor = isUnlocked ? rodColors[rodIndex] : new Color(0.3f, 0.3f, 0.3f);
+            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 27, 27), MakeTexture(2, 2, iconColor));
+        }
 
         GUIStyle nameStyle = new GUIStyle();
         nameStyle.normal.textColor = isUnlocked ? rodColors[rodIndex] : new Color(0.4f, 0.4f, 0.4f);

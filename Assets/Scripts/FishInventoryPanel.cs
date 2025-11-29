@@ -323,12 +323,12 @@ public class FishInventoryPanel : MonoBehaviour
                 if (sellModeEnabled && fish.coinValue > 0)
                 {
                     GUIStyle sellBtnStyle = new GUIStyle();
-                    sellBtnStyle.fontSize = 10;
+                    sellBtnStyle.fontSize = 9;
                     sellBtnStyle.fontStyle = FontStyle.Bold;
                     sellBtnStyle.alignment = TextAnchor.MiddleCenter;
                     sellBtnStyle.normal.textColor = Color.white;
 
-                    Rect sellBtnRect = new Rect(itemRect.x + itemRect.width - 45, itemRect.y + 12, 40, 22);
+                    Rect sellBtnRect = new Rect(itemRect.x + itemRect.width - 62, itemRect.y + 14, 32, 18);
                     // Special fish get golden sell button
                     Color btnColor = fish.isSpecialFish ? new Color(0.7f, 0.5f, 0.2f) : new Color(0.2f, 0.6f, 0.3f);
                     GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(btnColor));

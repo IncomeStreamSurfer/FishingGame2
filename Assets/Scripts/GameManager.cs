@@ -9,6 +9,9 @@ public class GameManager : MonoBehaviour
     public int totalFishCaught = 0;
     public Dictionary<string, int> fishInventory = new Dictionary<string, int>();
 
+    // Gold multiplier for Ice Queen's Ring
+    private float goldMultiplier = 1.0f;
+
     void Awake()
     {
         if (Instance == null)
@@ -21,8 +24,23 @@ public class GameManager : MonoBehaviour
 
     public void AddCoins(int amount)
     {
-        coins += amount;
-        Debug.Log("Total coins: " + coins);
+        int finalAmount = Mathf.RoundToInt(amount * goldMultiplier);
+        coins += finalAmount;
+        if (goldMultiplier > 1f)
+            Debug.Log($"Total coins: {coins} (+{finalAmount} with {goldMultiplier}x multiplier!)");
+        else
+            Debug.Log("Total coins: " + coins);
+    }
+
+    public void SetGoldMultiplier(float multiplier)
+    {
+        goldMultiplier = multiplier;
+        Debug.Log($"Gold multiplier set to {multiplier}x!");
+    }
+
+    public float GetGoldMultiplier()
+    {
+        return goldMultiplier;
     }
 
     public void AddFish(FishData fish)

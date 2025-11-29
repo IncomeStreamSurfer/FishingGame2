@@ -94,8 +94,8 @@ public class PlayerController : MonoBehaviour
         {
             // Store current rotation and set target lying rotation
             standingRotation = transform.rotation;
-            // Lie on back, facing up
-            lyingRotation = Quaternion.Euler(-90f, transform.eulerAngles.y, 0f);
+            // Lie face down on stomach
+            lyingRotation = Quaternion.Euler(90f, transform.eulerAngles.y, 0f);
             Debug.Log("Lying down to relax...");
         }
         else
