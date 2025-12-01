@@ -228,24 +228,13 @@ public class DockRadio : MonoBehaviour
                 audioSource.clip = songs[currentSongIndex];
                 audioSource.volume = maxVolume;
                 audioSource.Play();
-                string songName = loadedSongNames.Count > currentSongIndex ? loadedSongNames[currentSongIndex] : "Unknown";
-                Debug.Log("DockRadio: ON - Playing " + songName);
-
-                if (UIManager.Instance != null)
-                {
-                    UIManager.Instance.ShowLootNotification("Dock Radio ON - " + songName, new Color(0.4f, 0.8f, 1f));
-                }
+                Debug.Log("DockRadio: ON");
             }
         }
         else
         {
             audioSource.Stop();
             Debug.Log("DockRadio: OFF");
-
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowLootNotification("Dock Radio OFF", new Color(0.8f, 0.6f, 0.4f));
-            }
         }
     }
 
@@ -255,13 +244,6 @@ public class DockRadio : MonoBehaviour
         audioSource.clip = songs[currentSongIndex];
         audioSource.volume = maxVolume;
         audioSource.Play();
-        string songName = loadedSongNames.Count > currentSongIndex ? loadedSongNames[currentSongIndex] : "Unknown";
-        Debug.Log("DockRadio: Now playing - " + songName);
-
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowLootNotification("Now playing: " + songName, new Color(0.5f, 0.8f, 1f));
-        }
     }
 
     void UpdateLED()

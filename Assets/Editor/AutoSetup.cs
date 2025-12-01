@@ -5431,19 +5431,13 @@ public class AutoSetup
         fireflies.transform.SetParent(jungleRealm.transform);
         fireflies.AddComponent<FireflyParticles>();
 
-        // === CUMBIA BAND (7 musicians walking together with music) ===
-        GameObject cumbiaBand = new GameObject("CumbiaBand");
-        cumbiaBand.transform.SetParent(jungleRealm.transform);
-        cumbiaBand.transform.localPosition = new Vector3(920f - realmOrigin.x, groundY, 0f); // Start at first patrol point
-        cumbiaBand.AddComponent<CumbiaBand>();
-
         // === ORANGUTAN VENDOR (sells Snake Charm) ===
         CreateOrangutanVendor(jungleRealm.transform, new Vector3(8f, groundY, 15f));
 
         // === DOCK ON OPPOSITE SIDE (facing +Z direction, with BBQ and radio) ===
         CreateJungleDock(jungleRealm.transform, groundY);
 
-        Debug.Log("Jungle Realm created with trees, vines, waterfall, huts, snakes, NPCs, orangutan vendor, dock, BBQ, radio, and Cumbia Band!");
+        Debug.Log("Jungle Realm created with trees, vines, waterfall, huts, snakes, NPCs, orangutan vendor, dock, BBQ, and radio!");
     }
 
     static void CreateJungleRiver(Transform parent, float groundY, Material waterMat, Material mudMat)
