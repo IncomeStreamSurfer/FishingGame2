@@ -6274,11 +6274,11 @@ public class AutoSetup
 
     static void CreateJungleDock(Transform parent, float groundY)
     {
-        // Jungle dock extending OUT TO THE WATER - rotated to go in +X direction like tropical/ice go in +Z
+        // Jungle dock - EXACT COPY of tropical dock, extending in +Z direction toward water
         GameObject dockParent = new GameObject("JungleDock");
         dockParent.transform.SetParent(parent);
-        dockParent.transform.localPosition = new Vector3(0, 0, 0); // Start at center
-        dockParent.transform.localRotation = Quaternion.Euler(0, 90, 0); // Rotate 90 degrees to extend in +X direction
+        dockParent.transform.localPosition = new Vector3(-12f, 0, 0); // Same offset as tropical dock
+        // NO ROTATION - extends in +Z direction toward water
 
         // Wood materials
         Material woodMat = new Material(Shader.Find("Standard"));
@@ -6293,11 +6293,11 @@ public class AutoSetup
         lightWood.color = new Color(0.42f, 0.32f, 0.22f);
         lightWood.SetFloat("_Glossiness", 0.15f);
 
-        // Dock dimensions - matching tropical and ice pattern (start from land, extend out to water)
-        float dockStartZ = 8f;   // Start from land edge (like tropical dock)
-        float dockEndZ = 45f;    // Extend out into swamp water (like tropical extends to z=58)
+        // Dock dimensions - EXACT MATCH to tropical dock
+        float dockStartZ = 8f;    // Start from land edge
+        float dockEndZ = 58f;     // Extend far out over water (same as tropical)
         float dockWidth = 5f;
-        float dockHeight = groundY + 1f;
+        float dockHeight = 2.5f;  // Same height as tropical
         float legHeight = 3.5f;
 
         // MAIN DOCK SURFACE - HAS COLLIDER for walking
@@ -6371,8 +6371,8 @@ public class AutoSetup
             Object.DestroyImmediate(bottomRail.GetComponent<Collider>());
         }
 
-        // Support LEGS
-        float[] legPositions = { 12f, 22f, 32f, 40f }; // Adjusted for longer dock extending to water
+        // Support LEGS - same positions as tropical dock
+        float[] legPositions = { 12f, 22f, 32f, 42f, 52f };
         foreach (float zPos in legPositions)
         {
             for (int side = -1; side <= 1; side += 2)
@@ -6423,10 +6423,11 @@ public class AutoSetup
             Object.DestroyImmediate(beam.GetComponent<Collider>());
         }
 
-        // STAIRCASE from ground to dock
+        // STAIRCASE from ground to dock - same as tropical
+        float groundLevel = 1.26f;
         float stairStartZ = dockStartZ - 3f;
-        int numSteps = 4;
-        float stepHeight = (dockHeight - groundY) / numSteps;
+        int numSteps = 5;
+        float stepHeight = (dockHeight - groundLevel) / numSteps;
         float stepDepth = 0.6f;
 
         for (int i = 0; i < numSteps; i++)
@@ -6434,7 +6435,7 @@ public class AutoSetup
             GameObject step = GameObject.CreatePrimitive(PrimitiveType.Cube);
             step.name = "DockStair_" + i;
             step.transform.SetParent(dockParent.transform);
-            float stepY = groundY + stepHeight * (i + 0.5f);
+            float stepY = groundLevel + stepHeight * (i + 0.5f);
             float stepZ = stairStartZ + stepDepth * i;
             step.transform.localPosition = new Vector3(0, stepY, stepZ);
             step.transform.localScale = new Vector3(dockWidth, stepHeight, stepDepth);
