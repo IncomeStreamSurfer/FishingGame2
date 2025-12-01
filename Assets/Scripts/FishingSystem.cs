@@ -326,7 +326,10 @@ public class FishingSystem : MonoBehaviour
         // Ice Realm dock: positioned at X=500, Z from 25 to 65, Y around 2.25
         bool onIceDock = pos.x > 497f && pos.x < 503f && pos.z > 22f && pos.z < 70f && pos.y > 1.5f && pos.y < 4f;
 
-        return onMainDock || onBridge || onIceDock;
+        // Jungle Realm dock: positioned at X=1000-12=988, Z from 8 to 58, Y around 2.5
+        bool onJungleDock = pos.x > 985f && pos.x < 991f && pos.z > 5f && pos.z < 60f && pos.y > 2f && pos.y < 4f;
+
+        return onMainDock || onBridge || onIceDock || onJungleDock;
     }
 
     // Check if player can fish - only allowed on docks
