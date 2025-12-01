@@ -181,7 +181,8 @@ public enum AccessoryEffect
     FireResistance,
     IceResistance,
     SpeedBoost,
-    DamageBoost
+    DamageBoost,
+    ToxicImmunity
 }
 
 [System.Serializable]

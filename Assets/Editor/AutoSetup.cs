@@ -181,6 +181,9 @@ public class AutoSetup
         // Create the Jungle Realm (at offset position)
         CreateJungleRealm();
 
+        // Create the Void Realm (at offset position)
+        CreateVoidRealm();
+
         // Create clothing shop island with Granny
         CreateClothingShopIsland();
 
@@ -5337,11 +5340,11 @@ public class AutoSetup
             Object.DestroyImmediate(dirtPatch.GetComponent<Collider>());
         }
 
-        // === SWAMP WATER AROUND EDGES ===
+        // === SWAMP WATER AROUND EDGES (lowered) ===
         GameObject swampWater = GameObject.CreatePrimitive(PrimitiveType.Cube);
         swampWater.name = "SwampWater";
         swampWater.transform.SetParent(jungleRealm.transform);
-        swampWater.transform.localPosition = new Vector3(0, 0.3f, 0);
+        swampWater.transform.localPosition = new Vector3(0, -0.3f, 0);  // Lowered water level
         swampWater.transform.localScale = new Vector3(200, 0.3f, 200);
         swampWater.GetComponent<Renderer>().sharedMaterial = waterMat;
         Object.DestroyImmediate(swampWater.GetComponent<Collider>());
@@ -5350,7 +5353,7 @@ public class AutoSetup
         GameObject jungleFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
         jungleFloor.name = "JungleFloor";
         jungleFloor.transform.SetParent(jungleRealm.transform);
-        jungleFloor.transform.localPosition = new Vector3(0, 0.4f, 0);
+        jungleFloor.transform.localPosition = new Vector3(0, -0.2f, 0);  // Lowered to match water
         jungleFloor.transform.localScale = new Vector3(200, 0.1f, 200);
         jungleFloor.GetComponent<Renderer>().enabled = false;
 
@@ -6496,6 +6499,308 @@ public class AutoSetup
             lily.transform.localScale = new Vector3(size, 0.02f, size);
             lily.GetComponent<Renderer>().sharedMaterial = lilyMat;
             Object.DestroyImmediate(lily.GetComponent<Collider>());
+        }
+    }
+
+    // ===========================================
+    // VOID REALM - Dystopian Cyberpunk City
+    // ===========================================
+    static void CreateVoidRealm()
+    {
+        // Void Realm origin at X = 2000
+        Vector3 voidOrigin = new Vector3(2000f, 0f, 0f);
+        float groundY = 1f;
+
+        GameObject voidRealm = new GameObject("VoidRealm");
+        voidRealm.transform.position = voidOrigin;
+
+        // === MATERIALS ===
+        Material darkConcreteMat = new Material(Shader.Find("Standard"));
+        darkConcreteMat.color = new Color(0.1f, 0.1f, 0.12f);
+
+        Material buildingMat = new Material(Shader.Find("Standard"));
+        buildingMat.color = new Color(0.08f, 0.08f, 0.1f);
+        buildingMat.SetFloat("_Metallic", 0.6f);
+        buildingMat.SetFloat("_Glossiness", 0.3f);
+
+        Material neonPurpleMat = new Material(Shader.Find("Standard"));
+        neonPurpleMat.color = new Color(0.6f, 0.2f, 0.9f);
+        neonPurpleMat.EnableKeyword("_EMISSION");
+        neonPurpleMat.SetColor("_EmissionColor", new Color(0.6f, 0.2f, 0.9f) * 3f);
+
+        Material neonCyanMat = new Material(Shader.Find("Standard"));
+        neonCyanMat.color = new Color(0.2f, 0.8f, 0.9f);
+        neonCyanMat.EnableKeyword("_EMISSION");
+        neonCyanMat.SetColor("_EmissionColor", new Color(0.2f, 0.8f, 0.9f) * 3f);
+
+        Material neonMagentaMat = new Material(Shader.Find("Standard"));
+        neonMagentaMat.color = new Color(0.9f, 0.2f, 0.6f);
+        neonMagentaMat.EnableKeyword("_EMISSION");
+        neonMagentaMat.SetColor("_EmissionColor", new Color(0.9f, 0.2f, 0.6f) * 3f);
+
+        Material toxicSlimeMat = new Material(Shader.Find("Standard"));
+        toxicSlimeMat.color = new Color(0.3f, 0.9f, 0.2f, 0.8f);
+        toxicSlimeMat.SetFloat("_Mode", 3);
+        toxicSlimeMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        toxicSlimeMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        toxicSlimeMat.EnableKeyword("_ALPHABLEND_ON");
+        toxicSlimeMat.EnableKeyword("_EMISSION");
+        toxicSlimeMat.SetColor("_EmissionColor", new Color(0.3f, 0.9f, 0.2f) * 2f);
+
+        Material moonMat = new Material(Shader.Find("Standard"));
+        moonMat.color = new Color(0.95f, 0.95f, 0.85f);
+        moonMat.EnableKeyword("_EMISSION");
+        moonMat.SetColor("_EmissionColor", new Color(0.95f, 0.95f, 0.85f) * 0.8f);
+
+        // === GROUND (dark cracked concrete) ===
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        ground.name = "VoidGround";
+        ground.transform.SetParent(voidRealm.transform);
+        ground.transform.localPosition = new Vector3(0, groundY - 0.5f, 0);
+        ground.transform.localScale = new Vector3(200, 1, 200);
+        ground.GetComponent<Renderer>().sharedMaterial = darkConcreteMat;
+
+        // === TOXIC VOID (water replacement) ===
+        GameObject toxicVoid = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        toxicVoid.name = "ToxicVoid";
+        toxicVoid.transform.SetParent(voidRealm.transform);
+        toxicVoid.transform.localPosition = new Vector3(0, -0.5f, 0);
+        toxicVoid.transform.localScale = new Vector3(200, 0.3f, 200);
+        toxicVoid.GetComponent<Renderer>().sharedMaterial = toxicSlimeMat;
+        Object.DestroyImmediate(toxicVoid.GetComponent<Collider>());
+
+        // === GIANT MOON ===
+        GameObject moon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        moon.name = "GiantMoon";
+        moon.transform.SetParent(voidRealm.transform);
+        moon.transform.localPosition = new Vector3(50f, 80f, -80f);
+        moon.transform.localScale = new Vector3(40f, 40f, 40f);
+        moon.GetComponent<Renderer>().sharedMaterial = moonMat;
+        Object.DestroyImmediate(moon.GetComponent<Collider>());
+
+        // === SKYSCRAPERS ===
+        CreateVoidSkyscrapers(voidRealm.transform, groundY, buildingMat, neonPurpleMat, neonCyanMat, neonMagentaMat);
+
+        // === TOXIC SLIME PUDDLES ===
+        CreateToxicPuddles(voidRealm.transform, groundY, toxicSlimeMat);
+
+        // === NIGHTCLUB ===
+        GameObject nightclub = new GameObject("VoidNightclub");
+        nightclub.transform.SetParent(voidRealm.transform);
+        nightclub.transform.localPosition = new Vector3(0, groundY, 20f);
+        nightclub.AddComponent<VoidNightclub>();
+
+        // === PUNK BARMAN ===
+        GameObject barman = new GameObject("PunkBarman");
+        barman.transform.SetParent(voidRealm.transform);
+        barman.transform.localPosition = new Vector3(8f, groundY, 18f);
+        barman.AddComponent<PunkBarman>();
+
+        // === HAZMAT VENDOR ===
+        CreateHazmatVendor(voidRealm.transform, groundY, neonCyanMat);
+
+        // === PORTAL BACK ===
+        CreateVoidPortal(voidRealm.transform, groundY, neonPurpleMat);
+
+        // === WANDERING NPCS ===
+        CreateVoidNPCs(voidRealm.transform, groundY);
+
+        // === VOID TIP DISPLAY ===
+        GameObject voidTip = new GameObject("VoidTip");
+        voidTip.transform.SetParent(voidRealm.transform);
+        voidTip.transform.localPosition = Vector3.zero;
+        voidTip.AddComponent<VoidTip>();
+
+        Debug.Log("Void Realm created with skyscrapers, nightclub, toxic puddles, punk barman, and hazmat vendor!");
+    }
+
+    static void CreateVoidSkyscrapers(Transform parent, float groundY, Material buildingMat, Material neonPurple, Material neonCyan, Material neonMagenta)
+    {
+        // Create tall skyscrapers around the perimeter
+        Vector3[] positions = {
+            // Back row
+            new Vector3(-40f, 0, -40f), new Vector3(-20f, 0, -45f), new Vector3(0f, 0, -40f),
+            new Vector3(20f, 0, -45f), new Vector3(40f, 0, -40f),
+            // Left side
+            new Vector3(-45f, 0, -20f), new Vector3(-50f, 0, 0f), new Vector3(-45f, 0, 20f),
+            // Right side
+            new Vector3(45f, 0, -20f), new Vector3(50f, 0, 0f), new Vector3(45f, 0, 20f),
+            // Far corners
+            new Vector3(-35f, 0, -35f), new Vector3(35f, 0, -35f)
+        };
+
+        Material[] neonMats = { neonPurple, neonCyan, neonMagenta };
+
+        for (int i = 0; i < positions.Length; i++)
+        {
+            float height = Random.Range(35f, 70f);
+            float width = Random.Range(8f, 15f);
+            float depth = Random.Range(8f, 15f);
+
+            // Main building
+            GameObject building = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            building.name = "Skyscraper_" + i;
+            building.transform.SetParent(parent);
+            building.transform.localPosition = positions[i] + new Vector3(0, groundY + height / 2f, 0);
+            building.transform.localScale = new Vector3(width, height, depth);
+            building.GetComponent<Renderer>().sharedMaterial = buildingMat;
+
+            // Windows (neon strips)
+            int stripCount = Random.Range(3, 6);
+            Material neonMat = neonMats[i % neonMats.Length];
+
+            for (int s = 0; s < stripCount; s++)
+            {
+                float stripY = (s + 1) * (height / (stripCount + 1)) - height / 2f;
+
+                // Front strip
+                GameObject strip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                strip.name = "NeonStrip";
+                strip.transform.SetParent(building.transform);
+                strip.transform.localPosition = new Vector3(0, stripY / height, 0.51f);
+                strip.transform.localScale = new Vector3(0.8f, 0.02f, 0.01f);
+                strip.GetComponent<Renderer>().sharedMaterial = neonMat;
+                Object.DestroyImmediate(strip.GetComponent<Collider>());
+            }
+
+            // Rooftop antenna/spire
+            if (Random.value > 0.5f)
+            {
+                GameObject spire = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                spire.name = "Spire";
+                spire.transform.SetParent(building.transform);
+                spire.transform.localPosition = new Vector3(0, 0.55f, 0);
+                spire.transform.localScale = new Vector3(0.02f, 0.15f, 0.02f);
+                spire.GetComponent<Renderer>().sharedMaterial = neonMat;
+                Object.DestroyImmediate(spire.GetComponent<Collider>());
+            }
+        }
+    }
+
+    static void CreateToxicPuddles(Transform parent, float groundY, Material slimeMat)
+    {
+        // Scattered toxic puddles
+        Vector3[] puddlePositions = {
+            new Vector3(-15f, 0, 5f),
+            new Vector3(15f, 0, -10f),
+            new Vector3(-25f, 0, -15f),
+            new Vector3(25f, 0, 10f),
+            new Vector3(-10f, 0, -25f),
+            new Vector3(30f, 0, -5f),
+            new Vector3(-30f, 0, 8f),
+            new Vector3(5f, 0, 30f)
+        };
+
+        for (int i = 0; i < puddlePositions.Length; i++)
+        {
+            float size = Random.Range(2f, 5f);
+
+            GameObject puddle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            puddle.name = "ToxicPuddle_" + i;
+            puddle.transform.SetParent(parent);
+            puddle.transform.localPosition = puddlePositions[i] + new Vector3(0, groundY + 0.05f, 0);
+            puddle.transform.localScale = new Vector3(size, 0.05f, size);
+            puddle.GetComponent<Renderer>().sharedMaterial = slimeMat;
+
+            // Add toxic damage component
+            puddle.AddComponent<ToxicSlime>();
+
+            // Keep collider as trigger
+            puddle.GetComponent<Collider>().isTrigger = true;
+        }
+    }
+
+    static void CreateHazmatVendor(Transform parent, float groundY, Material neonMat)
+    {
+        GameObject vendor = new GameObject("HazmatVendor");
+        vendor.transform.SetParent(parent);
+        vendor.transform.localPosition = new Vector3(-15f, groundY, 0f);
+
+        // Vendor booth
+        Material boothMat = new Material(Shader.Find("Standard"));
+        boothMat.color = new Color(0.15f, 0.15f, 0.15f);
+
+        GameObject booth = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        booth.name = "VendorBooth";
+        booth.transform.SetParent(vendor.transform);
+        booth.transform.localPosition = new Vector3(0, 1f, 0);
+        booth.transform.localScale = new Vector3(3f, 2f, 2f);
+        booth.GetComponent<Renderer>().sharedMaterial = boothMat;
+
+        // Neon sign
+        GameObject sign = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        sign.name = "HazmatSign";
+        sign.transform.SetParent(vendor.transform);
+        sign.transform.localPosition = new Vector3(0, 2.5f, 1.05f);
+        sign.transform.localScale = new Vector3(2.5f, 0.5f, 0.1f);
+        sign.GetComponent<Renderer>().sharedMaterial = neonMat;
+        Object.DestroyImmediate(sign.GetComponent<Collider>());
+
+        // Add vendor NPC script
+        vendor.AddComponent<HazmatVendorNPC>();
+    }
+
+    static void CreateVoidPortal(Transform parent, float groundY, Material neonMat)
+    {
+        GameObject portal = new GameObject("VoidPortal");
+        portal.transform.SetParent(parent);
+        portal.transform.localPosition = new Vector3(0, groundY, -30f);
+
+        // Portal frame
+        Material frameMat = new Material(Shader.Find("Standard"));
+        frameMat.color = new Color(0.2f, 0.2f, 0.25f);
+        frameMat.SetFloat("_Metallic", 0.8f);
+
+        // Frame pillars
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject pillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            pillar.name = "PortalPillar";
+            pillar.transform.SetParent(portal.transform);
+            pillar.transform.localPosition = new Vector3(side * 2f, 2f, 0);
+            pillar.transform.localScale = new Vector3(0.5f, 4f, 0.5f);
+            pillar.GetComponent<Renderer>().sharedMaterial = frameMat;
+        }
+
+        // Top beam
+        GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        beam.name = "PortalBeam";
+        beam.transform.SetParent(portal.transform);
+        beam.transform.localPosition = new Vector3(0, 4f, 0);
+        beam.transform.localScale = new Vector3(4.5f, 0.5f, 0.5f);
+        beam.GetComponent<Renderer>().sharedMaterial = frameMat;
+
+        // Portal surface (glowing purple)
+        GameObject surface = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        surface.name = "PortalSurface";
+        surface.transform.SetParent(portal.transform);
+        surface.transform.localPosition = new Vector3(0, 2f, 0);
+        surface.transform.localScale = new Vector3(3.5f, 3.5f, 1f);
+        surface.GetComponent<Renderer>().sharedMaterial = neonMat;
+        Object.DestroyImmediate(surface.GetComponent<Collider>());
+
+        // Add portal interaction
+        GameObject portalTrigger = new GameObject("PortalTrigger");
+        portalTrigger.transform.SetParent(portal.transform);
+        portalTrigger.transform.localPosition = new Vector3(0, 2f, 0);
+        BoxCollider trigger = portalTrigger.AddComponent<BoxCollider>();
+        trigger.size = new Vector3(3f, 4f, 1f);
+        trigger.isTrigger = true;
+        PortalInteraction portalScript = portalTrigger.AddComponent<PortalInteraction>();
+        portalScript.destinationRealm = RealmType.TropicalIsland;
+    }
+
+    static void CreateVoidNPCs(Transform parent, float groundY)
+    {
+        // Create a few wandering punk NPCs
+        for (int i = 0; i < 5; i++)
+        {
+            GameObject npc = new GameObject("VoidNPC_" + i);
+            npc.transform.SetParent(parent);
+            float x = Random.Range(-30f, 30f);
+            float z = Random.Range(-20f, 35f);
+            npc.transform.localPosition = new Vector3(x, groundY, z);
+            npc.AddComponent<VoidWanderer>();
         }
     }
 

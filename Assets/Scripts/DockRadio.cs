@@ -8,7 +8,9 @@ using System.Collections.Generic;
 /// </summary>
 public class DockRadio : MonoBehaviour
 {
-    public static DockRadio Instance { get; private set; }
+    // Track ALL radio instances so we can stop others when one plays
+    private static List<DockRadio> allRadios = new List<DockRadio>();
+    private static DockRadio currentlyPlaying = null;
 
     [Header("Audio Settings")]
     public float maxVolume = 0.175f;  // 50% reduced volume
@@ -26,6 +28,7 @@ public class DockRadio : MonoBehaviour
     private bool isOn = false;
     private bool playerNearby = false;
     private float interactionDistance = 3.5f;
+    private float songEndCheckDelay = 0.5f;  // Delay before checking if song ended
 
     // Multiple songs from CUMBIASCAPE folder
     private List<AudioClip> songs = new List<AudioClip>();
@@ -35,7 +38,16 @@ public class DockRadio : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        // Register this radio instance
+        if (!allRadios.Contains(this))
+            allRadios.Add(this);
+    }
+
+    void OnDestroy()
+    {
+        allRadios.Remove(this);
+        if (currentlyPlaying == this)
+            currentlyPlaying = null;
     }
 
     void Start()
@@ -187,10 +199,17 @@ public class DockRadio : MonoBehaviour
             ToggleRadio();
         }
 
-        // Check if song ended, play next
-        if (isOn && !audioSource.isPlaying && songs.Count > 0)
+        // Check if song ended, play next (with delay to prevent race conditions)
+        if (isOn && songs.Count > 0)
         {
-            PlayNextSong();
+            if (songEndCheckDelay > 0)
+            {
+                songEndCheckDelay -= Time.deltaTime;
+            }
+            else if (!audioSource.isPlaying)
+            {
+                PlayNextSong();
+            }
         }
 
         UpdateLED();
@@ -221,6 +240,9 @@ public class DockRadio : MonoBehaviour
 
         if (isOn)
         {
+            // Stop ALL other radios first
+            StopAllOtherRadios();
+
             if (songs.Count > 0)
             {
                 // Start at random song for variety
@@ -228,13 +250,29 @@ public class DockRadio : MonoBehaviour
                 audioSource.clip = songs[currentSongIndex];
                 audioSource.volume = maxVolume;
                 audioSource.Play();
-                Debug.Log("DockRadio: ON");
+                currentlyPlaying = this;
+                songEndCheckDelay = 0.5f;  // Reset delay
+                Debug.Log("DockRadio: ON - Playing " + songs[currentSongIndex].name);
             }
         }
         else
         {
             audioSource.Stop();
+            if (currentlyPlaying == this)
+                currentlyPlaying = null;
             Debug.Log("DockRadio: OFF");
+        }
+    }
+
+    void StopAllOtherRadios()
+    {
+        foreach (DockRadio radio in allRadios)
+        {
+            if (radio != this && radio.isOn && radio.audioSource != null)
+            {
+                radio.audioSource.Stop();
+                radio.isOn = false;
+            }
         }
     }
 
@@ -244,6 +282,8 @@ public class DockRadio : MonoBehaviour
         audioSource.clip = songs[currentSongIndex];
         audioSource.volume = maxVolume;
         audioSource.Play();
+        songEndCheckDelay = 0.5f;  // Reset delay after starting new song
+        Debug.Log("DockRadio: Now playing " + songs[currentSongIndex].name);
     }
 
     void UpdateLED()

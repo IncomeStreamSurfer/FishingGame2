@@ -10,7 +10,7 @@ public class SnakeAI : MonoBehaviour
     [Header("Stats")]
     public float maxHealth = 60f;
     private float currentHealth;
-    public int attackDamage = 15;
+    public int attackDamage = 5;  // Reduced damage
     public float attackCooldown = 4f;
     public int venomDamage = 2; // Poison tick damage
 
