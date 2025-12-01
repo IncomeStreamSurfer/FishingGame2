@@ -1,29 +1,18 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
+/// <summary>
+/// Punk bartender NPC in Void Realm who sells buff drinks
+/// Uses OnGUI for shop interface (no Unity UI dependencies)
+/// </summary>
 public class PunkBarman : MonoBehaviour
 {
     [Header("Shop Settings")]
-    public float interactionRange = 3f;
-    public KeyCode interactionKey = KeyCode.F;
+    public float interactionRange = 3.5f;
 
     [Header("Drink Prices")]
     private const int NEON_SURGE_PRICE = 500;
     private const int VOID_TONIC_PRICE = 500;
     private const int TOXIC_COCKTAIL_PRICE = 1000;
-
-    [Header("UI References")]
-    public GameObject shopUI;
-    public TextMeshProUGUI promptText;
-    public Button neonSurgeButton;
-    public Button voidTonicButton;
-    public Button toxicCocktailButton;
-    public Button closeButton;
-    public TextMeshProUGUI neonSurgePriceText;
-    public TextMeshProUGUI voidTonicPriceText;
-    public TextMeshProUGUI toxicCocktailPriceText;
-    public TextMeshProUGUI playerCoinsText;
 
     private GameObject player;
     private bool isPlayerNearby = false;
@@ -33,39 +22,31 @@ public class PunkBarman : MonoBehaviour
     {
         CreatePunkBarmanModel();
         CreateBarCounter();
-        CreateShopUI();
-
-        player = GameObject.FindGameObjectWithTag("Player");
-
-        if (shopUI != null)
-            shopUI.SetActive(false);
-
-        if (promptText != null)
-            promptText.gameObject.SetActive(false);
     }
 
     void Update()
     {
+        if (!MainMenu.GameStarted) return;
+
+        // Find player
+        if (player == null)
+            player = GameObject.Find("Player");
+
         if (player == null) return;
 
         float distance = Vector3.Distance(transform.position, player.transform.position);
         isPlayerNearby = distance <= interactionRange;
 
-        if (promptText != null)
-            promptText.gameObject.SetActive(isPlayerNearby && !shopOpen);
-
-        if (isPlayerNearby && Input.GetKeyDown(interactionKey) && !shopOpen)
+        // Open shop with F
+        if (isPlayerNearby && Input.GetKeyDown(KeyCode.F) && !shopOpen)
         {
-            OpenShop();
-        }
-        else if (shopOpen && Input.GetKeyDown(KeyCode.Escape))
-        {
-            CloseShop();
+            shopOpen = true;
         }
 
-        if (shopOpen)
+        // Close shop with ESC or X
+        if (shopOpen && Input.GetKeyDown(KeyCode.Escape))
         {
-            UpdateShopUI();
+            shopOpen = false;
         }
     }
 
@@ -74,359 +55,307 @@ public class PunkBarman : MonoBehaviour
         // Create main body
         GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         body.name = "Body";
-        body.transform.parent = transform;
+        body.transform.SetParent(transform);
         body.transform.localPosition = new Vector3(0, 1f, 0);
         body.transform.localScale = new Vector3(0.5f, 0.75f, 0.5f);
 
-        Renderer bodyRenderer = body.GetComponent<Renderer>();
-        bodyRenderer.material = new Material(Shader.Find("Standard"));
-        bodyRenderer.material.color = new Color(0.1f, 0.1f, 0.1f); // Dark clothing
+        Material bodyMat = new Material(Shader.Find("Standard"));
+        bodyMat.color = new Color(0.1f, 0.1f, 0.1f);
+        body.GetComponent<Renderer>().material = bodyMat;
+        Object.Destroy(body.GetComponent<Collider>());
 
         // Create head
         GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         head.name = "Head";
-        head.transform.parent = transform;
+        head.transform.SetParent(transform);
         head.transform.localPosition = new Vector3(0, 2f, 0);
         head.transform.localScale = new Vector3(0.4f, 0.45f, 0.4f);
 
-        Renderer headRenderer = head.GetComponent<Renderer>();
-        headRenderer.material = new Material(Shader.Find("Standard"));
-        headRenderer.material.color = new Color(0.9f, 0.8f, 0.7f); // Skin tone
+        Material headMat = new Material(Shader.Find("Standard"));
+        headMat.color = new Color(0.9f, 0.8f, 0.7f);
+        head.GetComponent<Renderer>().material = headMat;
+        Object.Destroy(head.GetComponent<Collider>());
 
         // Create punk mohawk
         GameObject mohawk = GameObject.CreatePrimitive(PrimitiveType.Cube);
         mohawk.name = "Mohawk";
-        mohawk.transform.parent = transform;
+        mohawk.transform.SetParent(transform);
         mohawk.transform.localPosition = new Vector3(0, 2.5f, 0);
         mohawk.transform.localScale = new Vector3(0.15f, 0.5f, 0.3f);
 
-        Renderer mohawkRenderer = mohawk.GetComponent<Renderer>();
-        mohawkRenderer.material = new Material(Shader.Find("Standard"));
-        mohawkRenderer.material.color = new Color(1f, 0f, 1f); // Bright magenta
-        mohawkRenderer.material.SetFloat("_Metallic", 0.3f);
+        Material mohawkMat = new Material(Shader.Find("Standard"));
+        mohawkMat.color = new Color(1f, 0f, 1f);
+        mohawkMat.EnableKeyword("_EMISSION");
+        mohawkMat.SetColor("_EmissionColor", new Color(1f, 0f, 1f) * 0.5f);
+        mohawk.GetComponent<Renderer>().material = mohawkMat;
+        Object.Destroy(mohawk.GetComponent<Collider>());
 
         // Create leather vest
         GameObject vest = GameObject.CreatePrimitive(PrimitiveType.Cube);
         vest.name = "Vest";
-        vest.transform.parent = transform;
+        vest.transform.SetParent(transform);
         vest.transform.localPosition = new Vector3(0, 1.2f, 0);
         vest.transform.localScale = new Vector3(0.55f, 0.6f, 0.3f);
 
-        Renderer vestRenderer = vest.GetComponent<Renderer>();
-        vestRenderer.material = new Material(Shader.Find("Standard"));
-        vestRenderer.material.color = new Color(0.15f, 0.05f, 0.05f); // Dark leather
+        Material vestMat = new Material(Shader.Find("Standard"));
+        vestMat.color = new Color(0.15f, 0.05f, 0.05f);
+        vest.GetComponent<Renderer>().material = vestMat;
+        Object.Destroy(vest.GetComponent<Collider>());
 
         // Create arms
         for (int i = -1; i <= 1; i += 2)
         {
             GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            arm.name = "Arm_" + (i < 0 ? "L" : "R");
-            arm.transform.parent = transform;
+            arm.name = "Arm";
+            arm.transform.SetParent(transform);
             arm.transform.localPosition = new Vector3(i * 0.35f, 1f, 0);
             arm.transform.localScale = new Vector3(0.15f, 0.5f, 0.15f);
 
-            Renderer armRenderer = arm.GetComponent<Renderer>();
-            armRenderer.material = new Material(Shader.Find("Standard"));
-            armRenderer.material.color = new Color(0.9f, 0.8f, 0.7f);
+            Material armMat = new Material(Shader.Find("Standard"));
+            armMat.color = new Color(0.9f, 0.8f, 0.7f);
+            arm.GetComponent<Renderer>().material = armMat;
+            Object.Destroy(arm.GetComponent<Collider>());
         }
 
-        // Add punk accessories (spiked collar)
+        // Add spiked collar
         GameObject collar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         collar.name = "Collar";
-        collar.transform.parent = transform;
+        collar.transform.SetParent(transform);
         collar.transform.localPosition = new Vector3(0, 1.7f, 0);
         collar.transform.localScale = new Vector3(0.3f, 0.05f, 0.3f);
 
-        Renderer collarRenderer = collar.GetComponent<Renderer>();
-        collarRenderer.material = new Material(Shader.Find("Standard"));
-        collarRenderer.material.color = Color.black;
-        collarRenderer.material.SetFloat("_Metallic", 0.8f);
-
-        // Destroy unnecessary colliders (keep only one on parent)
-        Destroy(body.GetComponent<Collider>());
-        Destroy(head.GetComponent<Collider>());
-        Destroy(mohawk.GetComponent<Collider>());
-        Destroy(vest.GetComponent<Collider>());
-        Destroy(collar.GetComponent<Collider>());
-
-        // Add main collider to parent
-        CapsuleCollider mainCollider = gameObject.AddComponent<CapsuleCollider>();
-        mainCollider.height = 2.5f;
-        mainCollider.radius = 0.5f;
-        mainCollider.center = new Vector3(0, 1.25f, 0);
+        Material collarMat = new Material(Shader.Find("Standard"));
+        collarMat.color = Color.black;
+        collarMat.SetFloat("_Metallic", 0.8f);
+        collar.GetComponent<Renderer>().material = collarMat;
+        Object.Destroy(collar.GetComponent<Collider>());
     }
 
     void CreateBarCounter()
     {
-        // Create bar counter
+        // Bar counter
         GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
         bar.name = "BarCounter";
-        bar.transform.parent = transform;
-        bar.transform.localPosition = new Vector3(0, 0.5f, 0.6f);
-        bar.transform.localScale = new Vector3(2f, 1f, 0.5f);
+        bar.transform.SetParent(transform);
+        bar.transform.localPosition = new Vector3(0, 0.5f, 0.8f);
+        bar.transform.localScale = new Vector3(2.5f, 1f, 0.5f);
 
-        Renderer barRenderer = bar.GetComponent<Renderer>();
-        barRenderer.material = new Material(Shader.Find("Standard"));
-        barRenderer.material.color = new Color(0.2f, 0.05f, 0.15f); // Dark purple wood
-        barRenderer.material.SetFloat("_Metallic", 0.4f);
+        Material barMat = new Material(Shader.Find("Standard"));
+        barMat.color = new Color(0.2f, 0.05f, 0.15f);
+        bar.GetComponent<Renderer>().material = barMat;
 
-        // Create bar top
+        // Bar top
         GameObject barTop = GameObject.CreatePrimitive(PrimitiveType.Cube);
         barTop.name = "BarTop";
-        barTop.transform.parent = transform;
-        barTop.transform.localPosition = new Vector3(0, 1.05f, 0.6f);
-        barTop.transform.localScale = new Vector3(2.2f, 0.1f, 0.6f);
+        barTop.transform.SetParent(transform);
+        barTop.transform.localPosition = new Vector3(0, 1.05f, 0.8f);
+        barTop.transform.localScale = new Vector3(2.7f, 0.1f, 0.6f);
 
-        Renderer barTopRenderer = barTop.GetComponent<Renderer>();
-        barTopRenderer.material = new Material(Shader.Find("Standard"));
-        barTopRenderer.material.color = new Color(0.1f, 0.1f, 0.1f);
-        barTopRenderer.material.SetFloat("_Metallic", 0.8f);
-        barTopRenderer.material.SetFloat("_Smoothness", 0.9f);
+        Material topMat = new Material(Shader.Find("Standard"));
+        topMat.color = new Color(0.1f, 0.1f, 0.1f);
+        topMat.SetFloat("_Metallic", 0.8f);
+        topMat.SetFloat("_Glossiness", 0.9f);
+        barTop.GetComponent<Renderer>().material = topMat;
+        Object.Destroy(barTop.GetComponent<Collider>());
 
-        // Add neon lights under bar
+        // Neon lights under bar
+        Material neonMat = new Material(Shader.Find("Standard"));
+        neonMat.color = new Color(0.5f, 0f, 1f);
+        neonMat.EnableKeyword("_EMISSION");
+        neonMat.SetColor("_EmissionColor", new Color(0.5f, 0f, 1f) * 2f);
+
         for (int i = -1; i <= 1; i++)
         {
             GameObject light = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            light.name = "NeonLight_" + i;
-            light.transform.parent = transform;
-            light.transform.localPosition = new Vector3(i * 0.6f, 0.3f, 0.6f);
-            light.transform.localScale = new Vector3(0.3f, 0.05f, 0.4f);
-
-            Renderer lightRenderer = light.GetComponent<Renderer>();
-            lightRenderer.material = new Material(Shader.Find("Standard"));
-            lightRenderer.material.EnableKeyword("_EMISSION");
-            lightRenderer.material.color = new Color(0.5f, 0f, 1f); // Purple neon
-            lightRenderer.material.SetColor("_EmissionColor", new Color(1f, 0f, 2f));
-
-            Destroy(light.GetComponent<Collider>());
+            light.name = "NeonLight";
+            light.transform.SetParent(transform);
+            light.transform.localPosition = new Vector3(i * 0.7f, 0.3f, 0.8f);
+            light.transform.localScale = new Vector3(0.4f, 0.05f, 0.45f);
+            light.GetComponent<Renderer>().material = neonMat;
+            Object.Destroy(light.GetComponent<Collider>());
         }
     }
 
-    void CreateShopUI()
+    void OnGUI()
     {
-        // Create shop UI canvas
-        GameObject canvasObj = new GameObject("PunkBarShopCanvas");
-        Canvas canvas = canvasObj.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvasObj.AddComponent<CanvasScaler>();
-        canvasObj.AddComponent<GraphicRaycaster>();
+        if (!MainMenu.GameStarted) return;
 
-        shopUI = canvasObj;
+        // Interaction prompt
+        if (isPlayerNearby && !shopOpen)
+        {
+            GUIStyle promptStyle = new GUIStyle();
+            promptStyle.fontSize = 18;
+            promptStyle.fontStyle = FontStyle.Bold;
+            promptStyle.alignment = TextAnchor.MiddleCenter;
+            promptStyle.normal.textColor = new Color(1f, 0f, 1f);
 
-        // Create background panel
-        GameObject panelObj = new GameObject("ShopPanel");
-        panelObj.transform.SetParent(canvasObj.transform, false);
-        Image panel = panelObj.AddComponent<Image>();
-        panel.color = new Color(0.1f, 0, 0.15f, 0.95f); // Dark purple background
+            GUI.Label(new Rect(0, Screen.height * 0.6f, Screen.width, 30), "[F] Void Bar", promptStyle);
+        }
 
-        RectTransform panelRect = panelObj.GetComponent<RectTransform>();
-        panelRect.sizeDelta = new Vector2(600, 500);
-
-        // Create title
-        GameObject titleObj = new GameObject("Title");
-        titleObj.transform.SetParent(panelObj.transform, false);
-        TextMeshProUGUI title = titleObj.AddComponent<TextMeshProUGUI>();
-        title.text = "VOID BAR - PUNK'S SPECIAL DRINKS";
-        title.fontSize = 28;
-        title.alignment = TextAlignmentOptions.Center;
-        title.color = new Color(1f, 0f, 1f); // Magenta
-        title.fontStyle = FontStyles.Bold;
-
-        RectTransform titleRect = titleObj.GetComponent<RectTransform>();
-        titleRect.sizeDelta = new Vector2(580, 50);
-        titleRect.anchoredPosition = new Vector2(0, 200);
-
-        // Create player coins display
-        GameObject coinsObj = new GameObject("PlayerCoins");
-        coinsObj.transform.SetParent(panelObj.transform, false);
-        playerCoinsText = coinsObj.AddComponent<TextMeshProUGUI>();
-        playerCoinsText.text = "Your Gold: 0";
-        playerCoinsText.fontSize = 20;
-        playerCoinsText.alignment = TextAlignmentOptions.Center;
-        playerCoinsText.color = Color.yellow;
-
-        RectTransform coinsRect = coinsObj.GetComponent<RectTransform>();
-        coinsRect.sizeDelta = new Vector2(400, 40);
-        coinsRect.anchoredPosition = new Vector2(0, 150);
-
-        // Create drink buttons
-        CreateDrinkButton("Neon Surge", "XP +25% for 20 min", NEON_SURGE_PRICE, new Vector2(0, 70),
-            out neonSurgeButton, out neonSurgePriceText, () => PurchaseDrink(BuffType.XP, NEON_SURGE_PRICE, "Neon Surge"));
-
-        CreateDrinkButton("Void Tonic", "Gold +25% for 20 min", VOID_TONIC_PRICE, new Vector2(0, -10),
-            out voidTonicButton, out voidTonicPriceText, () => PurchaseDrink(BuffType.Gold, VOID_TONIC_PRICE, "Void Tonic"));
-
-        CreateDrinkButton("Toxic Cocktail", "XP & Gold +25% for 20 min", TOXIC_COCKTAIL_PRICE, new Vector2(0, -90),
-            out toxicCocktailButton, out toxicCocktailPriceText, () => PurchaseDrink(BuffType.Both, TOXIC_COCKTAIL_PRICE, "Toxic Cocktail"));
-
-        // Create close button
-        GameObject closeObj = new GameObject("CloseButton");
-        closeObj.transform.SetParent(panelObj.transform, false);
-        closeButton = closeObj.AddComponent<Button>();
-        Image closeImg = closeObj.AddComponent<Image>();
-        closeImg.color = new Color(0.8f, 0f, 0f);
-
-        RectTransform closeRect = closeObj.GetComponent<RectTransform>();
-        closeRect.sizeDelta = new Vector2(200, 50);
-        closeRect.anchoredPosition = new Vector2(0, -180);
-
-        GameObject closeTextObj = new GameObject("Text");
-        closeTextObj.transform.SetParent(closeObj.transform, false);
-        TextMeshProUGUI closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
-        closeText.text = "CLOSE [ESC]";
-        closeText.fontSize = 20;
-        closeText.alignment = TextAlignmentOptions.Center;
-        closeText.color = Color.white;
-        closeText.fontStyle = FontStyles.Bold;
-
-        RectTransform closeTextRect = closeTextObj.GetComponent<RectTransform>();
-        closeTextRect.sizeDelta = new Vector2(200, 50);
-
-        closeButton.onClick.AddListener(CloseShop);
-
-        // Create prompt text (world space)
-        GameObject promptObj = new GameObject("InteractPrompt");
-        promptObj.transform.SetParent(transform);
-        promptObj.transform.localPosition = new Vector3(0, 3f, 0);
-
-        Canvas promptCanvas = promptObj.AddComponent<Canvas>();
-        promptCanvas.renderMode = RenderMode.WorldSpace;
-        promptObj.AddComponent<CanvasScaler>();
-
-        RectTransform promptCanvasRect = promptObj.GetComponent<RectTransform>();
-        promptCanvasRect.sizeDelta = new Vector2(2, 0.5f);
-        promptCanvasRect.localScale = new Vector3(0.01f, 0.01f, 0.01f);
-
-        GameObject promptTextObj = new GameObject("Text");
-        promptTextObj.transform.SetParent(promptObj.transform, false);
-        promptText = promptTextObj.AddComponent<TextMeshProUGUI>();
-        promptText.text = "[F] TALK TO BARTENDER";
-        promptText.fontSize = 48;
-        promptText.alignment = TextAlignmentOptions.Center;
-        promptText.color = new Color(1f, 0f, 1f); // Magenta
-        promptText.fontStyle = FontStyles.Bold;
-
-        RectTransform promptTextRect = promptTextObj.GetComponent<RectTransform>();
-        promptTextRect.sizeDelta = new Vector2(200, 50);
+        // Shop UI
+        if (shopOpen)
+        {
+            DrawShopUI();
+        }
     }
 
-    void CreateDrinkButton(string drinkName, string description, int price, Vector2 position,
-        out Button button, out TextMeshProUGUI priceText, System.Action onClick)
+    void DrawShopUI()
     {
-        GameObject buttonObj = new GameObject(drinkName + "Button");
-        buttonObj.transform.SetParent(shopUI.transform.GetChild(0), false);
-        button = buttonObj.AddComponent<Button>();
-        Image buttonImg = buttonObj.AddComponent<Image>();
-        buttonImg.color = new Color(0.2f, 0f, 0.2f); // Dark purple
+        float panelW = 420f;
+        float panelH = 380f;
+        float panelX = (Screen.width - panelW) / 2f;
+        float panelY = (Screen.height - panelH) / 2f;
 
-        RectTransform buttonRect = buttonObj.GetComponent<RectTransform>();
-        buttonRect.sizeDelta = new Vector2(500, 70);
-        buttonRect.anchoredPosition = position;
+        // Background
+        GUI.color = new Color(0.08f, 0.02f, 0.12f, 0.95f);
+        GUI.DrawTexture(new Rect(panelX, panelY, panelW, panelH), Texture2D.whiteTexture);
+
+        // Border - magenta neon
+        GUI.color = new Color(1f, 0f, 1f, 1f);
+        GUI.DrawTexture(new Rect(panelX, panelY, panelW, 3), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(panelX, panelY + panelH - 3, panelW, 3), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(panelX, panelY, 3, panelH), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(panelX + panelW - 3, panelY, 3, panelH), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        // Title
+        GUIStyle titleStyle = new GUIStyle();
+        titleStyle.fontSize = 22;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(1f, 0f, 1f);
+        GUI.Label(new Rect(panelX, panelY + 15, panelW, 30), "VOID BAR", titleStyle);
+
+        // Subtitle
+        GUIStyle subStyle = new GUIStyle();
+        subStyle.fontSize = 12;
+        subStyle.alignment = TextAnchor.MiddleCenter;
+        subStyle.normal.textColor = new Color(0.7f, 0.5f, 0.8f);
+        GUI.Label(new Rect(panelX, panelY + 42, panelW, 20), "Punk's Special Drinks", subStyle);
+
+        // Gold display
+        int coins = 0;
+        if (GameManager.Instance != null)
+            coins = GameManager.Instance.GetCoins();
+
+        GUIStyle goldStyle = new GUIStyle();
+        goldStyle.fontSize = 16;
+        goldStyle.fontStyle = FontStyle.Bold;
+        goldStyle.alignment = TextAnchor.MiddleRight;
+        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUI.Label(new Rect(panelX + panelW - 130, panelY + 15, 115, 25), coins + " Gold", goldStyle);
+
+        // X button
+        GUIStyle xStyle = new GUIStyle();
+        xStyle.fontSize = 18;
+        xStyle.fontStyle = FontStyle.Bold;
+        xStyle.alignment = TextAnchor.MiddleCenter;
+        xStyle.normal.textColor = Color.white;
+
+        GUI.color = new Color(0.8f, 0.2f, 0.2f);
+        if (GUI.Button(new Rect(panelX + panelW - 35, panelY + 8, 25, 25), ""))
+        {
+            shopOpen = false;
+        }
+        GUI.color = Color.white;
+        GUI.Label(new Rect(panelX + panelW - 35, panelY + 8, 25, 25), "X", xStyle);
+
+        // Drink buttons
+        float buttonY = panelY + 80;
+        float buttonH = 75f;
+        float buttonW = panelW - 40;
+        float buttonX = panelX + 20;
+
+        // Neon Surge
+        bool xpActive = BuffManager.HasBuff(BuffType.XP) || BuffManager.HasBuff(BuffType.Both);
+        DrawDrinkButton(buttonX, buttonY, buttonW, buttonH, "Neon Surge", "+25% XP for 20 min", NEON_SURGE_PRICE, coins, xpActive, BuffType.XP);
+
+        // Void Tonic
+        bool goldActive = BuffManager.HasBuff(BuffType.Gold) || BuffManager.HasBuff(BuffType.Both);
+        DrawDrinkButton(buttonX, buttonY + buttonH + 10, buttonW, buttonH, "Void Tonic", "+25% Gold for 20 min", VOID_TONIC_PRICE, coins, goldActive, BuffType.Gold);
+
+        // Toxic Cocktail
+        bool bothActive = BuffManager.HasBuff(BuffType.Both);
+        DrawDrinkButton(buttonX, buttonY + (buttonH + 10) * 2, buttonW, buttonH, "Toxic Cocktail", "+25% XP & Gold for 20 min", TOXIC_COCKTAIL_PRICE, coins, bothActive, BuffType.Both);
+
+        // Instructions
+        GUIStyle instrStyle = new GUIStyle();
+        instrStyle.fontSize = 11;
+        instrStyle.alignment = TextAnchor.MiddleCenter;
+        instrStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+        GUI.Label(new Rect(panelX, panelY + panelH - 35, panelW, 20), "Press ESC or X to close", instrStyle);
+    }
+
+    void DrawDrinkButton(float x, float y, float w, float h, string name, string desc, int price, int playerCoins, bool buffActive, BuffType buffType)
+    {
+        bool canAfford = playerCoins >= price;
+        bool available = !buffActive;
+
+        // Button background
+        if (buffActive)
+            GUI.color = new Color(0.15f, 0.15f, 0.15f, 0.9f);
+        else if (canAfford)
+            GUI.color = new Color(0.25f, 0.05f, 0.25f, 0.9f);
+        else
+            GUI.color = new Color(0.15f, 0.05f, 0.15f, 0.9f);
+
+        GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
+
+        // Border
+        Color borderColor = buffActive ? new Color(0.3f, 0.3f, 0.3f) : (canAfford ? new Color(0.8f, 0.3f, 0.9f) : new Color(0.4f, 0.2f, 0.4f));
+        GUI.color = borderColor;
+        GUI.DrawTexture(new Rect(x, y, w, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x, y + h - 2, w, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x, y, 2, h), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x + w - 2, y, 2, h), Texture2D.whiteTexture);
+        GUI.color = Color.white;
 
         // Drink name
-        GameObject nameObj = new GameObject("Name");
-        nameObj.transform.SetParent(buttonObj.transform, false);
-        TextMeshProUGUI nameText = nameObj.AddComponent<TextMeshProUGUI>();
-        nameText.text = drinkName;
-        nameText.fontSize = 22;
-        nameText.alignment = TextAlignmentOptions.Left;
-        nameText.color = new Color(1f, 0f, 1f); // Magenta
-        nameText.fontStyle = FontStyles.Bold;
-
-        RectTransform nameRect = nameObj.GetComponent<RectTransform>();
-        nameRect.sizeDelta = new Vector2(300, 30);
-        nameRect.anchoredPosition = new Vector2(-80, 10);
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 16;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.normal.textColor = buffActive ? new Color(0.5f, 0.5f, 0.5f) : new Color(1f, 0.3f, 1f);
+        GUI.Label(new Rect(x + 15, y + 10, w - 100, 22), name, nameStyle);
 
         // Description
-        GameObject descObj = new GameObject("Description");
-        descObj.transform.SetParent(buttonObj.transform, false);
-        TextMeshProUGUI descText = descObj.AddComponent<TextMeshProUGUI>();
-        descText.text = description;
-        descText.fontSize = 16;
-        descText.alignment = TextAlignmentOptions.Left;
-        descText.color = new Color(0.8f, 0.8f, 0.8f);
+        GUIStyle descStyle = new GUIStyle();
+        descStyle.fontSize = 12;
+        descStyle.normal.textColor = buffActive ? new Color(0.4f, 0.4f, 0.4f) : new Color(0.8f, 0.8f, 0.8f);
+        GUI.Label(new Rect(x + 15, y + 32, w - 30, 18), desc, descStyle);
 
-        RectTransform descRect = descObj.GetComponent<RectTransform>();
-        descRect.sizeDelta = new Vector2(300, 25);
-        descRect.anchoredPosition = new Vector2(-80, -15);
+        // Price or Status
+        GUIStyle priceStyle = new GUIStyle();
+        priceStyle.fontSize = 14;
+        priceStyle.fontStyle = FontStyle.Bold;
+        priceStyle.alignment = TextAnchor.MiddleRight;
 
-        // Price
-        GameObject priceObj = new GameObject("Price");
-        priceObj.transform.SetParent(buttonObj.transform, false);
-        priceText = priceObj.AddComponent<TextMeshProUGUI>();
-        priceText.text = price + "g";
-        priceText.fontSize = 24;
-        priceText.alignment = TextAlignmentOptions.Right;
-        priceText.color = Color.yellow;
-        priceText.fontStyle = FontStyles.Bold;
-
-        RectTransform priceRect = priceObj.GetComponent<RectTransform>();
-        priceRect.sizeDelta = new Vector2(100, 40);
-        priceRect.anchoredPosition = new Vector2(180, 0);
-
-        button.onClick.AddListener(() => onClick());
-
-        // Add hover effect
-        ColorBlock colors = button.colors;
-        colors.normalColor = new Color(0.2f, 0f, 0.2f);
-        colors.highlightedColor = new Color(0.4f, 0f, 0.4f);
-        colors.pressedColor = new Color(0.6f, 0f, 0.6f);
-        button.colors = colors;
-    }
-
-    void OpenShop()
-    {
-        shopOpen = true;
-        if (shopUI != null)
-            shopUI.SetActive(true);
-
-        if (player != null)
+        if (buffActive)
         {
-            var playerController = player.GetComponent<FirstPersonController>();
-            if (playerController != null)
-                playerController.enabled = false;
+            priceStyle.normal.textColor = new Color(0.3f, 0.8f, 0.3f);
+            GUI.Label(new Rect(x, y + 10, w - 15, 22), "ACTIVE", priceStyle);
+        }
+        else
+        {
+            priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.3f) : new Color(0.8f, 0.3f, 0.3f);
+            GUI.Label(new Rect(x, y + 10, w - 15, 22), price + "g", priceStyle);
         }
 
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-
-        UpdateShopUI();
-    }
-
-    void CloseShop()
-    {
-        shopOpen = false;
-        if (shopUI != null)
-            shopUI.SetActive(false);
-
-        if (player != null)
+        // Buy button
+        if (available && canAfford)
         {
-            var playerController = player.GetComponent<FirstPersonController>();
-            if (playerController != null)
-                playerController.enabled = true;
-        }
+            GUI.color = new Color(0.2f, 0.7f, 0.3f);
+            if (GUI.Button(new Rect(x + w - 80, y + h - 32, 65, 22), ""))
+            {
+                PurchaseDrink(buffType, price, name);
+            }
+            GUI.color = Color.white;
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
-    }
-
-    void UpdateShopUI()
-    {
-        if (GameManager.Instance != null)
-        {
-            int coins = GameManager.Instance.GetCoins();
-            if (playerCoinsText != null)
-                playerCoinsText.text = "Your Gold: " + coins;
-
-            // Update button interactability based on coins and active buffs
-            if (neonSurgeButton != null)
-                neonSurgeButton.interactable = coins >= NEON_SURGE_PRICE && !BuffManager.HasBuff(BuffType.XP) && !BuffManager.HasBuff(BuffType.Both);
-
-            if (voidTonicButton != null)
-                voidTonicButton.interactable = coins >= VOID_TONIC_PRICE && !BuffManager.HasBuff(BuffType.Gold) && !BuffManager.HasBuff(BuffType.Both);
-
-            if (toxicCocktailButton != null)
-                toxicCocktailButton.interactable = coins >= TOXIC_COCKTAIL_PRICE && !BuffManager.HasBuff(BuffType.Both);
+            GUIStyle buyStyle = new GUIStyle();
+            buyStyle.fontSize = 12;
+            buyStyle.fontStyle = FontStyle.Bold;
+            buyStyle.alignment = TextAnchor.MiddleCenter;
+            buyStyle.normal.textColor = Color.white;
+            GUI.Label(new Rect(x + w - 80, y + h - 32, 65, 22), "BUY", buyStyle);
         }
     }
 
@@ -435,47 +364,18 @@ public class PunkBarman : MonoBehaviour
         if (GameManager.Instance == null) return;
 
         int coins = GameManager.Instance.GetCoins();
-        if (coins < cost)
-        {
-            if (UIManager.Instance != null)
-                UIManager.Instance.ShowLootNotification("Not enough gold!", Color.red);
-            return;
-        }
-
-        // Check if buff is already active
-        if (buffType == BuffType.XP && (BuffManager.HasBuff(BuffType.XP) || BuffManager.HasBuff(BuffType.Both)))
-        {
-            if (UIManager.Instance != null)
-                UIManager.Instance.ShowLootNotification("XP buff already active!", new Color(1f, 0.5f, 0f));
-            return;
-        }
-
-        if (buffType == BuffType.Gold && (BuffManager.HasBuff(BuffType.Gold) || BuffManager.HasBuff(BuffType.Both)))
-        {
-            if (UIManager.Instance != null)
-                UIManager.Instance.ShowLootNotification("Gold buff already active!", new Color(1f, 0.5f, 0f));
-            return;
-        }
-
-        if (buffType == BuffType.Both && BuffManager.HasBuff(BuffType.Both))
-        {
-            if (UIManager.Instance != null)
-                UIManager.Instance.ShowLootNotification("Toxic Cocktail already active!", new Color(1f, 0.5f, 0f));
-            return;
-        }
+        if (coins < cost) return;
 
         // Deduct coins
         GameManager.Instance.AddCoins(-cost);
 
-        // Apply buff
-        BuffManager.ApplyBuff(buffType, 1200f); // 20 minutes = 1200 seconds
+        // Apply buff (20 minutes = 1200 seconds)
+        BuffManager.ApplyBuff(buffType, 1200f);
 
         // Show notification
         if (UIManager.Instance != null)
         {
             string message = "";
-            Color color = new Color(1f, 0f, 1f); // Magenta
-
             switch (buffType)
             {
                 case BuffType.XP:
@@ -488,17 +388,8 @@ public class PunkBarman : MonoBehaviour
                     message = "Toxic Cocktail! +25% XP & Gold for 20 min";
                     break;
             }
-
-            UIManager.Instance.ShowLootNotification(message, color);
+            UIManager.Instance.ShowLootNotification(message, new Color(1f, 0f, 1f));
         }
-
-        UpdateShopUI();
-    }
-
-    void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(1f, 0f, 1f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, interactionRange);
     }
 }
 
