@@ -85,6 +85,7 @@ public class VoidNightclub : MonoBehaviour
         audioSource.minDistance = 3f;
         audioSource.maxDistance = 50f;
         audioSource.rolloffMode = AudioRolloffMode.Linear;
+        audioSource.dopplerLevel = 0f;  // No doppler effect
         audioSource.playOnAwake = false;
 
         initialized = true;

@@ -104,7 +104,7 @@ public class DockRadio : MonoBehaviour
         audioSource.minDistance = 1.5f;  // Full volume within 1.5 units
         audioSource.maxDistance = 30f;   // Audible up to 30 units
         audioSource.rolloffMode = AudioRolloffMode.Linear;
-        audioSource.dopplerLevel = 0.5f;
+        audioSource.dopplerLevel = 0f;  // No doppler effect
         audioSource.playOnAwake = false;
         audioSource.priority = 0;
 
