@@ -293,8 +293,8 @@ public class VoidNightclub : MonoBehaviour
             playerNearby = distance < interactionDistance;
         }
 
-        // Press F to toggle music
-        if (playerNearby && Input.GetKeyDown(KeyCode.F))
+        // Press R to toggle music
+        if (playerNearby && Input.GetKeyDown(KeyCode.R))
         {
             ToggleMusic();
         }
@@ -321,7 +321,7 @@ public class VoidNightclub : MonoBehaviour
             promptStyle.alignment = TextAnchor.MiddleCenter;
             promptStyle.normal.textColor = neonMagenta;
 
-            string promptText = isPlaying ? "[F] Stop Party" : "[F] Start Party";
+            string promptText = isPlaying ? "[R] Stop Party" : "[R] Start Party";
             GUI.Label(new Rect(0, Screen.height * 0.65f, Screen.width, 30), promptText, promptStyle);
         }
     }

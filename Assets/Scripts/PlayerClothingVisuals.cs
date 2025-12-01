@@ -347,6 +347,9 @@ public class PlayerClothingVisuals : MonoBehaviour
             case "Bear Skin Overcoat":
                 CreateBearSkinOvercoat();
                 break;
+            case "HAZMAT Suit":
+                CreateHazmatSuitVisual();
+                break;
             default:
                 torsoRenderer.material.color = itemColor;
                 break;
@@ -1519,5 +1522,143 @@ public class PlayerClothingVisuals : MonoBehaviour
             hemTuft.GetComponent<Renderer>().material = i % 2 == 0 ? furMat : lightFurMat;
             Object.Destroy(hemTuft.GetComponent<Collider>());
         }
+    }
+
+    void CreateHazmatSuitVisual()
+    {
+        // Yellow HAZMAT suit with dark visor and warning stripes
+        Color hazmatYellow = new Color(0.95f, 0.85f, 0.1f);
+        Color hazmatDark = new Color(0.7f, 0.6f, 0.05f);
+        Color blackStripe = new Color(0.1f, 0.1f, 0.1f);
+        Color visorColor = new Color(0.2f, 0.3f, 0.35f);
+
+        Material hazmatMat = new Material(Shader.Find("Standard"));
+        hazmatMat.color = hazmatYellow;
+
+        Material hazmatDarkMat = new Material(Shader.Find("Standard"));
+        hazmatDarkMat.color = hazmatDark;
+
+        Material stripeMat = new Material(Shader.Find("Standard"));
+        stripeMat.color = blackStripe;
+
+        Material visorMat = new Material(Shader.Find("Standard"));
+        visorMat.color = visorColor;
+        visorMat.SetFloat("_Metallic", 0.8f);
+        visorMat.SetFloat("_Glossiness", 0.9f);
+
+        // Change torso to hazmat yellow
+        torsoRenderer.material.color = hazmatYellow;
+
+        // Change legs to hazmat yellow (full body suit)
+        if (hipsRenderer != null) hipsRenderer.material.color = hazmatYellow;
+        foreach (Renderer r in legRenderers)
+        {
+            if (r != null && !r.name.Contains("Foot"))
+            {
+                r.material.color = hazmatYellow;
+            }
+        }
+
+        topClothingObject = new GameObject("HazmatSuit");
+        topClothingObject.transform.SetParent(torso);
+        topClothingObject.transform.localPosition = Vector3.zero;
+
+        // Helmet/Hood
+        GameObject helmet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        helmet.name = "HazmatHelmet";
+        helmet.transform.SetParent(headClothingObject != null ? headClothingObject.transform : topClothingObject.transform);
+        if (head != null)
+        {
+            helmet.transform.SetParent(head);
+            helmet.transform.localPosition = new Vector3(0, 0.1f, 0);
+        }
+        else
+        {
+            helmet.transform.SetParent(topClothingObject.transform);
+            helmet.transform.localPosition = new Vector3(0, 0.9f, 0);
+        }
+        helmet.transform.localScale = new Vector3(0.55f, 0.5f, 0.5f);
+        helmet.GetComponent<Renderer>().material = hazmatMat;
+        Object.Destroy(helmet.GetComponent<Collider>());
+
+        // Visor (dark face shield)
+        GameObject visor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        visor.name = "HazmatVisor";
+        visor.transform.SetParent(helmet.transform);
+        visor.transform.localPosition = new Vector3(0, 0, 0.4f);
+        visor.transform.localScale = new Vector3(0.65f, 0.7f, 0.4f);
+        visor.GetComponent<Renderer>().material = visorMat;
+        Object.Destroy(visor.GetComponent<Collider>());
+
+        // Breathing apparatus tubes
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject tube = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            tube.name = "BreathingTube";
+            tube.transform.SetParent(helmet.transform);
+            tube.transform.localPosition = new Vector3(side * 0.35f, -0.25f, 0.2f);
+            tube.transform.localRotation = Quaternion.Euler(0, 0, side * 15f);
+            tube.transform.localScale = new Vector3(0.12f, 0.25f, 0.12f);
+            tube.GetComponent<Renderer>().material = hazmatDarkMat;
+            Object.Destroy(tube.GetComponent<Collider>());
+        }
+
+        // Warning stripes on torso
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stripe.name = "WarningStripe";
+            stripe.transform.SetParent(topClothingObject.transform);
+            stripe.transform.localPosition = new Vector3(0, 0.1f - i * 0.15f, 0.26f);
+            stripe.transform.localScale = new Vector3(0.5f, 0.04f, 0.02f);
+            stripe.GetComponent<Renderer>().material = stripeMat;
+            Object.Destroy(stripe.GetComponent<Collider>());
+        }
+
+        // Gloves (dark rubber)
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject glove = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            glove.name = "HazmatGlove";
+            glove.transform.SetParent(topClothingObject.transform);
+            glove.transform.localPosition = new Vector3(side * 0.45f, -0.3f, 0);
+            glove.transform.localScale = new Vector3(0.15f, 0.12f, 0.18f);
+            glove.GetComponent<Renderer>().material = hazmatDarkMat;
+            Object.Destroy(glove.GetComponent<Collider>());
+        }
+
+        // Oxygen tank on back
+        GameObject tank = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        tank.name = "OxygenTank";
+        tank.transform.SetParent(topClothingObject.transform);
+        tank.transform.localPosition = new Vector3(0, 0.1f, -0.25f);
+        tank.transform.localScale = new Vector3(0.2f, 0.25f, 0.15f);
+        tank.GetComponent<Renderer>().material = hazmatDarkMat;
+        Object.Destroy(tank.GetComponent<Collider>());
+
+        // Tank valve
+        GameObject valve = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        valve.name = "TankValve";
+        valve.transform.SetParent(tank.transform);
+        valve.transform.localPosition = new Vector3(0, 0.55f, 0);
+        valve.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        valve.transform.localScale = new Vector3(0.3f, 0.2f, 0.3f);
+
+        Material valveMat = new Material(Shader.Find("Standard"));
+        valveMat.color = new Color(0.7f, 0.7f, 0.7f);
+        valveMat.SetFloat("_Metallic", 0.9f);
+        valve.GetComponent<Renderer>().material = valveMat;
+        Object.Destroy(valve.GetComponent<Collider>());
+
+        // Boots (dark rubber)
+        foreach (Renderer r in legRenderers)
+        {
+            if (r != null && r.name.Contains("Foot"))
+            {
+                r.material.color = hazmatDark;
+            }
+        }
+
+        Debug.Log("HAZMAT Suit equipped - Toxic immunity active!");
     }
 }

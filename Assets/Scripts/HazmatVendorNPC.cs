@@ -328,6 +328,12 @@ public class HazmatVendorNPC : MonoBehaviour
                 AccessorySystem.Instance.EquipAccessory(hazmatSuit);
             }
 
+            // Apply visual HAZMAT suit to player model
+            if (PlayerClothingVisuals.Instance != null)
+            {
+                PlayerClothingVisuals.Instance.EquipClothing("Top", "HAZMAT Suit", new Color(0.95f, 0.85f, 0.1f));
+            }
+
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowLootNotification($"Purchased {hazmatSuit.name}!", neonCyan);

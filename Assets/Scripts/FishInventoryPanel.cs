@@ -127,8 +127,8 @@ public class FishInventoryPanel : MonoBehaviour
     {
         if (!MainMenu.GameStarted || !initialized) return;
 
-        // Toggle with F key
-        if (Input.GetKeyDown(KeyCode.F))
+        // Toggle with F key - but NOT when near interactable objects
+        if (Input.GetKeyDown(KeyCode.F) && !IsNearInteractable())
         {
             isOpen = !isOpen;
             scrollPos = 0f;
@@ -139,6 +139,36 @@ public class FishInventoryPanel : MonoBehaviour
         {
             isOpen = false;
         }
+    }
+
+    bool IsNearInteractable()
+    {
+        GameObject player = GameObject.Find("Player");
+        if (player == null) return false;
+
+        Vector3 playerPos = player.transform.position;
+
+        // Check VoidNightclub
+        VoidNightclub nightclub = FindObjectOfType<VoidNightclub>();
+        if (nightclub != null && Vector3.Distance(playerPos, nightclub.transform.position) < 6f)
+            return true;
+
+        // Check PunkBarman
+        PunkBarman barman = FindObjectOfType<PunkBarman>();
+        if (barman != null && Vector3.Distance(playerPos, barman.transform.position) < 4f)
+            return true;
+
+        // Check HazmatVendorNPC
+        HazmatVendorNPC hazmatVendor = FindObjectOfType<HazmatVendorNPC>();
+        if (hazmatVendor != null && Vector3.Distance(playerPos, hazmatVendor.transform.position) < 4f)
+            return true;
+
+        // Check any NPC shops (ClothingShopNPC, etc)
+        ClothingShopNPC clothingShop = FindObjectOfType<ClothingShopNPC>();
+        if (clothingShop != null && Vector3.Distance(playerPos, clothingShop.transform.position) < 4f)
+            return true;
+
+        return false;
     }
 
     void OnGUI()

@@ -98,7 +98,7 @@ public class DockRadio : MonoBehaviour
         // Create audio source with 3D spatial audio (doppler effect)
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.clip = songs[0];
-        audioSource.loop = false;
+        audioSource.loop = true;  // Loop single song
         audioSource.volume = maxVolume;
         audioSource.spatialBlend = 1f;  // Full 3D sound
         audioSource.minDistance = 1.5f;  // Full volume within 1.5 units
@@ -199,18 +199,7 @@ public class DockRadio : MonoBehaviour
             ToggleRadio();
         }
 
-        // Check if song ended, play next (with delay to prevent race conditions)
-        if (isOn && songs.Count > 0)
-        {
-            if (songEndCheckDelay > 0)
-            {
-                songEndCheckDelay -= Time.deltaTime;
-            }
-            else if (!audioSource.isPlaying)
-            {
-                PlayNextSong();
-            }
-        }
+        // Song loops automatically now (loop=true)
 
         UpdateLED();
     }
