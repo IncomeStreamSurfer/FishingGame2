@@ -9,6 +9,9 @@ using System.Collections.Generic;
 /// </summary>
 public class VoidNightclub : MonoBehaviour
 {
+    // Track ALL music sources so we can stop others when one plays
+    private static List<VoidNightclub> allNightclubs = new List<VoidNightclub>();
+
     [Header("Audio Settings")]
     public float maxVolume = 0.35f;  // Louder for nightclub atmosphere
 
@@ -38,6 +41,18 @@ public class VoidNightclub : MonoBehaviour
     private List<AudioClip> tracks = new List<AudioClip>();
     private List<string> loadedTrackNames = new List<string>();
     private int currentTrackIndex = 0;
+
+    void Awake()
+    {
+        // Register this nightclub instance
+        if (!allNightclubs.Contains(this))
+            allNightclubs.Add(this);
+    }
+
+    void OnDestroy()
+    {
+        allNightclubs.Remove(this);
+    }
 
     void Start()
     {
@@ -394,6 +409,9 @@ public class VoidNightclub : MonoBehaviour
 
         if (isPlaying)
         {
+            // Stop ALL other music sources first
+            StopAllOtherMusic();
+
             if (tracks.Count > 0)
             {
                 // Start at random track
@@ -403,12 +421,57 @@ public class VoidNightclub : MonoBehaviour
                 audioSource.Play();
                 songEndCheckDelay = 0.5f;
                 Debug.Log("VoidNightclub: Party started! Playing " + tracks[currentTrackIndex].name);
+
+                // Notify NPCs to start dancing
+                NotifyNPCsOfMusicState(true);
             }
         }
         else
         {
             audioSource.Stop();
             Debug.Log("VoidNightclub: Party stopped.");
+
+            // Notify NPCs to stop dancing
+            NotifyNPCsOfMusicState(false);
+        }
+    }
+
+    void StopAllOtherMusic()
+    {
+        // Stop other nightclubs
+        foreach (VoidNightclub club in allNightclubs)
+        {
+            if (club != this && club.isPlaying && club.audioSource != null)
+            {
+                club.audioSource.Stop();
+                club.isPlaying = false;
+                club.NotifyNPCsOfMusicState(false);
+            }
+        }
+
+        // Also stop any DockRadios that might be playing
+        DockRadio[] radios = FindObjectsOfType<DockRadio>();
+        foreach (DockRadio radio in radios)
+        {
+            // Use reflection or just stop all audio sources on dock radios
+            AudioSource radioAudio = radio.GetComponent<AudioSource>();
+            if (radioAudio != null && radioAudio.isPlaying)
+            {
+                radioAudio.Stop();
+            }
+        }
+    }
+
+    void NotifyNPCsOfMusicState(bool musicPlaying)
+    {
+        // Find all VoidWanderers and tell them about music state
+        VoidWanderer[] wanderers = FindObjectsOfType<VoidWanderer>();
+        foreach (VoidWanderer wanderer in wanderers)
+        {
+            if (musicPlaying)
+                wanderer.StartDancing(transform.position);
+            else
+                wanderer.StopDancing();
         }
     }
 

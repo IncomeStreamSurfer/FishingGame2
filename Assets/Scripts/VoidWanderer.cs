@@ -26,6 +26,12 @@ public class VoidWanderer : MonoBehaviour
     private float initialY;
     private Transform bodyTransform;
 
+    // Dancing state
+    private bool isDancing = false;
+    private Vector3 danceTarget;
+    private float danceTime = 0f;
+    private Coroutine wanderCoroutine;
+
     // Visual components
     private GameObject visualModel;
     private string[] mohawkColors = { "pink", "green", "blue", "orange" };
@@ -35,7 +41,43 @@ public class VoidWanderer : MonoBehaviour
         spawnPoint = transform.position;
         initialY = transform.position.y;
         CreatePunkModel();
-        StartCoroutine(WanderRoutine());
+        wanderCoroutine = StartCoroutine(WanderRoutine());
+    }
+
+    public void StartDancing(Vector3 stagePosition)
+    {
+        if (isDancing) return;
+
+        isDancing = true;
+        danceTime = 0f;
+
+        // Stop wandering
+        if (wanderCoroutine != null)
+        {
+            StopCoroutine(wanderCoroutine);
+            wanderCoroutine = null;
+        }
+
+        // Set dance target near the stage (with some random offset)
+        Vector2 offset = Random.insideUnitCircle * 8f;
+        danceTarget = stagePosition + new Vector3(offset.x, 0, 5f + Mathf.Abs(offset.y));
+        danceTarget.y = initialY;
+
+        isWalking = true;
+        isPaused = false;
+    }
+
+    public void StopDancing()
+    {
+        if (!isDancing) return;
+
+        isDancing = false;
+
+        // Resume wandering
+        if (wanderCoroutine == null)
+        {
+            wanderCoroutine = StartCoroutine(WanderRoutine());
+        }
     }
 
     void CreatePunkModel()
@@ -246,11 +288,70 @@ public class VoidWanderer : MonoBehaviour
 
     void Update()
     {
-        // Idle bobbing animation
-        if (bodyTransform != null)
+        if (isDancing)
         {
-            float bob = Mathf.Sin(Time.time * bobSpeed) * bobHeight;
-            bodyTransform.localPosition = new Vector3(0, 1f + bob, 0);
+            UpdateDancing();
+        }
+        else
+        {
+            // Idle bobbing animation
+            if (bodyTransform != null)
+            {
+                float bob = Mathf.Sin(Time.time * bobSpeed) * bobHeight;
+                bodyTransform.localPosition = new Vector3(0, 1f + bob, 0);
+            }
+        }
+    }
+
+    void UpdateDancing()
+    {
+        danceTime += Time.deltaTime;
+
+        // Walk towards dance floor first
+        float distToDanceSpot = Vector3.Distance(transform.position, danceTarget);
+        if (distToDanceSpot > 1.5f)
+        {
+            // Walk to dance spot
+            Vector3 direction = (danceTarget - transform.position).normalized;
+            transform.position += direction * moveSpeed * 1.5f * Time.deltaTime;  // Walk faster to the party
+
+            if (direction != Vector3.zero)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
+
+            // Simple walk bob
+            if (bodyTransform != null)
+            {
+                float walkBob = Mathf.Sin(danceTime * 8f) * 0.05f;
+                bodyTransform.localPosition = new Vector3(0, 1f + walkBob, 0);
+            }
+        }
+        else
+        {
+            // At dance spot - DANCE!
+            if (bodyTransform != null && visualModel != null)
+            {
+                // Energetic dancing animation
+                float danceIntensity = 0.15f;
+                float danceBobSpeed = 6f;
+                float danceRotSpeed = 3f;
+
+                // Bobbing up and down
+                float bob = Mathf.Sin(danceTime * danceBobSpeed) * danceIntensity;
+                bodyTransform.localPosition = new Vector3(0, 1f + bob, 0);
+
+                // Side to side swaying
+                float sway = Mathf.Sin(danceTime * danceRotSpeed) * 10f;
+                visualModel.transform.localRotation = Quaternion.Euler(0, sway, 0);
+
+                // Occasional spin
+                if (Mathf.Sin(danceTime * 0.5f) > 0.9f)
+                {
+                    transform.Rotate(0, 180f * Time.deltaTime, 0);
+                }
+            }
         }
     }
 
