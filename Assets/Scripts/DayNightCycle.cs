@@ -318,6 +318,8 @@ public class DayNightCycle : MonoBehaviour
 
     void UpdateSunPosition()
     {
+        if (sunObject == null) return;
+
         // Sun rises at 6, peaks at 12, sets at 18
         // Convert time to angle (0 at 6AM, 180 at 6PM)
         float sunAngle = (currentTimeOfDay - 6f) * 15f; // 15 degrees per hour
@@ -352,6 +354,8 @@ public class DayNightCycle : MonoBehaviour
 
     void UpdateMoonPosition()
     {
+        if (moonObject == null) return;
+
         // Moon is opposite to sun
         float moonAngle = (currentTimeOfDay - 6f) * 15f + 180f;
         float radAngle = moonAngle * Mathf.Deg2Rad;

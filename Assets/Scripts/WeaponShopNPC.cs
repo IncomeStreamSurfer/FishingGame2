@@ -54,16 +54,17 @@ public class WeaponShopNPC : MonoBehaviour
 
     void CreateUITextures()
     {
+        // Consistent UI style
         panelTexture = new Texture2D(1, 1);
-        panelTexture.SetPixel(0, 0, new Color(0.2f, 0.15f, 0.1f, 0.95f));
+        panelTexture.SetPixel(0, 0, new Color(0.1f, 0.1f, 0.12f, 0.95f));
         panelTexture.Apply();
 
         buttonTexture = new Texture2D(1, 1);
-        buttonTexture.SetPixel(0, 0, new Color(0.35f, 0.25f, 0.15f, 0.9f));
+        buttonTexture.SetPixel(0, 0, new Color(0.2f, 0.2f, 0.22f, 0.9f));
         buttonTexture.Apply();
 
         buttonHoverTexture = new Texture2D(1, 1);
-        buttonHoverTexture.SetPixel(0, 0, new Color(0.5f, 0.35f, 0.2f, 0.95f));
+        buttonHoverTexture.SetPixel(0, 0, new Color(0.3f, 0.3f, 0.32f, 0.95f));
         buttonHoverTexture.Apply();
     }
 
@@ -339,8 +340,9 @@ public class WeaponShopNPC : MonoBehaviour
 
     void DrawShopUI()
     {
-        float panelWidth = 500;
-        float panelHeight = 400;
+        // 35% smaller (500 -> 325, 400 -> 260)
+        float panelWidth = 325;
+        float panelHeight = 260;
         Rect panelRect = new Rect(
             Screen.width / 2 - panelWidth / 2,
             Screen.height / 2 - panelHeight / 2,
@@ -350,71 +352,80 @@ public class WeaponShopNPC : MonoBehaviour
 
         GUI.DrawTexture(panelRect, panelTexture);
 
-        // Border
-        GUI.color = new Color(0.7f, 0.5f, 0.3f);
+        // Border - gold
+        GUI.color = new Color(1f, 0.85f, 0.4f);
         GUI.DrawTexture(new Rect(panelRect.x - 2, panelRect.y - 2, panelRect.width + 4, 2), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelRect.x - 2, panelRect.y + panelRect.height, panelRect.width + 4, 2), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelRect.x - 2, panelRect.y, 2, panelRect.height), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelRect.x + panelRect.width, panelRect.y, 2, panelRect.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        // Title
+        // Title - smaller
         GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 22;
+        titleStyle.fontSize = 14; // Smaller
         titleStyle.fontStyle = FontStyle.Bold;
         titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(0.95f, 0.8f, 0.5f);
+        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
 
-        GUI.Label(new Rect(panelRect.x, panelRect.y + 15, panelRect.width, 30), "PIK'S WEAPONS", titleStyle);
+        GUI.Label(new Rect(panelRect.x, panelRect.y + 10, panelRect.width, 20), "PIK'S WEAPONS", titleStyle);
 
-        // Subtitle
+        // X close button (top-right)
+        GUIStyle closeStyle = new GUIStyle(GUI.skin.button);
+        closeStyle.fontSize = 10;
+        closeStyle.fontStyle = FontStyle.Bold;
+        if (GUI.Button(new Rect(panelRect.x + panelWidth - 22, panelRect.y + 4, 18, 18), "X", closeStyle))
+        {
+            CloseShop();
+        }
+
+        // Subtitle - smaller
         GUIStyle subStyle = new GUIStyle();
-        subStyle.fontSize = 12;
+        subStyle.fontSize = 8; // Smaller
         subStyle.fontStyle = FontStyle.Italic;
         subStyle.alignment = TextAnchor.MiddleCenter;
-        subStyle.normal.textColor = new Color(0.7f, 0.6f, 0.5f);
+        subStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f); // Light gray/cream
 
-        GUI.Label(new Rect(panelRect.x, panelRect.y + 45, panelRect.width, 20),
+        GUI.Label(new Rect(panelRect.x, panelRect.y + 29, panelRect.width, 14),
             "\"Sharp blades for dangerous lands...\"", subStyle);
 
-        // Gold display
+        // Gold display - smaller
         int playerGold = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
         GUIStyle goldStyle = new GUIStyle();
-        goldStyle.fontSize = 14;
+        goldStyle.fontSize = 10; // Smaller
         goldStyle.fontStyle = FontStyle.Bold;
         goldStyle.alignment = TextAnchor.MiddleRight;
-        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
 
-        GUI.Label(new Rect(panelRect.x + panelRect.width - 150, panelRect.y + 15, 140, 25),
+        GUI.Label(new Rect(panelRect.x + panelWidth - 100, panelRect.y + 10, 90, 16),
             $"Gold: {playerGold:N0}", goldStyle);
 
-        // Weapons list
-        float itemY = panelRect.y + 80;
+        // Weapons list - smaller
+        float itemY = panelRect.y + 52;
 
         GUIStyle nameStyle = new GUIStyle();
-        nameStyle.fontSize = 16;
+        nameStyle.fontSize = 10; // Smaller
         nameStyle.fontStyle = FontStyle.Bold;
         nameStyle.alignment = TextAnchor.MiddleLeft;
 
         GUIStyle statStyle = new GUIStyle();
-        statStyle.fontSize = 12;
+        statStyle.fontSize = 8; // Smaller
         statStyle.alignment = TextAnchor.MiddleLeft;
         statStyle.normal.textColor = new Color(0.7f, 0.8f, 0.7f);
 
         GUIStyle descStyle = new GUIStyle();
-        descStyle.fontSize = 11;
+        descStyle.fontSize = 8; // Smaller
         descStyle.wordWrap = true;
-        descStyle.normal.textColor = new Color(0.6f, 0.55f, 0.5f);
+        descStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f); // Light gray/cream
 
         GUIStyle priceStyle = new GUIStyle();
-        priceStyle.fontSize = 14;
+        priceStyle.fontSize = 10; // Smaller
         priceStyle.fontStyle = FontStyle.Bold;
         priceStyle.alignment = TextAnchor.MiddleRight;
 
         for (int i = 0; i < weapons.Count; i++)
         {
             WeaponData weapon = weapons[i];
-            Rect itemRect = new Rect(panelRect.x + 15, itemY + i * 70, panelRect.width - 30, 65);
+            Rect itemRect = new Rect(panelRect.x + 10, itemY + i * 46, panelRect.width - 20, 42); // Smaller
 
             // Selection highlight
             if (i == selectedWeaponIndex)
@@ -428,30 +439,30 @@ public class WeaponShopNPC : MonoBehaviour
                 nameStyle.normal.textColor = new Color(0.85f, 0.75f, 0.6f);
             }
 
-            // Icon
+            // Icon - smaller
             if (weaponIcons.ContainsKey(weapon.name))
             {
-                GUI.DrawTexture(new Rect(itemRect.x + 8, itemRect.y + 8, 48, 48), weaponIcons[weapon.name]);
+                GUI.DrawTexture(new Rect(itemRect.x + 5, itemRect.y + 5, 32, 32), weaponIcons[weapon.name]);
             }
 
-            // Name
+            // Name - smaller
             bool owned = ownedWeapons.Contains(weapon.name);
             string displayName = owned ? $"{weapon.name} [OWNED]" : weapon.name;
-            GUI.Label(new Rect(itemRect.x + 65, itemRect.y + 5, 250, 22), displayName, nameStyle);
+            GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 3, 170, 14), displayName, nameStyle);
 
-            // Stats
-            string stats = $"DMG: {weapon.damage} | Speed: {(1f / weapon.attackSpeed):F1}/s | Range: {weapon.range:F1}m";
-            GUI.Label(new Rect(itemRect.x + 65, itemRect.y + 26, 300, 18), stats, statStyle);
+            // Stats - smaller
+            string stats = $"DMG: {weapon.damage} | Spd: {(1f / weapon.attackSpeed):F1}/s | Rng: {weapon.range:F1}m";
+            GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 17, 200, 12), stats, statStyle);
 
-            // Description
-            GUI.Label(new Rect(itemRect.x + 65, itemRect.y + 44, itemRect.width - 180, 20), weapon.description, descStyle);
+            // Description - smaller
+            GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 29, itemRect.width - 120, 13), weapon.description, descStyle);
 
-            // Price
+            // Price - smaller
             if (!owned)
             {
                 bool canAfford = playerGold >= weapon.price;
-                priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.3f) : new Color(0.8f, 0.3f, 0.3f);
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 100, itemRect.y + 22, 90, 22),
+                priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.4f) : new Color(0.8f, 0.3f, 0.3f);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 70, itemRect.y + 14, 65, 14),
                     $"{weapon.price:N0}g", priceStyle);
             }
 
@@ -463,14 +474,14 @@ public class WeaponShopNPC : MonoBehaviour
             }
         }
 
-        // Instructions
+        // Instructions - smaller
         GUIStyle instrStyle = new GUIStyle();
-        instrStyle.fontSize = 11;
+        instrStyle.fontSize = 8; // Smaller
         instrStyle.alignment = TextAnchor.MiddleCenter;
         instrStyle.normal.textColor = new Color(0.5f, 0.45f, 0.4f);
 
-        GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 30, panelRect.width, 25),
-            "[W/S or Click] Select | [Enter or Click] Buy/Equip | [ESC] Close", instrStyle);
+        GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 20, panelRect.width, 16),
+            "[W/S/Click] Sel | [Enter/Click] Buy | [ESC] Close", instrStyle);
     }
 }
 

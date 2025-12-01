@@ -21,6 +21,7 @@ public class WeaponSystem : MonoBehaviour
 
     // Owned weapons
     private List<WeaponData> ownedWeapons = new List<WeaponData>();
+    private int currentWeaponIndex = -1; // -1 = fishing rod, 0+ = weapon index
 
     // UI
     private Texture2D hotbarTexture;
@@ -76,15 +77,21 @@ public class WeaponSystem : MonoBehaviour
     void Update()
     {
         if (!MainMenu.GameStarted) return;
-        if (!IsInIceRealm()) return;
+        if (!IsInCombatRealm()) return;
 
         HandleInput();
         UpdateAttackAnimation();
     }
 
-    bool IsInIceRealm()
+    bool IsInCombatRealm()
     {
-        // Check if player is in ice realm (X > 400)
+        // Check if player is in a realm with combat (Ice or Jungle)
+        RealmManager rm = FindObjectOfType<RealmManager>();
+        if (rm != null)
+        {
+            return rm.CurrentRealm == RealmType.IceRealm || rm.CurrentRealm == RealmType.JungleRealm;
+        }
+        // Fallback: check position (Ice: X > 400, Jungle: X > 900)
         GameObject player = GameObject.Find("Player");
         if (player != null)
         {
@@ -105,8 +112,15 @@ public class WeaponSystem : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Alpha1 + i))
             {
+                currentWeaponIndex = i;
                 EquipWeapon(ownedWeapons[i]);
             }
+        }
+
+        // Key 5 to cycle through main hand weapons (including fishing rod)
+        if (Input.GetKeyDown(KeyCode.Alpha5))
+        {
+            CycleWeapon();
         }
 
         // Left click to attack (if weapon equipped and not fishing)
@@ -116,10 +130,42 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
+    void CycleWeapon()
+    {
+        if (ownedWeapons.Count == 0)
+        {
+            // No weapons owned, stay on fishing rod
+            return;
+        }
+
+        // Cycle: fishing rod (-1) -> weapon 0 -> weapon 1 -> ... -> fishing rod
+        currentWeaponIndex++;
+
+        if (currentWeaponIndex >= ownedWeapons.Count)
+        {
+            // Wrap back to fishing rod
+            currentWeaponIndex = -1;
+            SwitchToFishingRod();
+        }
+        else
+        {
+            // Equip the next weapon
+            EquipWeapon(ownedWeapons[currentWeaponIndex]);
+        }
+
+        // Show notification of current weapon
+        string weaponName = currentWeaponIndex == -1 ? "Fishing Rod" : ownedWeapons[currentWeaponIndex].name;
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification($"Equipped: {weaponName}", new Color(0.8f, 0.9f, 1f));
+        }
+    }
+
     void SwitchToFishingRod()
     {
         weaponMode = false;
         equippedWeapon = null;
+        currentWeaponIndex = -1;
         RemoveWeaponModel();
 
         // Re-enable fishing rod animator
@@ -438,6 +484,27 @@ public class WeaponSystem : MonoBehaviour
                 }
             }
         }
+
+        // Find all snakes (Jungle Realm)
+        SnakeAI[] snakes = FindObjectsOfType<SnakeAI>();
+
+        foreach (SnakeAI snake in snakes)
+        {
+            float distance = Vector3.Distance(player.transform.position, snake.transform.position);
+
+            if (distance <= equippedWeapon.range)
+            {
+                // Check if facing the snake (roughly)
+                Vector3 toSnake = (snake.transform.position - player.transform.position).normalized;
+                float dot = Vector3.Dot(player.transform.forward, toSnake);
+
+                if (dot > 0.3f) // Facing roughly toward snake
+                {
+                    snake.TakeDamage(equippedWeapon.damage);
+                    Debug.Log($"Hit snake for {equippedWeapon.damage} damage!");
+                }
+            }
+        }
     }
 
     public bool IsWeaponMode()
@@ -458,7 +525,7 @@ public class WeaponSystem : MonoBehaviour
     void OnGUI()
     {
         if (!MainMenu.GameStarted) return;
-        if (!IsInIceRealm()) return;
+        if (!IsInCombatRealm()) return;
 
         DrawWeaponHotbar();
     }
@@ -539,12 +606,12 @@ public class WeaponSystem : MonoBehaviour
         hintStyle.alignment = TextAnchor.MiddleLeft;
         hintStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f);
 
-        string hintText = "[` or 0] Rod";
+        string hintText = "[5] Cycle  [` or 0] Rod";
         if (ownedWeapons.Count > 0)
         {
             hintText += "  [1-4] Weapons";
         }
-        GUI.Label(new Rect(startX, startY + slotSize + 18, 200, 14), hintText, hintStyle);
+        GUI.Label(new Rect(startX, startY + slotSize + 18, 220, 14), hintText, hintStyle);
 
         // If weapons owned, show small indicator
         if (ownedWeapons.Count > 0)

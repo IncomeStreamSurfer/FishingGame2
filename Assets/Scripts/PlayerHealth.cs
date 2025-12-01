@@ -47,6 +47,8 @@ public class PlayerHealth : MonoBehaviour
     private float ecgTimer = 0f;
     private float heartbeatPhase = 0f;
     private int currentBPM = 72;
+    private float attackBPMBoost = 0f; // Temporary BPM spike when taking damage
+    private float bpmBoostDecayRate = 20f; // BPM reduction per second
 
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
@@ -174,15 +176,26 @@ public class PlayerHealth : MonoBehaviour
         // Update ECG
         UpdateECG();
 
-        // Adjust BPM based on health
+        // Decay the attack BPM boost over time
+        if (attackBPMBoost > 0f)
+        {
+            attackBPMBoost -= bpmBoostDecayRate * Time.deltaTime;
+            attackBPMBoost = Mathf.Max(0f, attackBPMBoost);
+        }
+
+        // Adjust base BPM based on health
+        int baseBPM;
         if (currentHealth > 70f)
-            currentBPM = 72;
+            baseBPM = 72;
         else if (currentHealth > 40f)
-            currentBPM = 85;
+            baseBPM = 85;
         else if (currentHealth > 20f)
-            currentBPM = 100;
+            baseBPM = 100;
         else
-            currentBPM = 120; // Danger zone - heart racing
+            baseBPM = 120; // Danger zone - heart racing
+
+        // Add attack boost to current BPM
+        currentBPM = baseBPM + Mathf.RoundToInt(attackBPMBoost);
     }
 
     void UpdateECG()
@@ -288,6 +301,14 @@ public class PlayerHealth : MonoBehaviour
 
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
+
+        // Spike heart rate when taking significant damage (not tiny drowning ticks)
+        if (damage >= 1f)
+        {
+            // Add a BPM boost based on damage amount
+            float boostAmount = Mathf.Min(damage * 10f, 50f); // 10 BPM per damage, capped at 50
+            attackBPMBoost = Mathf.Max(attackBPMBoost, boostAmount); // Keep the highest boost active
+        }
 
         if (currentHealth <= 0)
         {

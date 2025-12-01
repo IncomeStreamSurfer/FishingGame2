@@ -141,46 +141,49 @@ public class UIManager : MonoBehaviour
     {
         if (stylesInitialized) return;
 
-        frameTex = MakeTexture(2, 2, new Color(0.1f, 0.08f, 0.06f, 0.95f));
-        buttonTex = MakeTexture(2, 2, new Color(0.25f, 0.2f, 0.12f, 0.95f));
-        buttonHoverTex = MakeTexture(2, 2, new Color(0.4f, 0.32f, 0.18f, 0.95f));
-        tabTex = MakeTexture(2, 2, new Color(0.15f, 0.12f, 0.08f, 0.95f));
-        tabActiveTex = MakeTexture(2, 2, new Color(0.3f, 0.25f, 0.15f, 0.95f));
+        // CONSISTENT STYLE: Dark semi-transparent background
+        frameTex = MakeTexture(2, 2, new Color(0.1f, 0.1f, 0.12f, 0.95f));
+        buttonTex = MakeTexture(2, 2, new Color(0.2f, 0.2f, 0.22f, 0.95f));
+        buttonHoverTex = MakeTexture(2, 2, new Color(0.3f, 0.3f, 0.32f, 0.95f));
+        tabTex = MakeTexture(2, 2, new Color(0.15f, 0.15f, 0.17f, 0.95f));
+        tabActiveTex = MakeTexture(2, 2, new Color(0.25f, 0.25f, 0.27f, 0.95f));
 
         frameStyle = new GUIStyle();
         frameStyle.normal.background = frameTex;
-        frameStyle.padding = new RectOffset(10, 10, 10, 10);
+        frameStyle.padding = new RectOffset(6, 6, 6, 6);
 
         headerStyle = new GUIStyle();
-        headerStyle.normal.background = MakeTexture(2, 2, new Color(0.08f, 0.06f, 0.04f, 0.98f));
-        headerStyle.normal.textColor = new Color(1f, 0.85f, 0.4f);
-        headerStyle.fontSize = 16;
+        headerStyle.normal.background = MakeTexture(2, 2, new Color(0.08f, 0.08f, 0.1f, 0.98f));
+        headerStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold/amber
+        headerStyle.fontSize = 14; // Smaller header
         headerStyle.fontStyle = FontStyle.Bold;
         headerStyle.alignment = TextAnchor.MiddleCenter;
-        headerStyle.padding = new RectOffset(5, 5, 6, 6);
+        headerStyle.padding = new RectOffset(4, 4, 4, 4);
 
         labelStyle = new GUIStyle();
-        labelStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f);
-        labelStyle.fontSize = 13;
+        labelStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f); // Light gray/cream
+        labelStyle.fontSize = 10; // Smaller body text
         labelStyle.alignment = TextAnchor.MiddleLeft;
 
         buttonStyle = new GUIStyle();
         buttonStyle.normal.background = buttonTex;
         buttonStyle.hover.background = buttonHoverTex;
         buttonStyle.active.background = buttonHoverTex;
-        buttonStyle.normal.textColor = new Color(1f, 0.9f, 0.6f);
+        buttonStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold text
         buttonStyle.hover.textColor = Color.white;
-        buttonStyle.fontSize = 13;
+        buttonStyle.fontSize = 10; // Smaller button text
         buttonStyle.fontStyle = FontStyle.Bold;
         buttonStyle.alignment = TextAnchor.MiddleCenter;
-        buttonStyle.padding = new RectOffset(8, 8, 6, 6);
+        buttonStyle.padding = new RectOffset(4, 4, 3, 3);
 
         tabStyle = new GUIStyle(buttonStyle);
         tabStyle.normal.background = tabTex;
+        tabStyle.fontSize = 9; // Smaller tabs
 
         tabActiveStyle = new GUIStyle(buttonStyle);
         tabActiveStyle.normal.background = tabActiveTex;
         tabActiveStyle.normal.textColor = new Color(1f, 0.95f, 0.7f);
+        tabActiveStyle.fontSize = 9; // Smaller tabs
 
         // Close button style (X button)
         Texture2D closeTex = MakeTexture(2, 2, new Color(0.6f, 0.15f, 0.1f, 0.9f));
@@ -191,7 +194,7 @@ public class UIManager : MonoBehaviour
         closeButtonStyle.active.background = closeHoverTex;
         closeButtonStyle.normal.textColor = Color.white;
         closeButtonStyle.hover.textColor = Color.white;
-        closeButtonStyle.fontSize = 11;
+        closeButtonStyle.fontSize = 10; // Smaller X
         closeButtonStyle.fontStyle = FontStyle.Bold;
         closeButtonStyle.alignment = TextAnchor.MiddleCenter;
 
@@ -418,33 +421,40 @@ public class UIManager : MonoBehaviour
         // Darken background
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), MakeTexture(2, 2, new Color(0, 0, 0, 0.7f)));
 
-        float dialogWidth = 500;
-        float dialogHeight = 320;
+        // 30% smaller dialog (500 -> 350, 320 -> 224)
+        float dialogWidth = 350;
+        float dialogHeight = 224;
         float dialogX = (Screen.width - dialogWidth) / 2;
         float dialogY = (Screen.height - dialogHeight) / 2;
 
-        // Dialog background
+        // Dialog background - consistent style
         GUI.DrawTexture(new Rect(dialogX, dialogY, dialogWidth, dialogHeight),
-            MakeTexture(2, 2, new Color(0.12f, 0.10f, 0.08f, 0.98f)));
+            MakeTexture(2, 2, new Color(0.1f, 0.1f, 0.12f, 0.95f)));
 
         // Header with NPC name
-        GUI.Label(new Rect(dialogX, dialogY, dialogWidth, 35), currentNPCName, headerStyle);
+        GUI.Label(new Rect(dialogX, dialogY, dialogWidth, 24), currentNPCName, headerStyle);
 
-        // NPC portrait area (left side)
-        GUI.DrawTexture(new Rect(dialogX + 15, dialogY + 45, 80, 80),
-            MakeTexture(2, 2, new Color(0.08f, 0.06f, 0.04f, 0.9f)));
+        // X close button (top-right corner)
+        if (GUI.Button(new Rect(dialogX + dialogWidth - 22, dialogY + 4, 18, 18), "X", closeButtonStyle))
+        {
+            CloseNPCDialog();
+        }
 
-        // Draw a simple face icon
-        GUI.DrawTexture(new Rect(dialogX + 30, dialogY + 55, 50, 60),
+        // NPC portrait area (left side) - smaller
+        GUI.DrawTexture(new Rect(dialogX + 10, dialogY + 30, 56, 56),
+            MakeTexture(2, 2, new Color(0.08f, 0.08f, 0.1f, 0.9f)));
+
+        // Draw a simple face icon - smaller
+        GUI.DrawTexture(new Rect(dialogX + 20, dialogY + 36, 36, 44),
             MakeTexture(2, 2, new Color(0.85f, 0.70f, 0.55f))); // Face color
 
         // Dialog text area
         GUIStyle dialogTextStyle = new GUIStyle(labelStyle);
         dialogTextStyle.wordWrap = true;
-        dialogTextStyle.fontSize = 13;
+        dialogTextStyle.fontSize = 10; // Smaller text
 
-        float textX = dialogX + 110;
-        float textWidth = dialogWidth - 130;
+        float textX = dialogX + 72;
+        float textWidth = dialogWidth - 82;
 
         // Check quest state
         bool hasPendingQuest = QuestSystem.Instance != null && QuestSystem.Instance.HasPendingQuest();
@@ -454,44 +464,46 @@ public class UIManager : MonoBehaviour
         {
             Quest quest = QuestSystem.Instance.GetPendingQuest();
 
-            // Greeting
-            GUI.Label(new Rect(textX, dialogY + 45, textWidth, 25),
+            // Greeting - smaller
+            GUI.Label(new Rect(textX, dialogY + 30, textWidth, 18),
                 "\"Ahoy there, young angler!\"", dialogTextStyle);
 
             // Quest offer
             GUIStyle questTitleStyle = new GUIStyle(dialogTextStyle);
-            questTitleStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
+            questTitleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
             questTitleStyle.fontStyle = FontStyle.Bold;
+            questTitleStyle.fontSize = 11; // Smaller
 
-            GUI.Label(new Rect(textX, dialogY + 75, textWidth, 25), quest.questName, questTitleStyle);
+            GUI.Label(new Rect(textX, dialogY + 50, textWidth, 18), quest.questName, questTitleStyle);
 
-            // Quest description
-            GUI.Label(new Rect(textX, dialogY + 100, textWidth, 50), quest.description, dialogTextStyle);
+            // Quest description - smaller
+            GUI.Label(new Rect(textX, dialogY + 70, textWidth, 36), quest.description, dialogTextStyle);
 
             // Rewards
             GUIStyle rewardStyle = new GUIStyle(dialogTextStyle);
             rewardStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
+            rewardStyle.fontSize = 9; // Smaller
 
-            GUI.Label(new Rect(textX, dialogY + 155, textWidth, 20),
+            GUI.Label(new Rect(textX, dialogY + 108, textWidth, 14),
                 $"Rewards: {quest.xpReward} XP, {quest.coinReward} coins", rewardStyle);
 
             // Level indicator
             GUIStyle levelStyle = new GUIStyle(dialogTextStyle);
             levelStyle.normal.textColor = new Color(0.7f, 0.7f, 0.9f);
-            levelStyle.fontSize = 11;
+            levelStyle.fontSize = 9; // Smaller
 
-            GUI.Label(new Rect(textX, dialogY + 175, textWidth, 20),
+            GUI.Label(new Rect(textX, dialogY + 124, textWidth, 14),
                 $"Quest Level: {quest.questLevel}", levelStyle);
 
-            // Accept / Decline buttons
-            if (GUI.Button(new Rect(dialogX + 100, dialogY + dialogHeight - 60, 130, 35), "ACCEPT", buttonStyle))
+            // Accept / Decline buttons - smaller
+            if (GUI.Button(new Rect(dialogX + 70, dialogY + dialogHeight - 42, 90, 28), "ACCEPT", buttonStyle))
             {
                 QuestSystem.Instance.AcceptQuest();
                 ShowLootNotification("Quest Accepted!", new Color(0.3f, 1f, 0.5f));
                 CloseNPCDialog();
             }
 
-            if (GUI.Button(new Rect(dialogX + 250, dialogY + dialogHeight - 60, 130, 35), "DECLINE", buttonStyle))
+            if (GUI.Button(new Rect(dialogX + 175, dialogY + dialogHeight - 42, 90, 28), "DECLINE", buttonStyle))
             {
                 QuestSystem.Instance.DeclineQuest();
                 CloseNPCDialog();
@@ -502,37 +514,38 @@ public class UIManager : MonoBehaviour
             Quest quest = QuestSystem.Instance.GetActiveQuest();
 
             // In progress message
-            GUI.Label(new Rect(textX, dialogY + 45, textWidth, 25),
+            GUI.Label(new Rect(textX, dialogY + 30, textWidth, 18),
                 "\"Still working on that task, eh?\"", dialogTextStyle);
 
             GUIStyle questTitleStyle = new GUIStyle(dialogTextStyle);
-            questTitleStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
+            questTitleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
             questTitleStyle.fontStyle = FontStyle.Bold;
+            questTitleStyle.fontSize = 11; // Smaller
 
-            GUI.Label(new Rect(textX, dialogY + 80, textWidth, 25), quest.questName, questTitleStyle);
+            GUI.Label(new Rect(textX, dialogY + 56, textWidth, 18), quest.questName, questTitleStyle);
 
             // Progress
             GUIStyle progressStyle = new GUIStyle(dialogTextStyle);
             progressStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
-            progressStyle.fontSize = 14;
+            progressStyle.fontSize = 10; // Smaller
 
-            GUI.Label(new Rect(textX, dialogY + 110, textWidth, 25),
+            GUI.Label(new Rect(textX, dialogY + 78, textWidth, 18),
                 $"Progress: {quest.currentAmount} / {quest.requiredAmount}", progressStyle);
 
-            // Progress bar
-            float barWidth = 200;
+            // Progress bar - smaller
+            float barWidth = 140;
             float progress = (float)quest.currentAmount / quest.requiredAmount;
-            GUI.DrawTexture(new Rect(textX, dialogY + 140, barWidth, 15),
+            GUI.DrawTexture(new Rect(textX, dialogY + 98, barWidth, 12),
                 MakeTexture(2, 2, new Color(0.2f, 0.2f, 0.2f)));
-            GUI.DrawTexture(new Rect(textX + 2, dialogY + 142, (barWidth - 4) * progress, 11),
+            GUI.DrawTexture(new Rect(textX + 2, dialogY + 100, (barWidth - 4) * progress, 8),
                 MakeTexture(2, 2, new Color(0.3f, 0.8f, 0.4f)));
 
             // Encouragement
-            GUI.Label(new Rect(textX, dialogY + 170, textWidth, 40),
-                "\"Keep fishing! Bring me those fish and you'll be rewarded handsomely!\"", dialogTextStyle);
+            GUI.Label(new Rect(textX, dialogY + 118, textWidth, 30),
+                "\"Keep fishing! Bring me those fish!\"", dialogTextStyle);
 
-            // Close button only
-            if (GUI.Button(new Rect(dialogX + (dialogWidth - 130) / 2, dialogY + dialogHeight - 60, 130, 35), "CLOSE", buttonStyle))
+            // Close button only - smaller
+            if (GUI.Button(new Rect(dialogX + (dialogWidth - 90) / 2, dialogY + dialogHeight - 42, 90, 28), "CLOSE", buttonStyle))
             {
                 CloseNPCDialog();
             }
@@ -540,19 +553,13 @@ public class UIManager : MonoBehaviour
         else
         {
             // No quest available
-            GUI.Label(new Rect(textX, dialogY + 45, textWidth, 60),
-                "\"I don't have any work for you right now. Come back soon, there's always fish to catch!\"", dialogTextStyle);
+            GUI.Label(new Rect(textX, dialogY + 30, textWidth, 42),
+                "\"I don't have any work for you right now. Come back soon!\"", dialogTextStyle);
 
-            if (GUI.Button(new Rect(dialogX + (dialogWidth - 130) / 2, dialogY + dialogHeight - 60, 130, 35), "CLOSE", buttonStyle))
+            if (GUI.Button(new Rect(dialogX + (dialogWidth - 90) / 2, dialogY + dialogHeight - 42, 90, 28), "CLOSE", buttonStyle))
             {
                 CloseNPCDialog();
             }
-        }
-
-        // Close X button in corner (top-left as requested)
-        if (GUI.Button(new Rect(dialogX + 5, dialogY + 5, 25, 22), "X", closeButtonStyle))
-        {
-            CloseNPCDialog();
         }
 
         // Right-click outside dialog to close
@@ -832,17 +839,18 @@ public class UIManager : MonoBehaviour
         // Overlay
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), MakeTexture(2, 2, new Color(0, 0, 0, 0.6f)));
 
-        float panelWidth = 520;
-        float panelHeight = 380;
+        // 30% smaller (520 -> 364, 380 -> 266)
+        float panelWidth = 364;
+        float panelHeight = 266;
         float panelX = (Screen.width - panelWidth) / 2;
         float panelY = (Screen.height - panelHeight) / 2;
 
-        // Panel background
+        // Panel background - consistent style
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight),
-            MakeTexture(2, 2, new Color(0.08f, 0.06f, 0.04f, 0.98f)));
+            MakeTexture(2, 2, new Color(0.1f, 0.1f, 0.12f, 0.95f)));
 
-        // Close button (top-left)
-        if (GUI.Button(new Rect(panelX + 4, panelY + 6, 22, 18), "X", closeButtonStyle))
+        // Close button (top-right)
+        if (GUI.Button(new Rect(panelX + panelWidth - 22, panelY + 4, 18, 18), "X", closeButtonStyle))
         {
             inventoryOpen = false;
         }
@@ -858,25 +866,19 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        // Tabs (shifted to accommodate close button)
+        // Tabs - smaller
         string[] tabs = { "Equipment", "Quests", "Shop", "Wardrobe" };
         for (int i = 0; i < tabs.Length; i++)
         {
             GUIStyle style = (i == currentTab) ? tabActiveStyle : tabStyle;
-            if (GUI.Button(new Rect(panelX + 30 + i * 75, panelY + 8, 70, 22), tabs[i], style))
+            if (GUI.Button(new Rect(panelX + 4 + i * 52, panelY + 6, 50, 18), tabs[i], style))
             {
                 currentTab = i;
             }
         }
 
-        // Also keep a close button on right for convenience
-        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 8, 24, 22), "X", closeButtonStyle))
-        {
-            inventoryOpen = false;
-        }
-
-        // Content area
-        Rect contentRect = new Rect(panelX + 8, panelY + 38, panelWidth - 16, panelHeight - 46);
+        // Content area - smaller
+        Rect contentRect = new Rect(panelX + 6, panelY + 28, panelWidth - 12, panelHeight - 34);
 
         switch (currentTab)
         {
@@ -890,20 +892,20 @@ public class UIManager : MonoBehaviour
     void DrawEquipmentTab(Rect rect)
     {
         // Left side - Rods
-        GUI.Label(new Rect(rect.x, rect.y, 120, 18), "FISHING RODS", headerStyle);
+        GUI.Label(new Rect(rect.x, rect.y, 120, 14), "FISHING RODS", headerStyle);
 
         for (int i = 0; i < rodNames.Length; i++)
         {
-            DrawRodSlot(new Rect(rect.x, rect.y + 22 + i * 38, 220, 35), i);
+            DrawRodSlot(new Rect(rect.x, rect.y + 16 + i * 28, 154, 26), i);
         }
 
         // Right side - Stats & Special Items
-        float rightX = rect.x + 235;
+        float rightX = rect.x + 164;
 
-        GUI.Label(new Rect(rightX, rect.y, 120, 18), "PLAYER STATS", headerStyle);
+        GUI.Label(new Rect(rightX, rect.y, 120, 14), "PLAYER STATS", headerStyle);
 
         GUIStyle statStyle = new GUIStyle(labelStyle);
-        statStyle.fontSize = 10;
+        statStyle.fontSize = 9; // Smaller
 
         int level = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetEffectiveLevel() : 1;
         long xp = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetCurrentXP() : 0;
@@ -947,45 +949,45 @@ public class UIManager : MonoBehaviour
         bool isSelected = selectedRodIndex == rodIndex;
         bool isUnlocked = rodsUnlocked[rodIndex];
 
-        Color bgColor = isSelected ? new Color(0.25f, 0.2f, 0.1f, 0.95f) : new Color(0.12f, 0.1f, 0.08f, 0.9f);
+        Color bgColor = isSelected ? new Color(0.2f, 0.2f, 0.22f, 0.95f) : new Color(0.12f, 0.12f, 0.14f, 0.9f);
         if (!isUnlocked) bgColor = new Color(0.08f, 0.08f, 0.08f, 0.9f);
 
         GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
 
-        // Draw rod icon from RodSprites
+        // Draw rod icon from RodSprites - smaller
         Texture2D rodIcon = RodSprites.Instance != null ? RodSprites.Instance.GetRodTexture(rodIndex) : null;
         if (rodIcon != null && isUnlocked)
         {
-            GUI.DrawTexture(new Rect(rect.x + 2, rect.y + 2, 31, 31), rodIcon);
+            GUI.DrawTexture(new Rect(rect.x + 2, rect.y + 2, 22, 22), rodIcon);
         }
         else
         {
             // Fallback to colored square if no icon or locked
             Color iconColor = isUnlocked ? rodColors[rodIndex] : new Color(0.3f, 0.3f, 0.3f);
-            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 27, 27), MakeTexture(2, 2, iconColor));
+            GUI.DrawTexture(new Rect(rect.x + 3, rect.y + 3, 20, 20), MakeTexture(2, 2, iconColor));
         }
 
         GUIStyle nameStyle = new GUIStyle();
         nameStyle.normal.textColor = isUnlocked ? rodColors[rodIndex] : new Color(0.4f, 0.4f, 0.4f);
-        nameStyle.fontSize = 11;
+        nameStyle.fontSize = 9; // Smaller
         nameStyle.fontStyle = FontStyle.Bold;
-        GUI.Label(new Rect(rect.x + 36, rect.y + 4, 150, 14), rodNames[rodIndex], nameStyle);
+        GUI.Label(new Rect(rect.x + 26, rect.y + 2, 120, 12), rodNames[rodIndex], nameStyle);
 
         GUIStyle statStyle = new GUIStyle();
-        statStyle.fontSize = 9;
+        statStyle.fontSize = 8; // Smaller
 
         if (isUnlocked)
         {
             statStyle.normal.textColor = new Color(0.4f, 0.8f, 0.4f);
             string bonus = $"Luck: +{rodIndex * 5}%";
-            if (rodIndex > 0) bonus += $" | Speed: +{rodIndex * 10}%";
-            GUI.Label(new Rect(rect.x + 36, rect.y + 19, 180, 14), bonus, statStyle);
+            if (rodIndex > 0) bonus += $" | Spd: +{rodIndex * 10}%";
+            GUI.Label(new Rect(rect.x + 26, rect.y + 14, 126, 10), bonus, statStyle);
         }
         else
         {
             statStyle.normal.textColor = new Color(0.8f, 0.3f, 0.3f);
             int required = rodIndex == 1 ? 100 : rodIndex == 2 ? 500 : rodIndex == 3 ? 2000 : rodIndex == 4 ? 10000 : 100000;
-            GUI.Label(new Rect(rect.x + 36, rect.y + 19, 180, 14), $"Requires: {FormatNumber(required)} coins", statStyle);
+            GUI.Label(new Rect(rect.x + 26, rect.y + 14, 126, 10), $"Need: {FormatNumber(required)}g", statStyle);
         }
 
         if (isUnlocked && GUI.Button(rect, "", GUIStyle.none))

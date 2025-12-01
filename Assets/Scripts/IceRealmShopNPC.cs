@@ -124,18 +124,18 @@ public class IceRealmShopNPC : MonoBehaviour
 
     void CreateUITextures()
     {
-        // Panel background - dark icy blue
+        // Panel background - consistent UI style
         panelTexture = new Texture2D(1, 1);
-        panelTexture.SetPixel(0, 0, new Color(0.15f, 0.2f, 0.3f, 0.95f));
+        panelTexture.SetPixel(0, 0, new Color(0.1f, 0.1f, 0.12f, 0.95f));
         panelTexture.Apply();
 
-        // Button textures
+        // Button textures - consistent style
         buttonTexture = new Texture2D(1, 1);
-        buttonTexture.SetPixel(0, 0, new Color(0.3f, 0.4f, 0.5f, 0.9f));
+        buttonTexture.SetPixel(0, 0, new Color(0.2f, 0.2f, 0.22f, 0.9f));
         buttonTexture.Apply();
 
         buttonHoverTexture = new Texture2D(1, 1);
-        buttonHoverTexture.SetPixel(0, 0, new Color(0.4f, 0.55f, 0.7f, 0.95f));
+        buttonHoverTexture.SetPixel(0, 0, new Color(0.3f, 0.3f, 0.32f, 0.95f));
         buttonHoverTexture.Apply();
     }
 
@@ -718,9 +718,9 @@ public class IceRealmShopNPC : MonoBehaviour
 
     void DrawShopUI()
     {
-        // Main panel
-        float panelWidth = 700;
-        float panelHeight = 500;
+        // Main panel - 35% smaller (700 -> 455, 500 -> 325)
+        float panelWidth = 455;
+        float panelHeight = 325;
         Rect panelRect = new Rect(
             Screen.width / 2 - panelWidth / 2,
             Screen.height / 2 - panelHeight / 2,
@@ -731,54 +731,63 @@ public class IceRealmShopNPC : MonoBehaviour
         // Background
         GUI.DrawTexture(panelRect, panelTexture);
 
-        // Border
-        GUI.color = new Color(0.5f, 0.7f, 0.9f);
+        // Border - gold
+        GUI.color = new Color(1f, 0.85f, 0.4f); // Gold border
         GUI.DrawTexture(new Rect(panelRect.x - 2, panelRect.y - 2, panelRect.width + 4, 2), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelRect.x - 2, panelRect.y + panelRect.height, panelRect.width + 4, 2), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelRect.x - 2, panelRect.y, 2, panelRect.height), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelRect.x + panelRect.width, panelRect.y, 2, panelRect.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        // Title
+        // Title - smaller
         GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 24;
+        titleStyle.fontSize = 14; // Smaller
         titleStyle.fontStyle = FontStyle.Bold;
         titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
+        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
 
-        GUI.Label(new Rect(panelRect.x, panelRect.y + 10, panelRect.width, 30), "FROST ELDER'S WARES", titleStyle);
+        GUI.Label(new Rect(panelRect.x, panelRect.y + 6, panelRect.width, 20), "FROST ELDER'S WARES", titleStyle);
 
-        // Greeting
+        // Greeting - smaller
         GUIStyle greetStyle = new GUIStyle();
-        greetStyle.fontSize = 14;
+        greetStyle.fontSize = 9; // Smaller
         greetStyle.fontStyle = FontStyle.Italic;
         greetStyle.alignment = TextAnchor.MiddleCenter;
-        greetStyle.normal.textColor = new Color(0.6f, 0.75f, 0.85f);
+        greetStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f); // Light gray/cream
 
-        GUI.Label(new Rect(panelRect.x, panelRect.y + 40, panelRect.width, 25), $"\"{currentGreeting}\"", greetStyle);
+        GUI.Label(new Rect(panelRect.x, panelRect.y + 26, panelRect.width, 16), $"\"{currentGreeting}\"", greetStyle);
 
-        // Player gold display
+        // Player gold display - smaller
         int playerGold = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
         GUIStyle goldStyle = new GUIStyle();
-        goldStyle.fontSize = 16;
+        goldStyle.fontSize = 10; // Smaller
         goldStyle.fontStyle = FontStyle.Bold;
         goldStyle.alignment = TextAnchor.MiddleRight;
-        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
 
-        GUI.Label(new Rect(panelRect.x + panelRect.width - 160, panelRect.y + 10, 150, 25), $"Gold: {playerGold:N0}", goldStyle);
+        GUI.Label(new Rect(panelRect.x + panelRect.width - 110, panelRect.y + 6, 100, 16), $"Gold: {playerGold:N0}", goldStyle);
 
-        // Slot tabs
-        float tabY = panelRect.y + 75;
-        float tabWidth = panelWidth / slotNames.Length - 10;
+        // X close button (top-right)
+        GUIStyle closeStyle = new GUIStyle(GUI.skin.button);
+        closeStyle.fontSize = 10;
+        closeStyle.fontStyle = FontStyle.Bold;
+        if (GUI.Button(new Rect(panelRect.x + panelWidth - 22, panelRect.y + 4, 18, 18), "X", closeStyle))
+        {
+            CloseShop();
+        }
+
+        // Slot tabs - smaller
+        float tabY = panelRect.y + 48;
+        float tabWidth = panelWidth / slotNames.Length - 8;
 
         GUIStyle tabStyle = new GUIStyle();
-        tabStyle.fontSize = 12;
+        tabStyle.fontSize = 9; // Smaller
         tabStyle.fontStyle = FontStyle.Bold;
         tabStyle.alignment = TextAnchor.MiddleCenter;
 
         for (int i = 0; i < slotNames.Length; i++)
         {
-            Rect tabRect = new Rect(panelRect.x + 10 + i * (tabWidth + 5), tabY, tabWidth, 28);
+            Rect tabRect = new Rect(panelRect.x + 6 + i * (tabWidth + 4), tabY, tabWidth, 18);
 
             if (i == selectedSlot)
             {
@@ -801,33 +810,33 @@ public class IceRealmShopNPC : MonoBehaviour
             }
         }
 
-        // Items list
-        float itemsY = tabY + 40;
-        float itemsHeight = panelHeight - 150;
-        Rect itemsRect = new Rect(panelRect.x + 15, itemsY, panelWidth - 30, itemsHeight);
+        // Items list - smaller
+        float itemsY = tabY + 26;
+        float itemsHeight = panelHeight - 98;
+        Rect itemsRect = new Rect(panelRect.x + 10, itemsY, panelWidth - 20, itemsHeight);
 
         List<ClothingItem> currentItems = GetItemsForSlot(slotNames[selectedSlot]);
 
         GUIStyle itemStyle = new GUIStyle();
-        itemStyle.fontSize = 14;
+        itemStyle.fontSize = 10; // Smaller
         itemStyle.alignment = TextAnchor.MiddleLeft;
 
         GUIStyle priceStyle = new GUIStyle();
-        priceStyle.fontSize = 14;
+        priceStyle.fontSize = 10; // Smaller
         priceStyle.fontStyle = FontStyle.Bold;
         priceStyle.alignment = TextAnchor.MiddleRight;
 
         GUIStyle descStyle = new GUIStyle();
-        descStyle.fontSize = 11;
+        descStyle.fontSize = 8; // Smaller
         descStyle.wordWrap = true;
         descStyle.alignment = TextAnchor.UpperLeft;
-        descStyle.normal.textColor = new Color(0.65f, 0.75f, 0.85f);
+        descStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f); // Light gray/cream
 
         for (int i = 0; i < currentItems.Count; i++)
         {
             ClothingItem item = currentItems[i];
-            float itemY = itemsY + i * 70;
-            Rect itemRect = new Rect(itemsRect.x, itemY, itemsRect.width, 65);
+            float itemY = itemsY + i * 46; // Smaller spacing
+            Rect itemRect = new Rect(itemsRect.x, itemY, itemsRect.width, 42); // Smaller
 
             // Selection highlight
             if (i == selectedItemIndex)
@@ -841,37 +850,37 @@ public class IceRealmShopNPC : MonoBehaviour
                 itemStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
             }
 
-            // Item icon
+            // Item icon - smaller
             if (itemIcons.ContainsKey(item.name))
             {
-                GUI.DrawTexture(new Rect(itemRect.x + 5, itemRect.y + 5, 48, 48), itemIcons[item.name]);
+                GUI.DrawTexture(new Rect(itemRect.x + 3, itemRect.y + 3, 32, 32), itemIcons[item.name]);
             }
 
-            // Item name
+            // Item name - smaller
             bool owned = ownedItems.Contains(item.name);
             string nameText = owned ? $"{item.name} [OWNED]" : item.name;
-            GUI.Label(new Rect(itemRect.x + 60, itemRect.y + 5, 300, 25), nameText, itemStyle);
+            GUI.Label(new Rect(itemRect.x + 40, itemRect.y + 3, 200, 16), nameText, itemStyle);
 
-            // Description
-            GUI.Label(new Rect(itemRect.x + 60, itemRect.y + 28, itemRect.width - 180, 35), item.description, descStyle);
+            // Description - smaller
+            GUI.Label(new Rect(itemRect.x + 40, itemRect.y + 18, itemRect.width - 120, 23), item.description, descStyle);
 
-            // Price
+            // Price - smaller
             if (!owned)
             {
                 bool canAfford = playerGold >= item.price;
-                priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.3f) : new Color(0.8f, 0.3f, 0.3f);
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 120, itemRect.y + 20, 110, 25), $"{item.price:N0}g", priceStyle);
+                priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.4f) : new Color(0.8f, 0.3f, 0.3f);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 80, itemRect.y + 13, 75, 16), $"{item.price:N0}g", priceStyle);
             }
 
-            // Stat bonus
+            // Stat bonus - smaller
             if (!string.IsNullOrEmpty(item.statBonus))
             {
                 GUIStyle bonusStyle = new GUIStyle();
-                bonusStyle.fontSize = 10;
+                bonusStyle.fontSize = 8; // Smaller
                 bonusStyle.fontStyle = FontStyle.Bold;
                 bonusStyle.normal.textColor = new Color(0.3f, 1f, 0.5f);
                 bonusStyle.alignment = TextAnchor.MiddleRight;
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 120, itemRect.y + 45, 110, 18), item.statBonus, bonusStyle);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 80, itemRect.y + 30, 75, 12), item.statBonus, bonusStyle);
             }
 
             // Left mouse button click to select and buy/equip
@@ -882,13 +891,13 @@ public class IceRealmShopNPC : MonoBehaviour
             }
         }
 
-        // Instructions
+        // Instructions - smaller
         GUIStyle instructStyle = new GUIStyle();
-        instructStyle.fontSize = 12;
+        instructStyle.fontSize = 8; // Smaller
         instructStyle.alignment = TextAnchor.MiddleCenter;
         instructStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f);
 
-        GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 30, panelRect.width, 25),
-            "[Arrow Keys/WASD or Click] Navigate | [Enter/Space or Click] Buy | [ESC] Close", instructStyle);
+        GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 20, panelRect.width, 16),
+            "[Arrows/WASD/Click] Nav | [Enter/Space/Click] Buy | [ESC] Close", instructStyle);
     }
 }

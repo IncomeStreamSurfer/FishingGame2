@@ -55,14 +55,15 @@ public class PauseMenu : MonoBehaviour
 
     void CreateCachedTextures()
     {
+        // Consistent UI style
         CacheTexture("overlay", new Color(0f, 0f, 0f, 0.75f));
-        CacheTexture("panelBg", new Color(0.08f, 0.12f, 0.18f, 0.98f));
-        CacheTexture("panelBorder", new Color(0.2f, 0.4f, 0.6f, 1f));
-        CacheTexture("buttonNormal", new Color(0.15f, 0.25f, 0.4f, 0.95f));
-        CacheTexture("buttonHover", new Color(0.2f, 0.35f, 0.55f, 1f));
-        CacheTexture("buttonPressed", new Color(0.1f, 0.2f, 0.3f, 1f));
-        CacheTexture("slotNormal", new Color(0.1f, 0.15f, 0.22f, 0.95f));
-        CacheTexture("slotSelected", new Color(0.2f, 0.35f, 0.5f, 1f));
+        CacheTexture("panelBg", new Color(0.1f, 0.1f, 0.12f, 0.95f));
+        CacheTexture("panelBorder", new Color(1f, 0.85f, 0.4f, 1f)); // Gold border
+        CacheTexture("buttonNormal", new Color(0.2f, 0.2f, 0.22f, 0.95f));
+        CacheTexture("buttonHover", new Color(0.3f, 0.3f, 0.32f, 1f));
+        CacheTexture("buttonPressed", new Color(0.15f, 0.15f, 0.17f, 1f));
+        CacheTexture("slotNormal", new Color(0.15f, 0.15f, 0.17f, 0.95f));
+        CacheTexture("slotSelected", new Color(0.25f, 0.25f, 0.27f, 1f));
         CacheTexture("white", Color.white);
         CacheTexture("success", new Color(0.2f, 0.6f, 0.3f, 1f));
     }
@@ -162,13 +163,13 @@ public class PauseMenu : MonoBehaviour
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
 
-        // Header
+        // Header - smaller, gold color
         GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 32;
+        headerStyle.fontSize = 18; // Smaller
         headerStyle.fontStyle = FontStyle.Bold;
         headerStyle.alignment = TextAnchor.MiddleCenter;
-        headerStyle.normal.textColor = new Color(0.8f, 0.9f, 1f, fadeAlpha);
-        GUI.Label(new Rect(panelX, panelY + 20, panelWidth, 45), "PAUSED", headerStyle);
+        headerStyle.normal.textColor = new Color(1f, 0.85f, 0.4f, fadeAlpha); // Gold
+        GUI.Label(new Rect(panelX, panelY + 14, panelWidth, 30), "PAUSED", headerStyle);
 
         // Draw current state
         switch (currentState)

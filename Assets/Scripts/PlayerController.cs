@@ -24,6 +24,15 @@ public class PlayerController : MonoBehaviour
     private Quaternion standingRotation;
     private Quaternion lyingRotation;
 
+    [Header("Stomp Attack")]
+    public float stompDamage = 10f;
+    public float stompRadius = 3.5f;
+    public float stompCooldown = 2f;
+    private float lastStompTime = 0f;
+    private bool isStomping = false;
+    private float stompAnimTimer = 0f;
+    private AudioSource audioSource;
+
     private Vector3 moveDirection;
     private Rigidbody rb;
     private CameraController cameraController;
@@ -35,6 +44,14 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         cameraController = Camera.main?.GetComponent<CameraController>();
+
+        // Setup audio source for stomp
+        audioSource = gameObject.GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+        audioSource.spatialBlend = 0.5f;
 
         // Create death overlay texture once
         deathOverlayTexture = new Texture2D(2, 2);
@@ -79,11 +96,238 @@ public class PlayerController : MonoBehaviour
             ToggleLieDown();
         }
 
+        // G to stomp (Jungle Realm only)
+        if (Input.GetKeyDown(KeyCode.G) && !isLyingDown && !isStomping)
+        {
+            if (IsInJungleRealm())
+            {
+                TryStompAttack();
+            }
+        }
+
         // Handle lie down transition animation
         UpdateLieDownTransition();
 
+        // Handle stomp animation
+        UpdateStompAnimation();
+
         // Check if fallen in water
         CheckWaterDeath();
+    }
+
+    bool IsInJungleRealm()
+    {
+        // Check via RealmManager
+        RealmManager rm = FindObjectOfType<RealmManager>();
+        if (rm != null)
+        {
+            return rm.CurrentRealm == RealmType.JungleRealm;
+        }
+        // Fallback: check position (Jungle: X > 900)
+        return transform.position.x > 900f;
+    }
+
+    void TryStompAttack()
+    {
+        if (Time.time - lastStompTime < stompCooldown)
+        {
+            // Still on cooldown
+            return;
+        }
+
+        lastStompTime = Time.time;
+        isStomping = true;
+        stompAnimTimer = 0f;
+
+        // Play stomp sound
+        PlayStompSound();
+
+        // Create visual impact effect
+        CreateStompParticles();
+
+        // Deal damage to all snakes within radius
+        DamageNearbySnakes();
+    }
+
+    void UpdateStompAnimation()
+    {
+        if (!isStomping) return;
+
+        stompAnimTimer += Time.deltaTime;
+
+        if (stompAnimTimer < 0.15f)
+        {
+            // Quick jump up
+            float jumpHeight = (stompAnimTimer / 0.15f) * 0.5f;
+            Vector3 pos = transform.position;
+            pos.y = 1f + jumpHeight;
+            transform.position = pos;
+        }
+        else if (stompAnimTimer < 0.3f)
+        {
+            // Slam down
+            float slamProgress = (stompAnimTimer - 0.15f) / 0.15f;
+            Vector3 pos = transform.position;
+            pos.y = 1.5f - (slamProgress * 0.5f);
+            transform.position = pos;
+        }
+        else if (stompAnimTimer >= 0.5f)
+        {
+            // Animation complete
+            isStomping = false;
+            Vector3 pos = transform.position;
+            pos.y = 1f;
+            transform.position = pos;
+        }
+    }
+
+    void PlayStompSound()
+    {
+        if (audioSource == null) return;
+
+        AudioClip stompClip = GenerateStompSound();
+        audioSource.PlayOneShot(stompClip, 0.8f);
+    }
+
+    AudioClip GenerateStompSound()
+    {
+        // Generate a deep impact sound
+        int sampleRate = 22050;
+        int samples = sampleRate / 4; // 0.25 second sound
+        float[] data = new float[samples];
+
+        for (int i = 0; i < samples; i++)
+        {
+            float t = (float)i / samples;
+            float envelope = Mathf.Pow(1f - t, 2f); // Quick decay
+
+            // Low frequency thump (50-100 Hz)
+            float freq = 80f - (t * 30f); // Pitch drops
+            float wave = Mathf.Sin(2f * Mathf.PI * freq * t);
+
+            // Add some noise for impact texture
+            float noise = Random.Range(-0.3f, 0.3f);
+
+            data[i] = (wave * 0.7f + noise * 0.3f) * envelope;
+        }
+
+        AudioClip clip = AudioClip.Create("Stomp", samples, 1, sampleRate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
+
+    void CreateStompParticles()
+    {
+        // Create ground impact particles
+        for (int i = 0; i < 15; i++)
+        {
+            GameObject particle = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            particle.name = "StompParticle";
+
+            // Random position around player's feet
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float distance = Random.Range(0.5f, 2f);
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * distance, 0.1f, Mathf.Sin(angle) * distance);
+            particle.transform.position = transform.position + offset;
+
+            // Random size
+            float size = Random.Range(0.1f, 0.3f);
+            particle.transform.localScale = new Vector3(size, size, size);
+
+            // Dirt/ground color
+            Material mat = new Material(Shader.Find("Standard"));
+            mat.color = new Color(0.4f, 0.3f, 0.2f); // Brown dirt
+            particle.GetComponent<Renderer>().material = mat;
+
+            // Remove collider
+            Destroy(particle.GetComponent<Collider>());
+
+            // Add upward velocity
+            Rigidbody particleRb = particle.AddComponent<Rigidbody>();
+            particleRb.useGravity = true;
+            Vector3 velocity = new Vector3(
+                Random.Range(-2f, 2f),
+                Random.Range(2f, 5f),
+                Random.Range(-2f, 2f)
+            );
+            particleRb.linearVelocity = velocity;
+            particleRb.angularVelocity = Random.insideUnitSphere * 10f;
+
+            // Destroy after 1 second
+            Destroy(particle, 1f);
+        }
+
+        // Create shockwave ring effect (subtle ground ripple)
+        GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        ring.name = "StompRing";
+        ring.transform.position = transform.position + Vector3.up * 0.05f;
+        ring.transform.localScale = new Vector3(0.2f, 0.005f, 0.2f);
+
+        Material ringMat = new Material(Shader.Find("Standard"));
+        ringMat.color = new Color(0.6f, 0.5f, 0.3f, 0.5f);
+        ring.GetComponent<Renderer>().material = ringMat;
+        Destroy(ring.GetComponent<Collider>());
+
+        // Animate ring expansion
+        StartCoroutine(ExpandRing(ring));
+    }
+
+    System.Collections.IEnumerator ExpandRing(GameObject ring)
+    {
+        float timer = 0f;
+        float duration = 0.4f;
+        Vector3 startScale = ring.transform.localScale;
+        // Subtle ripple - only expands to 1.2 units diameter (much smaller than damage radius)
+        Vector3 endScale = new Vector3(1.2f, 0.005f, 1.2f);
+
+        Material mat = ring.GetComponent<Renderer>().material;
+        Color startColor = mat.color;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            float t = timer / duration;
+
+            ring.transform.localScale = Vector3.Lerp(startScale, endScale, t);
+
+            // Fade out
+            Color col = startColor;
+            col.a = startColor.a * (1f - t);
+            mat.color = col;
+
+            yield return null;
+        }
+
+        Destroy(ring);
+    }
+
+    void DamageNearbySnakes()
+    {
+        // Find all snakes in the scene
+        SnakeAI[] snakes = FindObjectsOfType<SnakeAI>();
+
+        int snakesHit = 0;
+        foreach (SnakeAI snake in snakes)
+        {
+            float distance = Vector3.Distance(transform.position, snake.transform.position);
+
+            if (distance <= stompRadius)
+            {
+                snake.TakeDamage(stompDamage);
+                snakesHit++;
+            }
+        }
+
+        if (snakesHit > 0)
+        {
+            Debug.Log($"STOMP hit {snakesHit} snake(s) for {stompDamage} damage each!");
+
+            // Show notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"STOMPED {snakesHit} snake(s)!", new Color(0.8f, 0.4f, 0.2f));
+            }
+        }
     }
 
     void ToggleLieDown()

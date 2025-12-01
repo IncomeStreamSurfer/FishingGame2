@@ -52,11 +52,12 @@ public class CharacterPanel : MonoBehaviour
 
     void CreateCachedTextures()
     {
-        CacheTexture("panelBg", new Color(0.12f, 0.12f, 0.15f, 0.95f));
-        CacheTexture("panelBorder", new Color(0.4f, 0.35f, 0.2f, 1f));
+        // Consistent UI style
+        CacheTexture("panelBg", new Color(0.1f, 0.1f, 0.12f, 0.95f));
+        CacheTexture("panelBorder", new Color(1f, 0.85f, 0.4f, 1f)); // Gold border
         CacheTexture("closeBtn", new Color(0.8f, 0.2f, 0.2f, 1f));
-        CacheTexture("slotBg", new Color(0.2f, 0.2f, 0.25f, 0.9f));
-        CacheTexture("divider", new Color(0.4f, 0.35f, 0.2f, 0.8f));
+        CacheTexture("slotBg", new Color(0.15f, 0.15f, 0.17f, 0.9f));
+        CacheTexture("divider", new Color(1f, 0.85f, 0.4f, 0.8f)); // Gold divider
         CacheTexture("modelBg", new Color(0.08f, 0.08f, 0.1f, 1f));
         CacheTexture("heartIcon", new Color(0.9f, 0.2f, 0.2f, 1f));
         CacheTexture("goldIcon", new Color(1f, 0.85f, 0.2f, 1f));
@@ -198,50 +199,51 @@ public class CharacterPanel : MonoBehaviour
     {
         if (!isOpen || !initialized || !MainMenu.GameStarted) return;
 
-        float panelWidth = 450f;
-        float panelHeight = 520f;
+        // 35% smaller (450 -> 293, 520 -> 338)
+        float panelWidth = 293f;
+        float panelHeight = 338f;
         float panelX = (Screen.width - panelWidth) / 2f;
         float panelY = (Screen.height - panelHeight) / 2f;
 
         // Panel background
-        GUI.DrawTexture(new Rect(panelX - 4, panelY - 4, panelWidth + 8, panelHeight + 8), GetTexture("panelBorder"));
+        GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
 
-        // Title
+        // Title - smaller
         GUIStyle titleStyle = new GUIStyle(GUI.skin.label);
-        titleStyle.fontSize = 22;
+        titleStyle.fontSize = 14; // Smaller
         titleStyle.fontStyle = FontStyle.Bold;
         titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(1f, 0.9f, 0.6f);
-        GUI.Label(new Rect(panelX, panelY + 10, panelWidth, 30), "CHARACTER", titleStyle);
+        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f); // Gold
+        GUI.Label(new Rect(panelX, panelY + 6, panelWidth, 20), "CHARACTER", titleStyle);
 
-        // Red X close button
+        // Red X close button - smaller, top-right
         GUIStyle xButtonStyle = new GUIStyle();
-        xButtonStyle.fontSize = 16;
+        xButtonStyle.fontSize = 10; // Smaller
         xButtonStyle.fontStyle = FontStyle.Bold;
         xButtonStyle.alignment = TextAnchor.MiddleCenter;
         xButtonStyle.normal.textColor = Color.white;
-        GUI.DrawTexture(new Rect(panelX + panelWidth - 32, panelY + 10, 24, 24), GetTexture("closeBtn"));
-        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 10, 24, 24), "X", xButtonStyle))
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 22, panelY + 4, 18, 18), GetTexture("closeBtn"));
+        if (GUI.Button(new Rect(panelX + panelWidth - 22, panelY + 4, 18, 18), "X", xButtonStyle))
         {
             isOpen = false;
         }
 
-        GUI.DrawTexture(new Rect(panelX + 20, panelY + 45, panelWidth - 40, 2), GetTexture("divider"));
+        GUI.DrawTexture(new Rect(panelX + 12, panelY + 28, panelWidth - 24, 1), GetTexture("divider"));
 
-        // Character model area
-        float modelX = panelX + 20;
-        float modelY = panelY + 55;
-        GUI.DrawTexture(new Rect(modelX, modelY, 140, 200), GetTexture("modelBg"));
-        DrawSimpleCharacter(modelX, modelY, 140, 200);
+        // Character model area - smaller
+        float modelX = panelX + 12;
+        float modelY = panelY + 34;
+        GUI.DrawTexture(new Rect(modelX, modelY, 91, 130), GetTexture("modelBg"));
+        DrawSimpleCharacter(modelX, modelY, 91, 130);
 
-        // Name
+        // Name - smaller
         GUIStyle nameStyle = new GUIStyle(GUI.skin.label);
-        nameStyle.fontSize = 14;
+        nameStyle.fontSize = 9; // Smaller
         nameStyle.fontStyle = FontStyle.Bold;
         nameStyle.alignment = TextAnchor.MiddleCenter;
         nameStyle.normal.textColor = Color.white;
-        GUI.Label(new Rect(modelX, modelY + 205, 140, 20), characterName, nameStyle);
+        GUI.Label(new Rect(modelX, modelY + 133, 91, 14), characterName, nameStyle);
 
         // ============ HEARTBEAT MONITOR ============
         float monitorX = panelX + 175;

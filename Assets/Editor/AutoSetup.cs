@@ -178,6 +178,9 @@ public class AutoSetup
         // Create the Ice Realm (at offset position)
         CreateIceRealm();
 
+        // Create the Jungle Realm (at offset position)
+        CreateJungleRealm();
+
         // Create clothing shop island with Granny
         CreateClothingShopIsland();
 
@@ -3753,6 +3756,10 @@ public class AutoSetup
         weaponSystem.transform.SetParent(iceRealm.transform);
         weaponSystem.AddComponent<WeaponSystem>();
 
+        // === ACCESSORY SYSTEM (for rings/charms) ===
+        GameObject accessorySystem = new GameObject("AccessorySystem");
+        accessorySystem.AddComponent<AccessorySystem>();
+
         // === PICKET SIGNS (helpful messages) ===
         CreatePicketSign(iceRealm.transform, new Vector3(-8f, groundY, -15f),
             "If it's brown, get down.\nIf it's black, fight back.\nIf it's white, goodnight.");
@@ -5270,6 +5277,1231 @@ public class AutoSetup
         lantern.transform.localScale = new Vector3(0.3f, 0.4f, 0.3f);
         lantern.GetComponent<Renderer>().sharedMaterial = lanternMat;
         Object.DestroyImmediate(lantern.GetComponent<Collider>());
+    }
+
+    // ==================== JUNGLE REALM ====================
+    static void CreateJungleRealm()
+    {
+        // Jungle Realm is positioned at X offset of 1000
+        Vector3 realmOrigin = RealmManager.JungleRealmOrigin;
+
+        GameObject jungleRealm = new GameObject("JungleRealm");
+        jungleRealm.transform.position = realmOrigin;
+
+        // Jungle materials
+        Material dirtMat = new Material(Shader.Find("Standard"));
+        dirtMat.color = new Color(0.35f, 0.25f, 0.15f);
+
+        Material grassMat = new Material(Shader.Find("Standard"));
+        grassMat.color = new Color(0.15f, 0.4f, 0.1f);
+
+        Material darkGrassMat = new Material(Shader.Find("Standard"));
+        darkGrassMat.color = new Color(0.1f, 0.3f, 0.08f);
+
+        Material waterMat = new Material(Shader.Find("Standard"));
+        waterMat.color = new Color(0.2f, 0.4f, 0.35f, 0.85f);
+        waterMat.SetFloat("_Mode", 3);
+        waterMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        waterMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        waterMat.EnableKeyword("_ALPHABLEND_ON");
+        waterMat.SetFloat("_Glossiness", 0.8f);
+
+        Material mudMat = new Material(Shader.Find("Standard"));
+        mudMat.color = new Color(0.3f, 0.22f, 0.12f);
+        mudMat.SetFloat("_Glossiness", 0.6f);
+
+        // === JUNGLE GROUND (lush, uneven terrain) ===
+        float groundY = 1.25f;
+        float mapRadius = 45f;
+
+        // Main ground
+        GameObject jungleGround = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        jungleGround.name = "JungleGround";
+        jungleGround.transform.SetParent(jungleRealm.transform);
+        jungleGround.transform.localPosition = new Vector3(0, groundY, 0);
+        jungleGround.transform.localScale = new Vector3(mapRadius * 2, 0.5f, mapRadius * 2);
+        jungleGround.GetComponent<Renderer>().sharedMaterial = grassMat;
+
+        // Dirt patches
+        for (int i = 0; i < 15; i++)
+        {
+            float x = Random.Range(-mapRadius * 0.8f, mapRadius * 0.8f);
+            float z = Random.Range(-mapRadius * 0.8f, mapRadius * 0.8f);
+            GameObject dirtPatch = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            dirtPatch.name = "DirtPatch";
+            dirtPatch.transform.SetParent(jungleRealm.transform);
+            dirtPatch.transform.localPosition = new Vector3(x, groundY + 0.26f, z);
+            dirtPatch.transform.localScale = new Vector3(Random.Range(3f, 8f), 0.02f, Random.Range(3f, 8f));
+            dirtPatch.transform.localRotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+            dirtPatch.GetComponent<Renderer>().sharedMaterial = dirtMat;
+            Object.DestroyImmediate(dirtPatch.GetComponent<Collider>());
+        }
+
+        // === SWAMP WATER AROUND EDGES ===
+        GameObject swampWater = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        swampWater.name = "SwampWater";
+        swampWater.transform.SetParent(jungleRealm.transform);
+        swampWater.transform.localPosition = new Vector3(0, 0.3f, 0);
+        swampWater.transform.localScale = new Vector3(200, 0.3f, 200);
+        swampWater.GetComponent<Renderer>().sharedMaterial = waterMat;
+        Object.DestroyImmediate(swampWater.GetComponent<Collider>());
+
+        // Invisible floor for edges
+        GameObject jungleFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        jungleFloor.name = "JungleFloor";
+        jungleFloor.transform.SetParent(jungleRealm.transform);
+        jungleFloor.transform.localPosition = new Vector3(0, 0.4f, 0);
+        jungleFloor.transform.localScale = new Vector3(200, 0.1f, 200);
+        jungleFloor.GetComponent<Renderer>().enabled = false;
+
+        // === CENTRAL RIVER (fishable) ===
+        CreateJungleRiver(jungleRealm.transform, groundY, waterMat, mudMat);
+
+        // === WATERFALL (at the back of the map) ===
+        GameObject waterfallObj = new GameObject("Waterfall");
+        waterfallObj.transform.SetParent(jungleRealm.transform);
+        waterfallObj.transform.localPosition = new Vector3(0, groundY, -35f);
+        waterfallObj.AddComponent<WaterfallEffect>();
+
+        // === LARGE ROCK FORMATION BEHIND WATERFALL ===
+        CreateJungleRockFormation(jungleRealm.transform, new Vector3(0, groundY, -38f));
+
+        // === TALL JUNGLE TREES with vines ===
+        // Dense tree coverage
+        CreateJungleTree(jungleRealm.transform, new Vector3(-25f, groundY, -15f), 18f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(28f, groundY, -20f), 20f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(-30f, groundY, 10f), 22f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(22f, groundY, 18f), 19f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(-18f, groundY, 25f), 17f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(15f, groundY, -28f), 21f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(-35f, groundY, -25f), 23f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(35f, groundY, 8f), 18f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(-8f, groundY, -32f), 20f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(8f, groundY, 30f), 19f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(-38f, groundY, 0f), 21f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(38f, groundY, -8f), 20f);
+        // Extra trees near waterfall
+        CreateJungleTree(jungleRealm.transform, new Vector3(-15f, groundY, -38f), 16f);
+        CreateJungleTree(jungleRealm.transform, new Vector3(15f, groundY, -38f), 17f);
+
+        // === PALM TREES (shorter, near water) ===
+        CreatePalmTree(jungleRealm.transform, new Vector3(-12f, groundY, 5f), 10f);
+        CreatePalmTree(jungleRealm.transform, new Vector3(10f, groundY, -5f), 11f);
+        CreatePalmTree(jungleRealm.transform, new Vector3(-5f, groundY, 15f), 9f);
+        CreatePalmTree(jungleRealm.transform, new Vector3(18f, groundY, 10f), 10f);
+
+        // === UNDERGROWTH (bushes, ferns) ===
+        for (int i = 0; i < 30; i++)
+        {
+            float x = Random.Range(-mapRadius * 0.85f, mapRadius * 0.85f);
+            float z = Random.Range(-mapRadius * 0.85f, mapRadius * 0.85f);
+            // Avoid center and hut areas
+            if (Mathf.Abs(x) < 10f && Mathf.Abs(z) < 10f) continue;
+            CreateJungleBush(jungleRealm.transform, new Vector3(x, groundY, z), darkGrassMat);
+        }
+
+        // === JUNGLE HUTS ===
+        CreateJungleHut(jungleRealm.transform, new Vector3(-20f, groundY, 0f), false); // Regular hut
+        CreateJungleHut(jungleRealm.transform, new Vector3(20f, groundY, 5f), true);   // Shop hut
+
+        // === JUNGLE NPC (Quest Giver - Rena the Cumbia Queen) ===
+        CreateJungleNPC(jungleRealm.transform, new Vector3(0f, groundY, 5f));
+
+        // === SNAKES (4 enemies patrolling) ===
+        CreateSnake(jungleRealm.transform, new Vector3(-15f, groundY, -10f));
+        CreateSnake(jungleRealm.transform, new Vector3(18f, groundY, -15f));
+        CreateSnake(jungleRealm.transform, new Vector3(-25f, groundY, 15f));
+        CreateSnake(jungleRealm.transform, new Vector3(10f, groundY, 20f));
+
+        // === RETURN PORTAL (edge of map) ===
+        CreateReturnPortal(jungleRealm.transform, new Vector3(0, groundY - 0.75f, 35f), "TropicalPortal_Jungle", RealmType.TropicalIsland);
+
+        // === JUNGLE SOUNDS ===
+        GameObject soundsObj = new GameObject("JungleSounds");
+        soundsObj.transform.SetParent(jungleRealm.transform);
+        soundsObj.AddComponent<JungleSounds>();
+
+        // === JUNGLE TIP SYSTEM ===
+        GameObject jungleTip = new GameObject("JungleTip");
+        jungleTip.transform.SetParent(jungleRealm.transform);
+        jungleTip.AddComponent<JungleTip>();
+
+        // === FIREFLIES (ambient particles) ===
+        GameObject fireflies = new GameObject("Fireflies");
+        fireflies.transform.SetParent(jungleRealm.transform);
+        fireflies.AddComponent<FireflyParticles>();
+
+        // === CUMBIA BAND (7 musicians walking together with music) ===
+        GameObject cumbiaBand = new GameObject("CumbiaBand");
+        cumbiaBand.transform.SetParent(jungleRealm.transform);
+        cumbiaBand.transform.localPosition = new Vector3(920f - realmOrigin.x, groundY, 0f); // Start at first patrol point
+        cumbiaBand.AddComponent<CumbiaBand>();
+
+        // === ORANGUTAN VENDOR (sells Snake Charm) ===
+        CreateOrangutanVendor(jungleRealm.transform, new Vector3(8f, groundY, 15f));
+
+        // === DOCK ON OPPOSITE SIDE (facing +Z direction, with BBQ and radio) ===
+        CreateJungleDock(jungleRealm.transform, groundY);
+
+        Debug.Log("Jungle Realm created with trees, vines, waterfall, huts, snakes, NPCs, orangutan vendor, dock, BBQ, radio, and Cumbia Band!");
+    }
+
+    static void CreateJungleRiver(Transform parent, float groundY, Material waterMat, Material mudMat)
+    {
+        GameObject river = new GameObject("JungleRiver");
+        river.transform.SetParent(parent);
+        river.transform.localPosition = Vector3.zero;
+
+        // Winding river from waterfall area toward the front
+        // River segments
+        float[] xPositions = { 0, 2, 5, 3, 0, -3, -5, -2, 0, 3 };
+        float riverLength = 50f;
+        int segments = xPositions.Length;
+
+        for (int i = 0; i < segments - 1; i++)
+        {
+            float z1 = -25f + (i * riverLength / segments);
+            float z2 = -25f + ((i + 1) * riverLength / segments);
+            float x1 = xPositions[i];
+            float x2 = xPositions[i + 1];
+
+            // Water segment
+            GameObject waterSeg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            waterSeg.name = "RiverWater_" + i;
+            waterSeg.transform.SetParent(river.transform);
+            waterSeg.transform.localPosition = new Vector3((x1 + x2) / 2, groundY + 0.1f, (z1 + z2) / 2);
+            float segLength = Vector2.Distance(new Vector2(x1, z1), new Vector2(x2, z2));
+            waterSeg.transform.localScale = new Vector3(6f + Random.Range(-1f, 1f), 0.15f, segLength + 1f);
+            float angle = Mathf.Atan2(x2 - x1, z2 - z1) * Mathf.Rad2Deg;
+            waterSeg.transform.localRotation = Quaternion.Euler(0, angle, 0);
+            waterSeg.GetComponent<Renderer>().sharedMaterial = waterMat;
+            // Mark as fishable
+            waterSeg.name = "JungleRiver_Water";
+            Object.DestroyImmediate(waterSeg.GetComponent<Collider>());
+
+            // Mud banks on sides
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject mudBank = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                mudBank.name = "MudBank";
+                mudBank.transform.SetParent(river.transform);
+                mudBank.transform.localPosition = new Vector3(
+                    (x1 + x2) / 2 + side * 4f,
+                    groundY + 0.27f,
+                    (z1 + z2) / 2
+                );
+                mudBank.transform.localScale = new Vector3(2f, 0.05f, segLength + 1f);
+                mudBank.transform.localRotation = Quaternion.Euler(0, angle, 0);
+                mudBank.GetComponent<Renderer>().sharedMaterial = mudMat;
+                Object.DestroyImmediate(mudBank.GetComponent<Collider>());
+            }
+        }
+
+        // Lily pads on the river
+        for (int i = 0; i < 12; i++)
+        {
+            int segIndex = Random.Range(0, segments - 1);
+            float z = -25f + (segIndex * riverLength / segments) + Random.Range(0f, riverLength / segments);
+            float x = xPositions[segIndex] + Random.Range(-2f, 2f);
+
+            CreateLilyPad(river.transform, new Vector3(x, groundY + 0.2f, z));
+        }
+    }
+
+    static void CreateLilyPad(Transform parent, Vector3 pos)
+    {
+        Material lilyMat = new Material(Shader.Find("Standard"));
+        lilyMat.color = new Color(0.2f, 0.5f, 0.15f);
+
+        GameObject lily = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lily.name = "LilyPad";
+        lily.transform.SetParent(parent);
+        lily.transform.localPosition = pos;
+        float size = Random.Range(0.3f, 0.6f);
+        lily.transform.localScale = new Vector3(size, 0.02f, size);
+        lily.transform.localRotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+        lily.GetComponent<Renderer>().sharedMaterial = lilyMat;
+        Object.DestroyImmediate(lily.GetComponent<Collider>());
+
+        // Flower on some lily pads
+        if (Random.value > 0.6f)
+        {
+            Material flowerMat = new Material(Shader.Find("Standard"));
+            flowerMat.color = Random.value > 0.5f ? new Color(1f, 0.4f, 0.6f) : new Color(1f, 1f, 0.4f);
+
+            GameObject flower = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            flower.name = "LilyFlower";
+            flower.transform.SetParent(lily.transform);
+            flower.transform.localPosition = new Vector3(0.2f, 0.3f, 0);
+            flower.transform.localScale = new Vector3(0.15f, 0.1f, 0.15f);
+            flower.GetComponent<Renderer>().sharedMaterial = flowerMat;
+            Object.DestroyImmediate(flower.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateJungleTree(Transform parent, Vector3 localPos, float height)
+    {
+        GameObject tree = new GameObject("JungleTree");
+        tree.transform.SetParent(parent);
+        tree.transform.localPosition = localPos;
+
+        Material trunkMat = new Material(Shader.Find("Standard"));
+        trunkMat.color = new Color(0.35f, 0.25f, 0.15f);
+
+        Material leafMat = new Material(Shader.Find("Standard"));
+        leafMat.color = new Color(0.15f, 0.45f, 0.1f);
+
+        Material darkLeafMat = new Material(Shader.Find("Standard"));
+        darkLeafMat.color = new Color(0.1f, 0.35f, 0.08f);
+
+        Material vineMat = new Material(Shader.Find("Standard"));
+        vineMat.color = new Color(0.2f, 0.4f, 0.15f);
+
+        // Main trunk (thick, slightly curved)
+        GameObject trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(tree.transform);
+        trunk.transform.localPosition = new Vector3(0, height * 0.4f, 0);
+        trunk.transform.localScale = new Vector3(0.8f, height * 0.4f, 0.8f);
+        trunk.transform.localRotation = Quaternion.Euler(Random.Range(-3f, 3f), 0, Random.Range(-3f, 3f));
+        trunk.GetComponent<Renderer>().sharedMaterial = trunkMat;
+
+        // Trunk roots at base (buttress roots)
+        for (int i = 0; i < 4; i++)
+        {
+            float angle = i * 90f + Random.Range(-15f, 15f);
+            GameObject root = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            root.name = "Root";
+            root.transform.SetParent(tree.transform);
+            root.transform.localPosition = new Vector3(
+                Mathf.Cos(angle * Mathf.Deg2Rad) * 0.8f,
+                0.5f,
+                Mathf.Sin(angle * Mathf.Deg2Rad) * 0.8f
+            );
+            root.transform.localScale = new Vector3(0.3f, 1.5f, 1.2f);
+            root.transform.localRotation = Quaternion.Euler(30f, angle, 0);
+            root.GetComponent<Renderer>().sharedMaterial = trunkMat;
+            Object.DestroyImmediate(root.GetComponent<Collider>());
+        }
+
+        // Main canopy (large, spreading)
+        GameObject canopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        canopy.name = "Canopy";
+        canopy.transform.SetParent(tree.transform);
+        canopy.transform.localPosition = new Vector3(0, height * 0.85f, 0);
+        canopy.transform.localScale = new Vector3(height * 0.6f, height * 0.35f, height * 0.6f);
+        canopy.GetComponent<Renderer>().sharedMaterial = leafMat;
+        Object.DestroyImmediate(canopy.GetComponent<Collider>());
+
+        // Secondary canopy layers
+        for (int i = 0; i < 3; i++)
+        {
+            float offsetAngle = i * 120f * Mathf.Deg2Rad;
+            GameObject subCanopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            subCanopy.name = "SubCanopy";
+            subCanopy.transform.SetParent(tree.transform);
+            subCanopy.transform.localPosition = new Vector3(
+                Mathf.Cos(offsetAngle) * height * 0.25f,
+                height * 0.75f + Random.Range(-1f, 1f),
+                Mathf.Sin(offsetAngle) * height * 0.25f
+            );
+            float subSize = height * 0.3f + Random.Range(-1f, 1f);
+            subCanopy.transform.localScale = new Vector3(subSize, subSize * 0.6f, subSize);
+            subCanopy.GetComponent<Renderer>().sharedMaterial = i % 2 == 0 ? darkLeafMat : leafMat;
+            Object.DestroyImmediate(subCanopy.GetComponent<Collider>());
+        }
+
+        // HANGING VINES
+        int vineCount = Random.Range(3, 7);
+        for (int i = 0; i < vineCount; i++)
+        {
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float dist = Random.Range(height * 0.15f, height * 0.3f);
+            float vineLength = Random.Range(height * 0.3f, height * 0.6f);
+
+            // Each vine is made of multiple segments
+            int vineSegments = Random.Range(4, 8);
+            float segmentLength = vineLength / vineSegments;
+
+            GameObject vineParent = new GameObject("Vine_" + i);
+            vineParent.transform.SetParent(tree.transform);
+            vineParent.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * dist,
+                height * 0.7f,
+                Mathf.Sin(angle) * dist
+            );
+
+            Vector3 currentPos = Vector3.zero;
+            float swayOffset = Random.Range(0f, 100f);
+
+            for (int j = 0; j < vineSegments; j++)
+            {
+                GameObject vineSeg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                vineSeg.name = "VineSegment";
+                vineSeg.transform.SetParent(vineParent.transform);
+
+                // Add some curve/sway to the vine
+                float sway = Mathf.Sin((j + swayOffset) * 0.5f) * 0.3f;
+                currentPos.x += sway * 0.2f;
+                currentPos.y -= segmentLength;
+                currentPos.z += Random.Range(-0.1f, 0.1f);
+
+                vineSeg.transform.localPosition = currentPos;
+                vineSeg.transform.localScale = new Vector3(0.05f, segmentLength * 0.5f, 0.05f);
+                // Slight rotation for natural look
+                vineSeg.transform.localRotation = Quaternion.Euler(
+                    Random.Range(-15f, 15f),
+                    0,
+                    sway * 30f
+                );
+                vineSeg.GetComponent<Renderer>().sharedMaterial = vineMat;
+                Object.DestroyImmediate(vineSeg.GetComponent<Collider>());
+            }
+        }
+
+        // Orchids/flowers on tree
+        if (Random.value > 0.5f)
+        {
+            Material orchidMat = new Material(Shader.Find("Standard"));
+            orchidMat.color = Random.value > 0.5f
+                ? new Color(0.9f, 0.3f, 0.7f)
+                : new Color(1f, 0.6f, 0.2f);
+
+            GameObject orchid = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            orchid.name = "Orchid";
+            orchid.transform.SetParent(tree.transform);
+            orchid.transform.localPosition = new Vector3(
+                Random.Range(-0.5f, 0.5f),
+                height * Random.Range(0.3f, 0.5f),
+                Random.Range(-0.5f, 0.5f)
+            );
+            orchid.transform.localScale = new Vector3(0.2f, 0.15f, 0.2f);
+            orchid.GetComponent<Renderer>().sharedMaterial = orchidMat;
+            Object.DestroyImmediate(orchid.GetComponent<Collider>());
+        }
+    }
+
+    static void CreatePalmTree(Transform parent, Vector3 localPos, float height)
+    {
+        GameObject palm = new GameObject("PalmTree");
+        palm.transform.SetParent(parent);
+        palm.transform.localPosition = localPos;
+
+        Material trunkMat = new Material(Shader.Find("Standard"));
+        trunkMat.color = new Color(0.45f, 0.35f, 0.2f);
+
+        Material frondMat = new Material(Shader.Find("Standard"));
+        frondMat.color = new Color(0.2f, 0.5f, 0.15f);
+
+        // Curved trunk
+        GameObject trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(palm.transform);
+        trunk.transform.localPosition = new Vector3(0, height * 0.4f, 0);
+        trunk.transform.localScale = new Vector3(0.3f, height * 0.4f, 0.3f);
+        trunk.transform.localRotation = Quaternion.Euler(Random.Range(-8f, 8f), 0, Random.Range(-8f, 8f));
+        trunk.GetComponent<Renderer>().sharedMaterial = trunkMat;
+
+        // Trunk rings (texture detail)
+        for (int i = 0; i < 6; i++)
+        {
+            GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.name = "TrunkRing";
+            ring.transform.SetParent(palm.transform);
+            ring.transform.localPosition = new Vector3(0, i * height * 0.12f + 0.5f, 0);
+            ring.transform.localScale = new Vector3(0.35f, 0.05f, 0.35f);
+            ring.GetComponent<Renderer>().sharedMaterial = trunkMat;
+            Object.DestroyImmediate(ring.GetComponent<Collider>());
+        }
+
+        // Palm fronds (leaves)
+        int frondCount = 8;
+        for (int i = 0; i < frondCount; i++)
+        {
+            float angle = i * (360f / frondCount) * Mathf.Deg2Rad;
+
+            GameObject frond = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            frond.name = "Frond";
+            frond.transform.SetParent(palm.transform);
+            frond.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 1.5f,
+                height * 0.75f,
+                Mathf.Sin(angle) * 1.5f
+            );
+            frond.transform.localScale = new Vector3(0.3f, 0.05f, 3f);
+            frond.transform.localRotation = Quaternion.Euler(
+                -30f - Random.Range(0f, 20f),
+                -angle * Mathf.Rad2Deg,
+                0
+            );
+            frond.GetComponent<Renderer>().sharedMaterial = frondMat;
+            Object.DestroyImmediate(frond.GetComponent<Collider>());
+        }
+
+        // Coconuts
+        if (Random.value > 0.4f)
+        {
+            Material coconutMat = new Material(Shader.Find("Standard"));
+            coconutMat.color = new Color(0.4f, 0.3f, 0.2f);
+
+            int coconutCount = Random.Range(2, 5);
+            for (int i = 0; i < coconutCount; i++)
+            {
+                GameObject coconut = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                coconut.name = "Coconut";
+                coconut.transform.SetParent(palm.transform);
+                coconut.transform.localPosition = new Vector3(
+                    Random.Range(-0.3f, 0.3f),
+                    height * 0.72f,
+                    Random.Range(-0.3f, 0.3f)
+                );
+                coconut.transform.localScale = Vector3.one * 0.2f;
+                coconut.GetComponent<Renderer>().sharedMaterial = coconutMat;
+                Object.DestroyImmediate(coconut.GetComponent<Collider>());
+            }
+        }
+    }
+
+    static void CreateJungleBush(Transform parent, Vector3 localPos, Material leafMat)
+    {
+        GameObject bush = new GameObject("Bush");
+        bush.transform.SetParent(parent);
+        bush.transform.localPosition = localPos;
+
+        // Main bush body
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        body.name = "BushBody";
+        body.transform.SetParent(bush.transform);
+        float size = Random.Range(0.8f, 1.5f);
+        body.transform.localPosition = new Vector3(0, size * 0.3f, 0);
+        body.transform.localScale = new Vector3(size, size * 0.7f, size);
+        body.GetComponent<Renderer>().sharedMaterial = leafMat;
+        Object.DestroyImmediate(body.GetComponent<Collider>());
+
+        // Additional lumps
+        int lumps = Random.Range(1, 4);
+        for (int i = 0; i < lumps; i++)
+        {
+            GameObject lump = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            lump.name = "BushLump";
+            lump.transform.SetParent(bush.transform);
+            float lumpSize = size * Random.Range(0.4f, 0.7f);
+            lump.transform.localPosition = new Vector3(
+                Random.Range(-size * 0.4f, size * 0.4f),
+                lumpSize * 0.3f,
+                Random.Range(-size * 0.4f, size * 0.4f)
+            );
+            lump.transform.localScale = new Vector3(lumpSize, lumpSize * 0.6f, lumpSize);
+            lump.GetComponent<Renderer>().sharedMaterial = leafMat;
+            Object.DestroyImmediate(lump.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateJungleHut(Transform parent, Vector3 localPos, bool isShop)
+    {
+        GameObject hut = new GameObject(isShop ? "JungleShopHut" : "JungleHut");
+        hut.transform.SetParent(parent);
+        hut.transform.localPosition = localPos;
+
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.4f, 0.3f, 0.2f);
+
+        Material thatchMat = new Material(Shader.Find("Standard"));
+        thatchMat.color = new Color(0.6f, 0.55f, 0.3f);
+
+        Material darkWoodMat = new Material(Shader.Find("Standard"));
+        darkWoodMat.color = new Color(0.3f, 0.22f, 0.15f);
+
+        float hutSize = isShop ? 4f : 3f;
+
+        // Stilts (raised hut)
+        float stiltHeight = 1.5f;
+        for (int x = -1; x <= 1; x += 2)
+        {
+            for (int z = -1; z <= 1; z += 2)
+            {
+                GameObject stilt = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                stilt.name = "Stilt";
+                stilt.transform.SetParent(hut.transform);
+                stilt.transform.localPosition = new Vector3(x * hutSize * 0.4f, stiltHeight * 0.5f, z * hutSize * 0.4f);
+                stilt.transform.localScale = new Vector3(0.15f, stiltHeight * 0.5f, 0.15f);
+                stilt.GetComponent<Renderer>().sharedMaterial = woodMat;
+            }
+        }
+
+        // Floor platform
+        GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        floor.name = "Floor";
+        floor.transform.SetParent(hut.transform);
+        floor.transform.localPosition = new Vector3(0, stiltHeight, 0);
+        floor.transform.localScale = new Vector3(hutSize, 0.15f, hutSize);
+        floor.GetComponent<Renderer>().sharedMaterial = woodMat;
+
+        // Walls (bamboo-style slats)
+        float wallHeight = 2f;
+        // Back wall
+        GameObject backWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        backWall.name = "BackWall";
+        backWall.transform.SetParent(hut.transform);
+        backWall.transform.localPosition = new Vector3(0, stiltHeight + wallHeight * 0.5f, -hutSize * 0.45f);
+        backWall.transform.localScale = new Vector3(hutSize * 0.9f, wallHeight, 0.1f);
+        backWall.GetComponent<Renderer>().sharedMaterial = darkWoodMat;
+
+        // Side walls
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject sideWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sideWall.name = "SideWall";
+            sideWall.transform.SetParent(hut.transform);
+            sideWall.transform.localPosition = new Vector3(side * hutSize * 0.45f, stiltHeight + wallHeight * 0.5f, 0);
+            sideWall.transform.localScale = new Vector3(0.1f, wallHeight, hutSize * 0.9f);
+            sideWall.GetComponent<Renderer>().sharedMaterial = darkWoodMat;
+        }
+
+        // Thatched roof (conical)
+        GameObject roof = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        roof.name = "Roof";
+        roof.transform.SetParent(hut.transform);
+        roof.transform.localPosition = new Vector3(0, stiltHeight + wallHeight + 0.8f, 0);
+        roof.transform.localScale = new Vector3(hutSize * 0.8f, 1f, hutSize * 0.8f);
+        roof.GetComponent<Renderer>().sharedMaterial = thatchMat;
+
+        // Roof overhang
+        GameObject roofOverhang = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        roofOverhang.name = "RoofOverhang";
+        roofOverhang.transform.SetParent(hut.transform);
+        roofOverhang.transform.localPosition = new Vector3(0, stiltHeight + wallHeight + 0.3f, 0);
+        roofOverhang.transform.localScale = new Vector3(hutSize * 1.1f, 0.1f, hutSize * 1.1f);
+        roofOverhang.GetComponent<Renderer>().sharedMaterial = thatchMat;
+        Object.DestroyImmediate(roofOverhang.GetComponent<Collider>());
+
+        // Ladder to enter
+        GameObject ladder = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        ladder.name = "Ladder";
+        ladder.transform.SetParent(hut.transform);
+        ladder.transform.localPosition = new Vector3(0, stiltHeight * 0.5f, hutSize * 0.5f + 0.3f);
+        ladder.transform.localScale = new Vector3(0.8f, 0.1f, 1f);
+        ladder.transform.localRotation = Quaternion.Euler(45f, 0, 0);
+        ladder.GetComponent<Renderer>().sharedMaterial = woodMat;
+
+        if (isShop)
+        {
+            // Add shop sign
+            Material signMat = new Material(Shader.Find("Standard"));
+            signMat.color = new Color(0.5f, 0.4f, 0.25f);
+
+            GameObject sign = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sign.name = "ShopSign";
+            sign.transform.SetParent(hut.transform);
+            sign.transform.localPosition = new Vector3(hutSize * 0.6f, stiltHeight + wallHeight * 0.8f, hutSize * 0.4f);
+            sign.transform.localScale = new Vector3(0.1f, 0.8f, 1.5f);
+            sign.GetComponent<Renderer>().sharedMaterial = signMat;
+            Object.DestroyImmediate(sign.GetComponent<Collider>());
+
+            // Hanging items (for shop ambiance)
+            Material itemMat = new Material(Shader.Find("Standard"));
+            itemMat.color = new Color(0.8f, 0.6f, 0.3f);
+
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject item = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                item.name = "HangingItem";
+                item.transform.SetParent(hut.transform);
+                item.transform.localPosition = new Vector3(
+                    hutSize * 0.3f * (i - 1),
+                    stiltHeight + wallHeight - 0.3f,
+                    hutSize * 0.5f
+                );
+                item.transform.localScale = Vector3.one * 0.2f;
+                item.GetComponent<Renderer>().sharedMaterial = itemMat;
+                Object.DestroyImmediate(item.GetComponent<Collider>());
+            }
+
+            // Add shopkeeper NPC
+            CreateJungleShopkeeper(hut.transform, new Vector3(0, stiltHeight + 0.9f, 0));
+        }
+        else
+        {
+            // Fire pit near regular hut
+            CreateFirePit(hut.transform, new Vector3(hutSize, -stiltHeight + 0.5f, 0));
+        }
+    }
+
+    static void CreateFirePit(Transform parent, Vector3 localPos)
+    {
+        GameObject firePit = new GameObject("FirePit");
+        firePit.transform.SetParent(parent);
+        firePit.transform.localPosition = localPos;
+
+        Material stoneMat = new Material(Shader.Find("Standard"));
+        stoneMat.color = new Color(0.3f, 0.3f, 0.3f);
+
+        Material fireMat = new Material(Shader.Find("Standard"));
+        fireMat.color = new Color(1f, 0.5f, 0.1f);
+        fireMat.EnableKeyword("_EMISSION");
+        fireMat.SetColor("_EmissionColor", new Color(1f, 0.4f, 0.1f) * 2f);
+
+        // Stone ring
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * 45f * Mathf.Deg2Rad;
+            GameObject stone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stone.name = "Stone";
+            stone.transform.SetParent(firePit.transform);
+            stone.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.5f, 0.1f, Mathf.Sin(angle) * 0.5f);
+            stone.transform.localScale = new Vector3(0.25f, 0.2f, 0.25f);
+            stone.transform.localRotation = Quaternion.Euler(Random.Range(-10f, 10f), angle * Mathf.Rad2Deg, 0);
+            stone.GetComponent<Renderer>().sharedMaterial = stoneMat;
+            Object.DestroyImmediate(stone.GetComponent<Collider>());
+        }
+
+        // Fire
+        GameObject fire = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        fire.name = "Fire";
+        fire.transform.SetParent(firePit.transform);
+        fire.transform.localPosition = new Vector3(0, 0.3f, 0);
+        fire.transform.localScale = new Vector3(0.4f, 0.5f, 0.4f);
+        fire.GetComponent<Renderer>().sharedMaterial = fireMat;
+        Object.DestroyImmediate(fire.GetComponent<Collider>());
+
+        // Light
+        GameObject fireLight = new GameObject("FireLight");
+        fireLight.transform.SetParent(firePit.transform);
+        fireLight.transform.localPosition = new Vector3(0, 0.5f, 0);
+        Light light = fireLight.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(1f, 0.6f, 0.2f);
+        light.intensity = 1.5f;
+        light.range = 8f;
+    }
+
+    static void CreateJungleShopkeeper(Transform parent, Vector3 localPos)
+    {
+        GameObject npc = new GameObject("JungleShopkeeper");
+        npc.transform.SetParent(parent);
+        npc.transform.localPosition = localPos;
+
+        // Skin tone
+        Material skinMat = new Material(Shader.Find("Standard"));
+        skinMat.color = new Color(0.55f, 0.4f, 0.3f);
+
+        // Tribal clothing
+        Material clothMat = new Material(Shader.Find("Standard"));
+        clothMat.color = new Color(0.7f, 0.5f, 0.2f);
+
+        // Body
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(npc.transform);
+        body.transform.localPosition = Vector3.zero;
+        body.transform.localScale = new Vector3(0.5f, 0.6f, 0.3f);
+        body.GetComponent<Renderer>().sharedMaterial = clothMat;
+        Object.DestroyImmediate(body.GetComponent<Collider>());
+
+        // Head
+        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.name = "Head";
+        head.transform.SetParent(npc.transform);
+        head.transform.localPosition = new Vector3(0, 0.7f, 0);
+        head.transform.localScale = new Vector3(0.35f, 0.4f, 0.35f);
+        head.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(head.GetComponent<Collider>());
+
+        // Headband
+        Material bandMat = new Material(Shader.Find("Standard"));
+        bandMat.color = new Color(0.8f, 0.2f, 0.2f);
+
+        GameObject headband = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        headband.name = "Headband";
+        headband.transform.SetParent(npc.transform);
+        headband.transform.localPosition = new Vector3(0, 0.8f, 0);
+        headband.transform.localScale = new Vector3(0.38f, 0.05f, 0.38f);
+        headband.GetComponent<Renderer>().sharedMaterial = bandMat;
+        Object.DestroyImmediate(headband.GetComponent<Collider>());
+
+        // Feather in headband
+        Material featherMat = new Material(Shader.Find("Standard"));
+        featherMat.color = new Color(0.2f, 0.7f, 0.3f);
+
+        GameObject feather = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        feather.name = "Feather";
+        feather.transform.SetParent(npc.transform);
+        feather.transform.localPosition = new Vector3(0.15f, 1f, 0);
+        feather.transform.localScale = new Vector3(0.05f, 0.3f, 0.15f);
+        feather.transform.localRotation = Quaternion.Euler(0, 0, -15f);
+        feather.GetComponent<Renderer>().sharedMaterial = featherMat;
+        Object.DestroyImmediate(feather.GetComponent<Collider>());
+
+        // Add jungle shop functionality
+        npc.AddComponent<JungleShopNPC>();
+    }
+
+    static void CreateJungleNPC(Transform parent, Vector3 localPos)
+    {
+        GameObject npc = new GameObject("RenaCumbiaQueen");
+        npc.transform.SetParent(parent);
+        npc.transform.localPosition = localPos;
+
+        // Tanned skin
+        Material skinMat = new Material(Shader.Find("Standard"));
+        skinMat.color = new Color(0.65f, 0.5f, 0.4f);
+
+        // Explorer outfit
+        Material shirtMat = new Material(Shader.Find("Standard"));
+        shirtMat.color = new Color(0.6f, 0.55f, 0.4f); // Khaki
+
+        Material pantsMat = new Material(Shader.Find("Standard"));
+        pantsMat.color = new Color(0.35f, 0.3f, 0.25f);
+
+        // Body (khaki shirt)
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(npc.transform);
+        body.transform.localPosition = new Vector3(0, 0.9f, 0);
+        body.transform.localScale = new Vector3(0.5f, 0.5f, 0.3f);
+        body.GetComponent<Renderer>().sharedMaterial = shirtMat;
+
+        // Legs
+        for (int side = -1; side <= 1; side += 2)
+        {
+            GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            leg.name = side < 0 ? "LeftLeg" : "RightLeg";
+            leg.transform.SetParent(npc.transform);
+            leg.transform.localPosition = new Vector3(side * 0.12f, 0.35f, 0);
+            leg.transform.localScale = new Vector3(0.15f, 0.35f, 0.15f);
+            leg.GetComponent<Renderer>().sharedMaterial = pantsMat;
+            Object.DestroyImmediate(leg.GetComponent<Collider>());
+        }
+
+        // Head
+        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.name = "Head";
+        head.transform.SetParent(npc.transform);
+        head.transform.localPosition = new Vector3(0, 1.5f, 0);
+        head.transform.localScale = new Vector3(0.35f, 0.4f, 0.35f);
+        head.GetComponent<Renderer>().sharedMaterial = skinMat;
+        Object.DestroyImmediate(head.GetComponent<Collider>());
+
+        // Explorer hat (pith helmet style)
+        Material hatMat = new Material(Shader.Find("Standard"));
+        hatMat.color = new Color(0.9f, 0.85f, 0.7f);
+
+        GameObject hat = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hat.name = "Hat";
+        hat.transform.SetParent(npc.transform);
+        hat.transform.localPosition = new Vector3(0, 1.75f, 0);
+        hat.transform.localScale = new Vector3(0.45f, 0.25f, 0.45f);
+        hat.GetComponent<Renderer>().sharedMaterial = hatMat;
+        Object.DestroyImmediate(hat.GetComponent<Collider>());
+
+        // Hat brim
+        GameObject brim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        brim.name = "HatBrim";
+        brim.transform.SetParent(npc.transform);
+        brim.transform.localPosition = new Vector3(0, 1.65f, 0);
+        brim.transform.localScale = new Vector3(0.55f, 0.02f, 0.55f);
+        brim.GetComponent<Renderer>().sharedMaterial = hatMat;
+        Object.DestroyImmediate(brim.GetComponent<Collider>());
+
+        // Machete on back
+        Material macheteMat = new Material(Shader.Find("Standard"));
+        macheteMat.color = new Color(0.6f, 0.6f, 0.6f);
+        macheteMat.SetFloat("_Metallic", 0.8f);
+
+        GameObject machete = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        machete.name = "Machete";
+        machete.transform.SetParent(npc.transform);
+        machete.transform.localPosition = new Vector3(0.25f, 1f, -0.15f);
+        machete.transform.localScale = new Vector3(0.05f, 0.6f, 0.15f);
+        machete.transform.localRotation = Quaternion.Euler(0, 0, -30f);
+        machete.GetComponent<Renderer>().sharedMaterial = macheteMat;
+        Object.DestroyImmediate(machete.GetComponent<Collider>());
+
+        // Quest marker (yellow exclamation)
+        CreateQuestMarker(npc.transform, new Vector3(0, 2.3f, 0));
+
+        // Add quest NPC functionality
+        npc.AddComponent<RenaCumbiaQueen>();
+    }
+
+    static void CreateOrangutanVendor(Transform parent, Vector3 localPos)
+    {
+        GameObject orangutan = new GameObject("OrangutanVendor");
+        orangutan.transform.SetParent(parent);
+        orangutan.transform.localPosition = localPos;
+
+        // Add the orangutan vendor component (it creates its own model)
+        orangutan.AddComponent<OrangutanVendor>();
+
+        Debug.Log("Orangutan Vendor created in jungle!");
+    }
+
+    static void CreateQuestMarker(Transform parent, Vector3 localPos)
+    {
+        Material markerMat = new Material(Shader.Find("Standard"));
+        markerMat.color = Color.yellow;
+        markerMat.EnableKeyword("_EMISSION");
+        markerMat.SetColor("_EmissionColor", Color.yellow * 0.5f);
+
+        GameObject marker = new GameObject("QuestMarker");
+        marker.transform.SetParent(parent);
+        marker.transform.localPosition = localPos;
+
+        // Exclamation dot
+        GameObject dot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        dot.name = "Dot";
+        dot.transform.SetParent(marker.transform);
+        dot.transform.localPosition = Vector3.zero;
+        dot.transform.localScale = Vector3.one * 0.15f;
+        dot.GetComponent<Renderer>().sharedMaterial = markerMat;
+        Object.DestroyImmediate(dot.GetComponent<Collider>());
+
+        // Exclamation bar
+        GameObject bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        bar.name = "Bar";
+        bar.transform.SetParent(marker.transform);
+        bar.transform.localPosition = new Vector3(0, 0.3f, 0);
+        bar.transform.localScale = new Vector3(0.12f, 0.35f, 0.12f);
+        bar.GetComponent<Renderer>().sharedMaterial = markerMat;
+        Object.DestroyImmediate(bar.GetComponent<Collider>());
+
+        // Add bobbing animation
+        marker.AddComponent<QuestMarkerBob>();
+    }
+
+    static void CreateSnake(Transform parent, Vector3 localPos)
+    {
+        GameObject snake = new GameObject("Snake");
+        snake.transform.SetParent(parent);
+        snake.transform.localPosition = localPos;
+        snake.AddComponent<SnakeAI>();
+    }
+
+    static void CreateJungleRockFormation(Transform parent, Vector3 localPos)
+    {
+        // Large rock formation behind the waterfall
+        GameObject rockFormation = new GameObject("JungleRockFormation");
+        rockFormation.transform.SetParent(parent);
+        rockFormation.transform.localPosition = localPos;
+
+        Material rockMat = new Material(Shader.Find("Standard"));
+        rockMat.color = new Color(0.35f, 0.32f, 0.28f);
+        rockMat.SetFloat("_Glossiness", 0.2f);
+
+        Material mossRockMat = new Material(Shader.Find("Standard"));
+        mossRockMat.color = new Color(0.25f, 0.38f, 0.22f);
+        mossRockMat.SetFloat("_Glossiness", 0.15f);
+
+        // Main large rock (tall and wide)
+        GameObject mainRock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        mainRock.name = "MainRock";
+        mainRock.transform.SetParent(rockFormation.transform);
+        mainRock.transform.localPosition = new Vector3(0, 8f, 0);
+        mainRock.transform.localScale = new Vector3(20f, 16f, 8f);
+        mainRock.transform.localRotation = Quaternion.Euler(5f, 15f, 3f);
+        mainRock.GetComponent<Renderer>().sharedMaterial = rockMat;
+
+        // Left boulder
+        GameObject leftRock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        leftRock.name = "LeftBoulder";
+        leftRock.transform.SetParent(rockFormation.transform);
+        leftRock.transform.localPosition = new Vector3(-8f, 5f, 2f);
+        leftRock.transform.localScale = new Vector3(10f, 12f, 8f);
+        leftRock.GetComponent<Renderer>().sharedMaterial = mossRockMat;
+        Object.DestroyImmediate(leftRock.GetComponent<Collider>());
+
+        // Right boulder
+        GameObject rightRock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        rightRock.name = "RightBoulder";
+        rightRock.transform.SetParent(rockFormation.transform);
+        rightRock.transform.localPosition = new Vector3(9f, 6f, 1f);
+        rightRock.transform.localScale = new Vector3(11f, 13f, 9f);
+        rightRock.GetComponent<Renderer>().sharedMaterial = rockMat;
+        Object.DestroyImmediate(rightRock.GetComponent<Collider>());
+
+        // Top boulder
+        GameObject topRock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        topRock.name = "TopBoulder";
+        topRock.transform.SetParent(rockFormation.transform);
+        topRock.transform.localPosition = new Vector3(-2f, 14f, -1f);
+        topRock.transform.localScale = new Vector3(8f, 6f, 6f);
+        topRock.transform.localRotation = Quaternion.Euler(20f, -25f, 15f);
+        topRock.GetComponent<Renderer>().sharedMaterial = mossRockMat;
+        Object.DestroyImmediate(topRock.GetComponent<Collider>());
+
+        // Add smaller rock details
+        for (int i = 0; i < 15; i++)
+        {
+            GameObject rockDetail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rockDetail.name = "RockDetail";
+            rockDetail.transform.SetParent(rockFormation.transform);
+            rockDetail.transform.localPosition = new Vector3(
+                Random.Range(-10f, 10f),
+                Random.Range(1f, 12f),
+                Random.Range(-2f, 3f)
+            );
+            rockDetail.transform.localScale = new Vector3(
+                Random.Range(1.5f, 4f),
+                Random.Range(1.5f, 4f),
+                Random.Range(1.5f, 4f)
+            );
+            rockDetail.transform.localRotation = Quaternion.Euler(
+                Random.Range(-30f, 30f),
+                Random.Range(-30f, 30f),
+                Random.Range(-30f, 30f)
+            );
+            rockDetail.GetComponent<Renderer>().sharedMaterial = Random.value > 0.5f ? rockMat : mossRockMat;
+            Object.DestroyImmediate(rockDetail.GetComponent<Collider>());
+        }
+
+        // Add moss patches on rocks
+        for (int i = 0; i < 20; i++)
+        {
+            GameObject moss = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            moss.name = "MossPatch";
+            moss.transform.SetParent(rockFormation.transform);
+            moss.transform.localPosition = new Vector3(
+                Random.Range(-9f, 9f),
+                Random.Range(1f, 14f),
+                Random.Range(-3f, 4f)
+            );
+            float size = Random.Range(0.5f, 2f);
+            moss.transform.localScale = new Vector3(size, size * 0.3f, size);
+            moss.GetComponent<Renderer>().sharedMaterial = mossRockMat;
+            Object.DestroyImmediate(moss.GetComponent<Collider>());
+        }
+    }
+
+    static void CreateJungleDock(Transform parent, float groundY)
+    {
+        // Jungle dock extending OUT TO THE WATER - rotated to go in +X direction like tropical/ice go in +Z
+        GameObject dockParent = new GameObject("JungleDock");
+        dockParent.transform.SetParent(parent);
+        dockParent.transform.localPosition = new Vector3(0, 0, 0); // Start at center
+        dockParent.transform.localRotation = Quaternion.Euler(0, 90, 0); // Rotate 90 degrees to extend in +X direction
+
+        // Wood materials
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.35f, 0.25f, 0.18f); // Darker wood for jungle
+        woodMat.SetFloat("_Glossiness", 0.1f);
+
+        Material darkWood = new Material(Shader.Find("Standard"));
+        darkWood.color = new Color(0.22f, 0.14f, 0.08f);
+        darkWood.SetFloat("_Glossiness", 0.05f);
+
+        Material lightWood = new Material(Shader.Find("Standard"));
+        lightWood.color = new Color(0.42f, 0.32f, 0.22f);
+        lightWood.SetFloat("_Glossiness", 0.15f);
+
+        // Dock dimensions - matching tropical and ice pattern (start from land, extend out to water)
+        float dockStartZ = 8f;   // Start from land edge (like tropical dock)
+        float dockEndZ = 45f;    // Extend out into swamp water (like tropical extends to z=58)
+        float dockWidth = 5f;
+        float dockHeight = groundY + 1f;
+        float legHeight = 3.5f;
+
+        // MAIN DOCK SURFACE - HAS COLLIDER for walking
+        GameObject dockSurface = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        dockSurface.name = "DockSurface";
+        dockSurface.transform.SetParent(dockParent.transform);
+        dockSurface.transform.localPosition = new Vector3(0, dockHeight, (dockStartZ + dockEndZ) / 2f);
+        dockSurface.transform.localScale = new Vector3(dockWidth, 0.3f, dockEndZ - dockStartZ);
+        dockSurface.GetComponent<Renderer>().sharedMaterial = woodMat;
+        // KEEP COLLIDER
+
+        // === INDIVIDUAL PLANKS for detail ===
+        float plankWidth = 0.4f;
+        int numPlanks = (int)((dockEndZ - dockStartZ) / plankWidth);
+        for (int i = 0; i < numPlanks; i += 3)
+        {
+            float z = dockStartZ + 1f + i * plankWidth;
+            Material plankMat = (i % 6 == 0) ? lightWood : ((i % 6 == 3) ? darkWood : woodMat);
+
+            GameObject plankLine = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plankLine.name = "PlankLine";
+            plankLine.transform.SetParent(dockParent.transform);
+            plankLine.transform.localPosition = new Vector3(0, dockHeight + 0.16f, z);
+            plankLine.transform.localScale = new Vector3(dockWidth - 0.1f, 0.02f, 0.05f);
+            plankLine.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(plankLine.GetComponent<Collider>());
+        }
+
+        // === RAILINGS on both sides ===
+        for (int side = -1; side <= 1; side += 2)
+        {
+            float railX = side * (dockWidth / 2f - 0.1f);
+
+            // Railing posts
+            for (float z = dockStartZ + 5f; z < dockEndZ - 2f; z += 5f)
+            {
+                GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                post.name = "RailingPost";
+                post.transform.SetParent(dockParent.transform);
+                post.transform.localPosition = new Vector3(railX, dockHeight + 0.5f, z);
+                post.transform.localScale = new Vector3(0.1f, 0.5f, 0.1f);
+                post.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(post.GetComponent<Collider>());
+
+                // Post cap
+                GameObject cap = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                cap.name = "PostCap";
+                cap.transform.SetParent(dockParent.transform);
+                cap.transform.localPosition = new Vector3(railX, dockHeight + 1.0f, z);
+                cap.transform.localScale = new Vector3(0.15f, 0.1f, 0.15f);
+                cap.GetComponent<Renderer>().sharedMaterial = lightWood;
+                Object.DestroyImmediate(cap.GetComponent<Collider>());
+            }
+
+            // Top rail
+            GameObject topRail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            topRail.name = "TopRail";
+            topRail.transform.SetParent(dockParent.transform);
+            topRail.transform.localPosition = new Vector3(railX, dockHeight + 0.9f, (dockStartZ + dockEndZ) / 2f);
+            topRail.transform.localScale = new Vector3(0.08f, 0.06f, dockEndZ - dockStartZ - 8f);
+            topRail.GetComponent<Renderer>().sharedMaterial = woodMat;
+            Object.DestroyImmediate(topRail.GetComponent<Collider>());
+
+            // Bottom rail
+            GameObject bottomRail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            bottomRail.name = "BottomRail";
+            bottomRail.transform.SetParent(dockParent.transform);
+            bottomRail.transform.localPosition = new Vector3(railX, dockHeight + 0.4f, (dockStartZ + dockEndZ) / 2f);
+            bottomRail.transform.localScale = new Vector3(0.06f, 0.04f, dockEndZ - dockStartZ - 8f);
+            bottomRail.GetComponent<Renderer>().sharedMaterial = darkWood;
+            Object.DestroyImmediate(bottomRail.GetComponent<Collider>());
+        }
+
+        // Support LEGS
+        float[] legPositions = { 12f, 22f, 32f, 40f }; // Adjusted for longer dock extending to water
+        foreach (float zPos in legPositions)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                // Main leg
+                GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                leg.name = "DockLeg";
+                leg.transform.SetParent(dockParent.transform);
+                leg.transform.localPosition = new Vector3(side * 2f, dockHeight - legHeight / 2f, zPos);
+                leg.transform.localScale = new Vector3(0.35f, legHeight / 2f, 0.35f);
+                leg.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(leg.GetComponent<Collider>());
+
+                // Diagonal brace
+                GameObject brace = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                brace.name = "DockBrace";
+                brace.transform.SetParent(dockParent.transform);
+                brace.transform.localPosition = new Vector3(side * 1.5f, dockHeight - 1.2f, zPos);
+                brace.transform.localRotation = Quaternion.Euler(0, 0, side * 35f);
+                brace.transform.localScale = new Vector3(0.12f, 1.2f, 0.12f);
+                brace.GetComponent<Renderer>().sharedMaterial = darkWood;
+                Object.DestroyImmediate(brace.GetComponent<Collider>());
+
+                // Vines on legs (jungle theme)
+                GameObject vine = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                vine.name = "VineOnLeg";
+                vine.transform.SetParent(dockParent.transform);
+                vine.transform.localPosition = new Vector3(side * 2.1f, dockHeight - 1f, zPos);
+                vine.transform.localScale = new Vector3(0.08f, 1.5f, 0.08f);
+                vine.transform.localRotation = Quaternion.Euler(0, 0, Random.Range(-10f, 10f));
+                Material vineMat = new Material(Shader.Find("Standard"));
+                vineMat.color = new Color(0.2f, 0.4f, 0.15f);
+                vine.GetComponent<Renderer>().sharedMaterial = vineMat;
+                Object.DestroyImmediate(vine.GetComponent<Collider>());
+            }
+        }
+
+        // Cross beams under dock
+        for (int i = 0; i < 7; i++)
+        {
+            float z = dockStartZ + 3 + i * 5f;
+            GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            beam.name = "CrossBeam";
+            beam.transform.SetParent(dockParent.transform);
+            beam.transform.localPosition = new Vector3(0, dockHeight - 0.25f, z);
+            beam.transform.localScale = new Vector3(dockWidth + 0.3f, 0.12f, 0.18f);
+            beam.GetComponent<Renderer>().sharedMaterial = (i % 2 == 0) ? darkWood : woodMat;
+            Object.DestroyImmediate(beam.GetComponent<Collider>());
+        }
+
+        // STAIRCASE from ground to dock
+        float stairStartZ = dockStartZ - 3f;
+        int numSteps = 4;
+        float stepHeight = (dockHeight - groundY) / numSteps;
+        float stepDepth = 0.6f;
+
+        for (int i = 0; i < numSteps; i++)
+        {
+            GameObject step = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            step.name = "DockStair_" + i;
+            step.transform.SetParent(dockParent.transform);
+            float stepY = groundY + stepHeight * (i + 0.5f);
+            float stepZ = stairStartZ + stepDepth * i;
+            step.transform.localPosition = new Vector3(0, stepY, stepZ);
+            step.transform.localScale = new Vector3(dockWidth, stepHeight, stepDepth);
+            step.GetComponent<Renderer>().sharedMaterial = (i % 2 == 0) ? woodMat : lightWood;
+            // KEEP COLLIDER
+        }
+
+        // === BBQ at end of dock ===
+        GameObject bbq = new GameObject("JungleBBQ");
+        bbq.transform.SetParent(dockParent.transform);
+        bbq.transform.localPosition = new Vector3(-1.5f, dockHeight + 0.1f, dockEndZ - 3f);
+        bbq.AddComponent<BBQStation>();
+
+        // === RADIO next to BBQ ===
+        GameObject radio = new GameObject("JungleRadio");
+        radio.transform.SetParent(dockParent.transform);
+        radio.transform.localPosition = new Vector3(1.5f, dockHeight + 0.1f, dockEndZ - 2f);
+        radio.transform.localRotation = Quaternion.Euler(0, -30, 0);
+        radio.AddComponent<DockRadio>();
+
+        // Rope coil
+        GameObject rope = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rope.name = "RopeCoil";
+        rope.transform.SetParent(dockParent.transform);
+        rope.transform.localPosition = new Vector3(2f, dockHeight + 0.2f, dockEndZ - 5f);
+        rope.transform.localScale = new Vector3(0.5f, 0.1f, 0.5f);
+        Material ropeMat = new Material(Shader.Find("Standard"));
+        ropeMat.color = new Color(0.55f, 0.45f, 0.30f);
+        rope.GetComponent<Renderer>().sharedMaterial = ropeMat;
+        Object.DestroyImmediate(rope.GetComponent<Collider>());
+
+        // Fishing area (swamp water)
+        Material waterMat = new Material(Shader.Find("Standard"));
+        waterMat.color = new Color(0.2f, 0.4f, 0.35f, 0.85f);
+        waterMat.SetFloat("_Mode", 3);
+        waterMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        waterMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        waterMat.EnableKeyword("_ALPHABLEND_ON");
+
+        GameObject fishingArea = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        fishingArea.name = "JungleFishingArea_Water";
+        fishingArea.transform.SetParent(dockParent.transform);
+        fishingArea.transform.localPosition = new Vector3(0, dockHeight - 0.5f, dockEndZ + 2f);
+        fishingArea.transform.localScale = new Vector3(8f, 0.3f, 8f);
+        fishingArea.GetComponent<Renderer>().sharedMaterial = waterMat;
+        Object.DestroyImmediate(fishingArea.GetComponent<Collider>());
+
+        // Add lily pads in fishing area
+        for (int i = 0; i < 5; i++)
+        {
+            float angle = i * 72f * Mathf.Deg2Rad;
+            Material lilyMat = new Material(Shader.Find("Standard"));
+            lilyMat.color = new Color(0.2f, 0.5f, 0.15f);
+
+            GameObject lily = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            lily.name = "LilyPad";
+            lily.transform.SetParent(dockParent.transform);
+            lily.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * 3f,
+                dockHeight - 0.3f,
+                dockEndZ + 2f + Mathf.Sin(angle) * 3f
+            );
+            float size = Random.Range(0.4f, 0.7f);
+            lily.transform.localScale = new Vector3(size, 0.02f, size);
+            lily.GetComponent<Renderer>().sharedMaterial = lilyMat;
+            Object.DestroyImmediate(lily.GetComponent<Collider>());
+        }
     }
 
 }

@@ -24,6 +24,11 @@ public class SnowParticles : MonoBehaviour
     // Snowflake visual
     private Material snowMat;
 
+    // Realm tracking
+    private bool isInIceRealm = false;
+    private const float ICE_REALM_X_START = 400f; // Ice realm starts around X = 400
+    private const float ICE_REALM_X_END = 900f;   // Ice realm ends around X = 900
+
     private class Snowflake
     {
         public GameObject obj;
@@ -53,13 +58,22 @@ public class SnowParticles : MonoBehaviour
         {
             SpawnSnowflake(true);
         }
+
+        // Initially hide snowflakes until we confirm player is in Ice Realm
+        DisableSnowflakes();
     }
 
     void Update()
     {
-        UpdateWind();
-        UpdateSnowflakes();
         FindPlayer();
+        CheckIceRealm();
+
+        // Only update snow effects if in Ice Realm
+        if (isInIceRealm)
+        {
+            UpdateWind();
+            UpdateSnowflakes();
+        }
     }
 
     void FindPlayer()
@@ -70,6 +84,62 @@ public class SnowParticles : MonoBehaviour
             if (player != null)
             {
                 playerTransform = player.transform;
+            }
+        }
+    }
+
+    void CheckIceRealm()
+    {
+        bool wasInIceRealm = isInIceRealm;
+
+        // Check via RealmManager first
+        RealmManager rm = RealmManager.Instance;
+        if (rm != null)
+        {
+            isInIceRealm = rm.CurrentRealm == RealmType.IceRealm;
+        }
+        else if (playerTransform != null)
+        {
+            // Fallback: check player X position
+            float playerX = playerTransform.position.x;
+            isInIceRealm = playerX > ICE_REALM_X_START && playerX < ICE_REALM_X_END;
+        }
+        else
+        {
+            isInIceRealm = false;
+        }
+
+        // Enable/disable snowflakes when entering/leaving Ice Realm
+        if (isInIceRealm && !wasInIceRealm)
+        {
+            EnableSnowflakes();
+        }
+        else if (!isInIceRealm && wasInIceRealm)
+        {
+            DisableSnowflakes();
+        }
+    }
+
+    void EnableSnowflakes()
+    {
+        // Make all snowflakes visible
+        foreach (Snowflake flake in snowflakes)
+        {
+            if (flake.obj != null)
+            {
+                flake.obj.SetActive(true);
+            }
+        }
+    }
+
+    void DisableSnowflakes()
+    {
+        // Hide all snowflakes
+        foreach (Snowflake flake in snowflakes)
+        {
+            if (flake.obj != null)
+            {
+                flake.obj.SetActive(false);
             }
         }
     }
@@ -214,10 +284,14 @@ public class SnowParticles : MonoBehaviour
 
 /// <summary>
 /// Wind sound effect for Ice Realm atmosphere
+/// Only plays when player is in Ice Realm
 /// </summary>
 public class WindAmbience : MonoBehaviour
 {
     private AudioSource audioSource;
+    private bool isPlaying = false;
+    private const float ICE_REALM_X_START = 400f; // Ice realm starts around X = 400
+    private const float ICE_REALM_X_END = 900f;   // Ice realm ends around X = 900
 
     void Start()
     {
@@ -225,11 +299,48 @@ public class WindAmbience : MonoBehaviour
         audioSource.loop = true;
         audioSource.volume = 0.15f;
         audioSource.spatialBlend = 0f; // 2D sound
+        audioSource.playOnAwake = false;
 
         // Generate wind sound
         AudioClip windClip = CreateWindClip();
         audioSource.clip = windClip;
-        audioSource.Play();
+    }
+
+    void Update()
+    {
+        // Check if player is in Ice Realm
+        bool inIceRealm = IsPlayerInIceRealm();
+
+        if (inIceRealm && !isPlaying)
+        {
+            audioSource.Play();
+            isPlaying = true;
+        }
+        else if (!inIceRealm && isPlaying)
+        {
+            audioSource.Stop();
+            isPlaying = false;
+        }
+    }
+
+    bool IsPlayerInIceRealm()
+    {
+        // Check via RealmManager first
+        RealmManager rm = RealmManager.Instance;
+        if (rm != null)
+        {
+            return rm.CurrentRealm == RealmType.IceRealm;
+        }
+
+        // Fallback: check player X position
+        GameObject player = GameObject.Find("Player");
+        if (player != null)
+        {
+            float playerX = player.transform.position.x;
+            return playerX > ICE_REALM_X_START && playerX < ICE_REALM_X_END;
+        }
+
+        return false;
     }
 
     AudioClip CreateWindClip()

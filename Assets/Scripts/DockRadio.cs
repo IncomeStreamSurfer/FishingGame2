@@ -27,9 +27,10 @@ public class DockRadio : MonoBehaviour
     private bool playerNearby = false;
     private float interactionDistance = 3.5f;
 
-    // Multiple songs (same as shop radio)
+    // Multiple songs from CUMBIASCAPE folder
     private List<AudioClip> songs = new List<AudioClip>();
-    private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" };
+    private List<string> loadedSongNames = new List<string>();
+    private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" }; // Fallback only
     private int currentSongIndex = 0;
 
     void Awake()
@@ -46,13 +47,31 @@ public class DockRadio : MonoBehaviour
 
     void SetupAudio()
     {
-        // Load all songs from Resources
-        foreach (string songName in songNames)
+        // Load ONLY songs from CUMBIASCAPE folder
+        AudioClip[] cumbiaClips = Resources.LoadAll<AudioClip>("CUMBIASCAPE");
+
+        if (cumbiaClips != null && cumbiaClips.Length > 0)
         {
-            AudioClip clip = Resources.Load<AudioClip>(songName);
-            if (clip != null)
+            foreach (AudioClip clip in cumbiaClips)
             {
                 songs.Add(clip);
+                loadedSongNames.Add(clip.name);
+                Debug.Log("DockRadio: Loaded CUMBIASCAPE song - " + clip.name);
+            }
+        }
+
+        // Fallback: if CUMBIASCAPE folder is empty, load all Resources as before
+        if (songs.Count == 0)
+        {
+            Debug.LogWarning("DockRadio: No CUMBIASCAPE songs found! Loading default songs...");
+            foreach (string songName in songNames)
+            {
+                AudioClip clip = Resources.Load<AudioClip>(songName);
+                if (clip != null)
+                {
+                    songs.Add(clip);
+                    loadedSongNames.Add(clip.name);
+                }
             }
         }
 
@@ -62,7 +81,7 @@ public class DockRadio : MonoBehaviour
             return;
         }
 
-        Debug.Log("DockRadio: Loaded " + songs.Count + " songs!");
+        Debug.Log("DockRadio: Loaded " + songs.Count + " songs total!");
 
         // Create audio source with 3D spatial audio (doppler effect)
         audioSource = gameObject.AddComponent<AudioSource>();
@@ -209,11 +228,12 @@ public class DockRadio : MonoBehaviour
                 audioSource.clip = songs[currentSongIndex];
                 audioSource.volume = maxVolume;
                 audioSource.Play();
-                Debug.Log("DockRadio: ON - Playing " + songNames[currentSongIndex]);
+                string songName = loadedSongNames.Count > currentSongIndex ? loadedSongNames[currentSongIndex] : "Unknown";
+                Debug.Log("DockRadio: ON - Playing " + songName);
 
                 if (UIManager.Instance != null)
                 {
-                    UIManager.Instance.ShowLootNotification("Dock Radio ON - " + songNames[currentSongIndex], new Color(0.4f, 0.8f, 1f));
+                    UIManager.Instance.ShowLootNotification("Dock Radio ON - " + songName, new Color(0.4f, 0.8f, 1f));
                 }
             }
         }
@@ -235,11 +255,12 @@ public class DockRadio : MonoBehaviour
         audioSource.clip = songs[currentSongIndex];
         audioSource.volume = maxVolume;
         audioSource.Play();
-        Debug.Log("DockRadio: Now playing - " + songNames[currentSongIndex]);
+        string songName = loadedSongNames.Count > currentSongIndex ? loadedSongNames[currentSongIndex] : "Unknown";
+        Debug.Log("DockRadio: Now playing - " + songName);
 
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowLootNotification("Now playing: " + songNames[currentSongIndex], new Color(0.5f, 0.8f, 1f));
+            UIManager.Instance.ShowLootNotification("Now playing: " + songName, new Color(0.5f, 0.8f, 1f));
         }
     }
 
