@@ -1,128 +1,128 @@
 using UnityEngine;
 
 /// <summary>
-/// Shows tip messages when the player first arrives in the Frost Zone
-/// First tip: Warning about bears
-/// Second tip: How to play dead (CTRL key)
+/// Shows small tip messages on the left side when player enters the Ice Realm
+/// Non-disruptive small squares - only shows in Ice Realm
 /// </summary>
 public class FrostZoneTip : MonoBehaviour
 {
-    private bool tipsStarted = false;
-    private int currentTipIndex = 0;
+    private bool hasShownTip = false;
+    private float tipTimer = 0f;
     private bool showingTip = false;
-    private float tipDisplayTime = 0f;
+    private int currentTipIndex = 0;
+    private bool isInIceRealm = false;
 
-    // Tip configuration
     private string[] tipMessages = {
-        "You better head on over to Bjork the Huntsman quick!\nBears attack humans here.",
-        "Did you know? If you press the CTRL key, you can play dead!\nBears will leave you alone."
+        "Bears attack humans here!",
+        "Press CTRL to play dead",
+        "Visit Bjork for warm gear"
     };
-    private float[] tipDurations = { 8f, 10f };
+    private float tipDuration = 4f;
+    private float tipGap = 0.5f;
 
     void Update()
     {
         if (!MainMenu.GameStarted) return;
 
-        // Check if player is in Ice Realm to start tips
-        if (!tipsStarted)
-        {
-            GameObject player = GameObject.Find("Player");
-            if (player == null) return;
+        // Check if player is in Ice Realm
+        bool wasInIce = isInIceRealm;
+        isInIceRealm = IsPlayerInIceRealm();
 
-            float distanceToCenter = Vector3.Distance(player.transform.position, transform.parent.position);
-            if (distanceToCenter < 50f)
-            {
-                StartTips();
-            }
+        // Only show tips in ice realm
+        if (!isInIceRealm)
+        {
+            showingTip = false;
+            return;
         }
 
-        // Update tip display
+        // Start tips when entering ice realm for first time
+        if (isInIceRealm && !wasInIce && !hasShownTip)
+        {
+            showingTip = true;
+            tipTimer = 0f;
+            currentTipIndex = 0;
+        }
+
         if (showingTip)
         {
-            tipDisplayTime += Time.deltaTime;
-            if (tipDisplayTime > tipDurations[currentTipIndex])
-            {
-                showingTip = false;
+            tipTimer += Time.deltaTime;
 
-                // Show next tip after a short delay
-                if (currentTipIndex < tipMessages.Length - 1)
+            if (tipTimer >= tipDuration)
+            {
+                currentTipIndex++;
+                tipTimer = -tipGap; // Small gap between tips
+
+                if (currentTipIndex >= tipMessages.Length)
                 {
-                    currentTipIndex++;
-                    Invoke("ShowNextTip", 1.5f);
+                    showingTip = false;
+                    hasShownTip = true;
                 }
             }
         }
     }
 
-    void StartTips()
+    bool IsPlayerInIceRealm()
     {
-        tipsStarted = true;
-        showingTip = true;
-        tipDisplayTime = 0f;
-        currentTipIndex = 0;
-    }
-
-    void ShowNextTip()
-    {
-        showingTip = true;
-        tipDisplayTime = 0f;
+        RealmManager rm = FindObjectOfType<RealmManager>();
+        if (rm != null)
+        {
+            return rm.CurrentRealm == RealmType.IceRealm;
+        }
+        // Fallback - ice realm is X > 400 and X < 900
+        GameObject player = GameObject.Find("Player");
+        if (player != null)
+        {
+            float x = player.transform.position.x;
+            return x > 400f && x < 900f;
+        }
+        return false;
     }
 
     void OnGUI()
     {
-        if (!MainMenu.GameStarted) return;
-        if (!showingTip || currentTipIndex >= tipMessages.Length) return;
+        if (!showingTip || !MainMenu.GameStarted) return;
+        if (!isInIceRealm) return;
+        if (currentTipIndex >= tipMessages.Length) return;
+        if (tipTimer < 0) return; // During gap
 
-        float duration = tipDurations[currentTipIndex];
-
-        // Tip box (like cat message)
-        float boxWidth = 450;
-        float boxHeight = 80;
-        Rect boxRect = new Rect(
-            Screen.width / 2 - boxWidth / 2,
-            80,
-            boxWidth,
-            boxHeight
-        );
+        // Small square on LEFT side
+        float boxSize = 120f;
+        float boxX = 15f;
+        float boxY = Screen.height * 0.4f;
 
         // Fade in/out
         float alpha = 1f;
-        if (tipDisplayTime < 0.5f)
-            alpha = tipDisplayTime / 0.5f;
-        else if (tipDisplayTime > duration - 1f)
-            alpha = (duration - tipDisplayTime) / 1f;
+        if (tipTimer < 0.3f)
+            alpha = tipTimer / 0.3f;
+        else if (tipTimer > tipDuration - 0.5f)
+            alpha = (tipDuration - tipTimer) / 0.5f;
 
-        // Background with ice blue tint
-        GUI.color = new Color(0.15f, 0.25f, 0.35f, 0.95f * alpha);
-        GUI.DrawTexture(boxRect, Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        // Background - ice blue tint
+        GUI.color = new Color(0.1f, 0.15f, 0.25f, 0.9f * alpha);
+        GUI.DrawTexture(new Rect(boxX, boxY, boxSize, boxSize), Texture2D.whiteTexture);
 
-        // Ice blue border
+        // Border - ice blue
         GUI.color = new Color(0.5f, 0.7f, 0.9f, alpha);
-        GUI.DrawTexture(new Rect(boxRect.x - 2, boxRect.y - 2, boxRect.width + 4, 2), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(boxRect.x - 2, boxRect.y + boxRect.height, boxRect.width + 4, 2), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(boxRect.x - 2, boxRect.y, 2, boxRect.height), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(boxRect.x + boxRect.width, boxRect.y, 2, boxRect.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(boxX, boxY, boxSize, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(boxX, boxY + boxSize - 2, boxSize, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(boxX, boxY, 2, boxSize), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(boxX + boxSize - 2, boxY, 2, boxSize), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
         // Icon
         GUIStyle iconStyle = new GUIStyle();
-        iconStyle.fontSize = 28;
+        iconStyle.fontSize = 20;
         iconStyle.fontStyle = FontStyle.Bold;
         iconStyle.alignment = TextAnchor.MiddleCenter;
         iconStyle.normal.textColor = new Color(0.6f, 0.85f, 1f, alpha);
+        GUI.Label(new Rect(boxX, boxY + 8, boxSize, 25), "TIP", iconStyle);
 
-        string icon = currentTipIndex == 0 ? "!" : "?";
-        GUI.Label(new Rect(boxRect.x + 10, boxRect.y + 10, 40, boxRect.height - 20), icon, iconStyle);
-
-        // Tip text
+        // Text
         GUIStyle textStyle = new GUIStyle();
-        textStyle.fontSize = 15;
-        textStyle.fontStyle = FontStyle.Bold;
-        textStyle.alignment = TextAnchor.MiddleLeft;
+        textStyle.fontSize = 11;
+        textStyle.alignment = TextAnchor.MiddleCenter;
         textStyle.wordWrap = true;
         textStyle.normal.textColor = new Color(0.9f, 0.95f, 1f, alpha);
-
-        GUI.Label(new Rect(boxRect.x + 55, boxRect.y + 10, boxRect.width - 70, boxRect.height - 20), tipMessages[currentTipIndex], textStyle);
+        GUI.Label(new Rect(boxX + 8, boxY + 35, boxSize - 16, boxSize - 45), tipMessages[currentTipIndex], textStyle);
     }
 }
