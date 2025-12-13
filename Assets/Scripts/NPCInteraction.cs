@@ -92,10 +92,9 @@ public class NPCInteraction : MonoBehaviour
             if (hit.collider.gameObject == gameObject || hit.collider.transform.IsChildOf(transform))
             {
                 // Check if player is close enough
-                GameObject player = GameObject.Find("Player");
-                if (player != null)
+                if (GameCache.IsPlayerValid())
                 {
-                    float distance = Vector3.Distance(player.transform.position, transform.position);
+                    float distance = Vector3.Distance(GameCache.Player.position, transform.position);
                     if (distance <= interactionRange)
                     {
                         OpenDialog();

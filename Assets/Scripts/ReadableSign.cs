@@ -17,20 +17,50 @@ public class ReadableSign : MonoBehaviour
     private const float INTERACTION_DISTANCE = 3f;
 
     private Texture2D signTexture;
+    private int guiFrameSkip = 0;
+
+    // Cached UI textures and styles (created once, reused every frame)
+    private static Texture2D cachedBgTex;
+    private static Texture2D cachedBoxBgTex;
+    private static Texture2D cachedBorderTex;
+    private static GUIStyle cachedPromptStyle;
+    private static GUIStyle cachedTitleStyle;
+    private static GUIStyle cachedMsgStyle;
+    private static bool stylesInitialized = false;
 
     void Start()
     {
         CreateSignTexture();
         ApplyTexture();
+        InitializeCachedUI();
+    }
+
+    void InitializeCachedUI()
+    {
+        if (stylesInitialized) return;
+
+        // Cache textures
+        cachedBgTex = new Texture2D(1, 1);
+        cachedBgTex.SetPixel(0, 0, new Color(0, 0, 0, 0.7f));
+        cachedBgTex.Apply();
+
+        cachedBoxBgTex = new Texture2D(1, 1);
+        cachedBoxBgTex.SetPixel(0, 0, new Color(0.15f, 0.1f, 0.05f, 0.95f));
+        cachedBoxBgTex.Apply();
+
+        cachedBorderTex = new Texture2D(1, 1);
+        cachedBorderTex.SetPixel(0, 0, new Color(0.95f, 0.85f, 0.3f));
+        cachedBorderTex.Apply();
+
+        stylesInitialized = true;
     }
 
     void Update()
     {
         // Check player proximity
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < INTERACTION_DISTANCE;
 
             // E to read
@@ -169,29 +199,49 @@ public class ReadableSign : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!showingMessage && !playerNearby)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted) return;
+
+        // Initialize styles lazily (can't do in Start because GUI.skin not ready)
+        if (cachedPromptStyle == null)
+        {
+            cachedPromptStyle = new GUIStyle();
+            cachedPromptStyle.fontSize = 14;
+            cachedPromptStyle.fontStyle = FontStyle.Bold;
+            cachedPromptStyle.normal.textColor = Color.white;
+            cachedPromptStyle.alignment = TextAnchor.MiddleCenter;
+
+            cachedTitleStyle = new GUIStyle();
+            cachedTitleStyle.fontSize = 18;
+            cachedTitleStyle.fontStyle = FontStyle.Bold;
+            cachedTitleStyle.normal.textColor = titleColor;
+            cachedTitleStyle.alignment = TextAnchor.MiddleCenter;
+
+            cachedMsgStyle = new GUIStyle();
+            cachedMsgStyle.fontSize = 14;
+            cachedMsgStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f);
+            cachedMsgStyle.alignment = TextAnchor.MiddleCenter;
+            cachedMsgStyle.wordWrap = true;
+        }
 
         // Show "Press E to read" prompt
         if (playerNearby && !showingMessage)
         {
-            GUIStyle promptStyle = new GUIStyle();
-            promptStyle.fontSize = 14;
-            promptStyle.fontStyle = FontStyle.Bold;
-            promptStyle.normal.textColor = Color.white;
-            promptStyle.alignment = TextAnchor.MiddleCenter;
-
             float promptWidth = 150;
             float promptHeight = 30;
             float promptX = (Screen.width - promptWidth) / 2;
             float promptY = Screen.height * 0.7f;
 
-            // Background
-            Texture2D bgTex = new Texture2D(1, 1);
-            bgTex.SetPixel(0, 0, new Color(0, 0, 0, 0.7f));
-            bgTex.Apply();
-            GUI.DrawTexture(new Rect(promptX, promptY, promptWidth, promptHeight), bgTex);
-            GUI.Label(new Rect(promptX, promptY, promptWidth, promptHeight), "Press E to read", promptStyle);
-            Destroy(bgTex);
+            // Use cached textures
+            if (cachedBgTex != null)
+                GUI.DrawTexture(new Rect(promptX, promptY, promptWidth, promptHeight), cachedBgTex);
+            GUI.Label(new Rect(promptX, promptY, promptWidth, promptHeight), "Press E to read", cachedPromptStyle);
         }
 
         // Show full message when reading
@@ -206,40 +256,24 @@ public class ReadableSign : MonoBehaviour
             float alpha = Mathf.Clamp01(messageTimer / 0.5f);
             GUI.color = new Color(1, 1, 1, alpha);
 
-            // Background
-            Texture2D bgTex = new Texture2D(1, 1);
-            bgTex.SetPixel(0, 0, new Color(0.15f, 0.1f, 0.05f, 0.95f));
-            bgTex.Apply();
-            GUI.DrawTexture(new Rect(boxX, boxY, boxWidth, boxHeight), bgTex);
+            // Use cached textures
+            if (cachedBoxBgTex != null)
+                GUI.DrawTexture(new Rect(boxX, boxY, boxWidth, boxHeight), cachedBoxBgTex);
 
-            // Border
-            Texture2D borderTex = new Texture2D(1, 1);
-            borderTex.SetPixel(0, 0, backgroundColor);
-            borderTex.Apply();
-            GUI.DrawTexture(new Rect(boxX, boxY, boxWidth, 4), borderTex);
-            GUI.DrawTexture(new Rect(boxX, boxY + boxHeight - 4, boxWidth, 4), borderTex);
-            GUI.DrawTexture(new Rect(boxX, boxY, 4, boxHeight), borderTex);
-            GUI.DrawTexture(new Rect(boxX + boxWidth - 4, boxY, 4, boxHeight), borderTex);
+            // Border using cached texture
+            if (cachedBorderTex != null)
+            {
+                GUI.DrawTexture(new Rect(boxX, boxY, boxWidth, 4), cachedBorderTex);
+                GUI.DrawTexture(new Rect(boxX, boxY + boxHeight - 4, boxWidth, 4), cachedBorderTex);
+                GUI.DrawTexture(new Rect(boxX, boxY, 4, boxHeight), cachedBorderTex);
+                GUI.DrawTexture(new Rect(boxX + boxWidth - 4, boxY, 4, boxHeight), cachedBorderTex);
+            }
 
-            // Title
-            GUIStyle titleStyle = new GUIStyle();
-            titleStyle.fontSize = 18;
-            titleStyle.fontStyle = FontStyle.Bold;
-            titleStyle.normal.textColor = titleColor;
-            titleStyle.alignment = TextAnchor.MiddleCenter;
-            GUI.Label(new Rect(boxX, boxY + 15, boxWidth, 30), signTitle, titleStyle);
-
-            // Message
-            GUIStyle msgStyle = new GUIStyle();
-            msgStyle.fontSize = 14;
-            msgStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f);
-            msgStyle.alignment = TextAnchor.MiddleCenter;
-            msgStyle.wordWrap = true;
-            GUI.Label(new Rect(boxX + 20, boxY + 50, boxWidth - 40, 80), signMessage, msgStyle);
+            // Title and message using cached styles
+            GUI.Label(new Rect(boxX, boxY + 15, boxWidth, 30), signTitle, cachedTitleStyle);
+            GUI.Label(new Rect(boxX + 20, boxY + 50, boxWidth - 40, 80), signMessage, cachedMsgStyle);
 
             GUI.color = Color.white;
-            Destroy(bgTex);
-            Destroy(borderTex);
         }
     }
 

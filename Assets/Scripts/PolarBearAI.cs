@@ -277,10 +277,10 @@ public class PolarBearAI : MonoBehaviour
     {
         if (playerTransform == null)
         {
-            GameObject player = GameObject.Find("Player");
-            if (player != null)
+            // Use cached player reference for better performance
+            if (GameCache.IsPlayerValid())
             {
-                playerTransform = player.transform;
+                playerTransform = GameCache.Player;
             }
         }
     }

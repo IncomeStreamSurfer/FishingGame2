@@ -6,6 +6,10 @@ public class CharacterPanel : MonoBehaviour
     public static CharacterPanel Instance { get; private set; }
 
     private bool isOpen = false;
+    private int guiFrameSkip = 0;
+
+    // Draggable window support
+    private DraggableWindow window;
 
     // Character info
     private string characterName = "The Fisherman";
@@ -47,6 +51,16 @@ public class CharacterPanel : MonoBehaviour
     void Initialize()
     {
         CreateCachedTextures();
+        // Initialize draggable window (35% smaller: 293x338)
+        float panelWidth = 293f;
+        float panelHeight = 338f;
+        Rect initialRect = new Rect(
+            (Screen.width - panelWidth) / 2f,
+            (Screen.height - panelHeight) / 2f,
+            panelWidth,
+            panelHeight
+        );
+        window = new DraggableWindow(initialRect, new Vector2(250, 280), new Vector2(500, 600));
         initialized = true;
     }
 
@@ -197,13 +211,24 @@ public class CharacterPanel : MonoBehaviour
 
     void OnGUI()
     {
-        if (!isOpen || !initialized || !MainMenu.GameStarted) return;
+        // Performance: Skip frames when not actively needed
+        if (!isOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
 
-        // 35% smaller (450 -> 293, 520 -> 338)
-        float panelWidth = 293f;
-        float panelHeight = 338f;
-        float panelX = (Screen.width - panelWidth) / 2f;
-        float panelY = (Screen.height - panelHeight) / 2f;
+        if (!isOpen || !initialized || !MainMenu.GameStarted || window == null) return;
+
+        // Handle dragging and resizing
+        window.UpdateWindow();
+
+        // Get window rect
+        Rect rect = window.WindowRect;
+        float panelX = rect.x;
+        float panelY = rect.y;
+        float panelWidth = rect.width;
+        float panelHeight = rect.height;
 
         // Panel background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
@@ -314,13 +339,16 @@ public class CharacterPanel : MonoBehaviour
         hintStyle.fontSize = 11;
         hintStyle.alignment = TextAnchor.MiddleCenter;
         hintStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-        GUI.Label(new Rect(panelX, panelY + panelHeight - 25, panelWidth, 20), "Press TAB to close", hintStyle);
+        GUI.Label(new Rect(panelX, panelY + panelHeight - 25, panelWidth, 20), "Press TAB to close | Drag title bar to move", hintStyle);
+
+        // Draw resize handle
+        window.DrawResizeHandle();
     }
 
     void DrawHeartbeatMonitor(float x, float y)
     {
-        float monitorWidth = 250f;
-        float monitorHeight = 130f;
+        float monitorWidth = 150f;
+        float monitorHeight = 80f;
 
         // Monitor frame/border
         GUI.DrawTexture(new Rect(x - 3, y - 3, monitorWidth + 6, monitorHeight + 6), GetTexture("monitorBorder"));
@@ -330,54 +358,54 @@ public class CharacterPanel : MonoBehaviour
 
         // Monitor title
         GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 10;
+        titleStyle.fontSize = 7;
         titleStyle.normal.textColor = new Color(0.3f, 0.6f, 0.3f);
         titleStyle.alignment = TextAnchor.MiddleLeft;
-        GUI.Label(new Rect(x + 5, y + 3, 100, 14), "VITAL SIGNS", titleStyle);
+        GUI.Label(new Rect(x + 5, y + 2, 80, 10), "VITAL SIGNS", titleStyle);
 
-        // BPM display (top right, large)
+        // BPM display (top right, smaller)
         GUIStyle bpmStyle = new GUIStyle();
-        bpmStyle.fontSize = 28;
+        bpmStyle.fontSize = 16;
         bpmStyle.fontStyle = FontStyle.Bold;
         bpmStyle.normal.textColor = new Color(0.2f, 1f, 0.3f);
         bpmStyle.alignment = TextAnchor.MiddleRight;
-        GUI.Label(new Rect(x + monitorWidth - 90, y + 2, 85, 35), bpm.ToString(), bpmStyle);
+        GUI.Label(new Rect(x + monitorWidth - 55, y + 2, 50, 20), bpm.ToString(), bpmStyle);
 
         GUIStyle bpmLabelStyle = new GUIStyle();
-        bpmLabelStyle.fontSize = 10;
+        bpmLabelStyle.fontSize = 8;
         bpmLabelStyle.normal.textColor = new Color(0.2f, 0.8f, 0.3f);
         bpmLabelStyle.alignment = TextAnchor.MiddleRight;
-        GUI.Label(new Rect(x + monitorWidth - 90, y + 32, 85, 14), "BPM", bpmLabelStyle);
+        GUI.Label(new Rect(x + monitorWidth - 55, y + 20, 50, 10), "BPM", bpmLabelStyle);
 
         // Heart icon that pulses
         float beatCycle = heartbeatTime * (bpm / 60f);
         bool isPeak = (beatCycle % 1f) < 0.15f;
-        float heartSize = isPeak ? 18f : 14f;
+        float heartSize = isPeak ? 11f : 9f;
         Color heartColor = isPeak ? new Color(1f, 0.3f, 0.3f) : new Color(0.8f, 0.2f, 0.2f);
 
         GUI.color = heartColor;
-        GUI.DrawTexture(new Rect(x + monitorWidth - 105, y + 8, heartSize, heartSize), GetTexture("heartIcon"));
+        GUI.DrawTexture(new Rect(x + monitorWidth - 65, y + 5, heartSize, heartSize), GetTexture("heartIcon"));
         GUI.color = Color.white;
 
         // ECG waveform area
         float waveX = x + 5;
-        float waveY = y + 50;
+        float waveY = y + 32;
         float waveWidth = monitorWidth - 10;
-        float waveHeight = 40f;
+        float waveHeight = 25f;
 
         // Draw ECG line
         DrawECGWaveform(waveX, waveY, waveWidth, waveHeight);
 
         // Health bar
-        float healthBarY = y + monitorHeight - 25;
+        float healthBarY = y + monitorHeight - 16;
         float healthBarWidth = monitorWidth - 10;
-        float healthBarHeight = 18f;
+        float healthBarHeight = 12f;
 
         // Health label
         GUIStyle healthLabelStyle = new GUIStyle();
-        healthLabelStyle.fontSize = 9;
+        healthLabelStyle.fontSize = 7;
         healthLabelStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
-        GUI.Label(new Rect(x + 5, healthBarY - 12, 50, 12), "HEALTH", healthLabelStyle);
+        GUI.Label(new Rect(x + 5, healthBarY - 9, 50, 9), "HEALTH", healthLabelStyle);
 
         // Health bar background
         GUI.DrawTexture(new Rect(x + 5, healthBarY, healthBarWidth, healthBarHeight), GetTexture("healthBarBg"));
@@ -400,7 +428,7 @@ public class CharacterPanel : MonoBehaviour
 
         // Health text
         GUIStyle healthTextStyle = new GUIStyle();
-        healthTextStyle.fontSize = 11;
+        healthTextStyle.fontSize = 9;
         healthTextStyle.fontStyle = FontStyle.Bold;
         healthTextStyle.normal.textColor = Color.white;
         healthTextStyle.alignment = TextAnchor.MiddleCenter;

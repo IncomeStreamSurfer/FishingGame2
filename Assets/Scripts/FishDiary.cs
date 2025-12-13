@@ -8,11 +8,16 @@ public class FishDiary : MonoBehaviour
     private bool isOpen = false;
     private bool initialized = false;
     private Vector2 scrollPosition = Vector2.zero;
+    private int guiFrameSkip = 0;
+
+    // Draggable window support
+    private DraggableWindow window;
 
     // Cached textures
     private Texture2D backgroundTex;
     private Texture2D entryBgTex;
     private Texture2D headerTex;
+    private Texture2D closeBtnTex;
 
     // Cached styles
     private GUIStyle titleStyle;
@@ -51,6 +56,23 @@ public class FishDiary : MonoBehaviour
         for (int i = 0; i < 4; i++) headerPixels[i] = new Color(0.2f, 0.3f, 0.4f, 0.9f);
         headerTex.SetPixels(headerPixels);
         headerTex.Apply();
+
+        closeBtnTex = new Texture2D(2, 2);
+        Color[] closePixels = new Color[4];
+        for (int i = 0; i < 4; i++) closePixels[i] = new Color(0.8f, 0.2f, 0.2f, 1f);
+        closeBtnTex.SetPixels(closePixels);
+        closeBtnTex.Apply();
+
+        // Initialize draggable window (500x600)
+        float panelWidth = 500f;
+        float panelHeight = 600f;
+        Rect initialRect = new Rect(
+            (Screen.width - panelWidth) / 2f,
+            (Screen.height - panelHeight) / 2f,
+            panelWidth,
+            panelHeight
+        );
+        window = new DraggableWindow(initialRect, new Vector2(400, 450), new Vector2(700, 800));
 
         initialized = true;
     }
@@ -106,14 +128,26 @@ public class FishDiary : MonoBehaviour
 
     void OnGUI()
     {
-        if (!MainMenu.GameStarted || !initialized || !isOpen) return;
+        // Performance: Skip frames when not actively needed
+        if (!isOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
+        if (!MainMenu.GameStarted || !initialized || !isOpen || window == null) return;
 
         InitStyles();
 
-        float panelWidth = 500;
-        float panelHeight = 600;
-        float panelX = (Screen.width - panelWidth) / 2;
-        float panelY = (Screen.height - panelHeight) / 2;
+        // Handle dragging and resizing
+        window.UpdateWindow();
+
+        // Get window rect
+        Rect rect = window.WindowRect;
+        float panelX = rect.x;
+        float panelY = rect.y;
+        float panelWidth = rect.width;
+        float panelHeight = rect.height;
 
         // Background
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), backgroundTex);
@@ -128,11 +162,10 @@ public class FishDiary : MonoBehaviour
         xButtonStyle.fontStyle = FontStyle.Bold;
         xButtonStyle.alignment = TextAnchor.MiddleCenter;
         xButtonStyle.normal.textColor = Color.white;
-        Texture2D closeBtnTex = new Texture2D(1, 1);
-        closeBtnTex.SetPixel(0, 0, new Color(0.8f, 0.2f, 0.2f));
-        closeBtnTex.Apply();
-        GUI.DrawTexture(new Rect(panelX + panelWidth - 32, panelY + 18, 24, 24), closeBtnTex);
-        if (GUI.Button(new Rect(panelX + panelWidth - 32, panelY + 18, 24, 24), "X", xButtonStyle))
+
+        Rect closeButtonRect = new Rect(panelX + panelWidth - 32, panelY + 18, 24, 24);
+        GUI.DrawTexture(closeButtonRect, closeBtnTex);
+        if (GUI.Button(closeButtonRect, "X", xButtonStyle))
         {
             isOpen = false;
         }
@@ -212,7 +245,10 @@ public class FishDiary : MonoBehaviour
 
         // Instructions at bottom
         GUI.Label(new Rect(panelX, panelY + panelHeight - 30, panelWidth, 25),
-            "Press J to close", instructionStyle);
+            "Press J to close | Drag title bar to move", instructionStyle);
+
+        // Draw resize handle
+        window.DrawResizeHandle();
     }
 
     Color GetRarityColor(Rarity rarity)
@@ -239,5 +275,6 @@ public class FishDiary : MonoBehaviour
         if (backgroundTex != null) Destroy(backgroundTex);
         if (entryBgTex != null) Destroy(entryBgTex);
         if (headerTex != null) Destroy(headerTex);
+        if (closeBtnTex != null) Destroy(closeBtnTex);
     }
 }

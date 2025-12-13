@@ -115,8 +115,7 @@ public class AccessorySystem : MonoBehaviour
         if (!MainMenu.GameStarted) return;
 
         // Show equipped ring indicator in jungle realm
-        GameObject player = GameObject.Find("Player");
-        if (player != null && player.transform.position.x > 900f)
+        if (GameCache.IsPlayerValid() && GameCache.Player.position.x > 900f)
         {
             DrawAccessoryHUD();
         }
@@ -182,7 +181,8 @@ public enum AccessoryEffect
     IceResistance,
     SpeedBoost,
     DamageBoost,
-    ToxicImmunity
+    ToxicImmunity,
+    ZombieSafety
 }
 
 [System.Serializable]

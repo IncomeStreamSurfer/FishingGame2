@@ -25,9 +25,9 @@ public class WaterEffect : MonoBehaviour
     public float drowningDistance = 25f; // Player starts drowning
 
     [Header("Water Particles")]
-    public int maxSparkles = 60;
+    public int maxSparkles = 20;
     public int maxFoamParticles = 20;
-    public int maxSunGlints = 25;
+    public int maxSunGlints = 10;
 
     private Vector3 startPos;
     private Material waterMat;
@@ -61,7 +61,7 @@ public class WaterEffect : MonoBehaviour
     {
         startPos = transform.position;
         SetupWaterMaterial();
-        playerTransform = GameObject.Find("Player")?.transform;
+        playerTransform = GameCache.IsPlayerValid() ? GameCache.Player : null;
 
         // Find all islands and store their positions
         Invoke("FindIslands", 0.5f);
@@ -81,8 +81,7 @@ public class WaterEffect : MonoBehaviour
         // Create shimmering ripple effect
         CreateShimmerRipples();
 
-        // Create animated wave ridges
-        CreateAnimatedWaves();
+        // REMOVED: CreateAnimatedWaves() - wave ridges removed
 
         // Start spawning sparkles and foam
         StartCoroutine(SpawnWaterSparkles());
@@ -93,96 +92,7 @@ public class WaterEffect : MonoBehaviour
         StartCoroutine(SpawnSunGlints());
     }
 
-    // Animated wave objects
-    private List<GameObject> waveRidges = new List<GameObject>();
-
-    void CreateAnimatedWaves()
-    {
-        // Create multiple wave ridges that travel across the water
-        int waveCount = 12;
-
-        Material waveMat = new Material(Shader.Find("Standard"));
-        waveMat.SetFloat("_Mode", 3);
-        waveMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        waveMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        waveMat.SetInt("_ZWrite", 0);
-        waveMat.EnableKeyword("_ALPHABLEND_ON");
-        waveMat.renderQueue = 3020;
-        waveMat.color = new Color(0.7f, 0.9f, 0.95f, 0.3f);
-        waveMat.SetFloat("_Glossiness", 0.95f);
-
-        for (int i = 0; i < waveCount; i++)
-        {
-            GameObject wave = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            wave.name = "WaveRidge_" + i;
-            wave.transform.SetParent(transform);
-
-            // Spread waves across the water
-            float startZ = -60f + i * 10f;
-            wave.transform.localPosition = new Vector3(0, 0.12f, startZ);
-            wave.transform.localScale = new Vector3(100f, 0.08f, 1.5f);
-
-            Destroy(wave.GetComponent<Collider>());
-            wave.GetComponent<Renderer>().material = new Material(waveMat);
-
-            waveRidges.Add(wave);
-        }
-
-        // Start wave animation
-        StartCoroutine(AnimateWaveRidges());
-    }
-
-    IEnumerator AnimateWaveRidges()
-    {
-        float waveSpacing = 10f;
-        float waveSpeedMultiplier = 3f;
-
-        while (true)
-        {
-            yield return null;
-            if (!MainMenu.GameStarted) continue;
-
-            float time = Time.time;
-
-            for (int i = 0; i < waveRidges.Count; i++)
-            {
-                if (waveRidges[i] == null) continue;
-
-                // Move wave forward
-                Vector3 pos = waveRidges[i].transform.localPosition;
-                pos.z += waveSpeedMultiplier * Time.deltaTime;
-
-                // Wrap around when wave goes too far
-                if (pos.z > 70f)
-                {
-                    pos.z = -70f;
-                }
-
-                // Vertical wave motion
-                float waveY = 0.1f + Mathf.Sin(time * 2f + i * 0.5f) * 0.04f;
-                pos.y = waveY;
-
-                waveRidges[i].transform.localPosition = pos;
-
-                // Fade waves near edges
-                float distFromCenter = Mathf.Abs(pos.z);
-                float alpha = 0.3f * (1f - distFromCenter / 80f);
-
-                Renderer r = waveRidges[i].GetComponent<Renderer>();
-                if (r != null)
-                {
-                    Color c = r.material.color;
-                    c.a = Mathf.Max(0.05f, alpha);
-                    r.material.color = c;
-                }
-
-                // Scale variation for more natural look
-                float scaleX = 100f + Mathf.Sin(time + i) * 10f;
-                float scaleZ = 1.5f + Mathf.Sin(time * 1.5f + i * 0.3f) * 0.5f;
-                waveRidges[i].transform.localScale = new Vector3(scaleX, 0.08f, scaleZ);
-            }
-        }
-    }
+    // REMOVED: Animated wave ridges - they were "totally wrong" and have been removed
 
     // Shimmer ripple objects
     private List<GameObject> shimmerRipples = new List<GameObject>();
@@ -250,6 +160,15 @@ public class WaterEffect : MonoBehaviour
             yield return null;
             if (!MainMenu.GameStarted) continue;
 
+            // Hide shimmer ripples in Ice Realm (causes polkadot appearance)
+            bool inIceRealm = GameCache.IsInRealm(RealmType.IceRealm);
+            for (int i = 0; i < shimmerRipples.Count; i++)
+            {
+                if (shimmerRipples[i] != null)
+                    shimmerRipples[i].SetActive(!inIceRealm);
+            }
+            if (inIceRealm) continue;
+
             float daylight = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetDaylightIntensity() : 1f;
             float time = Time.time;
 
@@ -263,7 +182,7 @@ public class WaterEffect : MonoBehaviour
                 shimmerIntensity *= shimmerIntensity; // Sharper peaks
 
                 // Only show shimmer during daytime
-                float alpha = shimmerIntensity * 0.25f * daylight;
+                float alpha = shimmerIntensity * 0.12f * daylight;
 
                 // Update material
                 if (shimmerMaterials[i] != null)
@@ -271,7 +190,7 @@ public class WaterEffect : MonoBehaviour
                     Color c = shimmerMaterials[i].color;
                     c.a = alpha;
                     shimmerMaterials[i].color = c;
-                    shimmerMaterials[i].SetColor("_EmissionColor", shimmerColor * shimmerIntensity * 0.4f * daylight);
+                    shimmerMaterials[i].SetColor("_EmissionColor", shimmerColor * shimmerIntensity * 0.2f * daylight);
                 }
 
                 // Gentle scale pulsing
@@ -332,7 +251,7 @@ public class WaterEffect : MonoBehaviour
             Light causticLight = lightObj.AddComponent<Light>();
             causticLight.type = LightType.Point;
             causticLight.color = new Color(0.6f, 0.85f, 1f);
-            causticLight.intensity = 0.5f;
+            causticLight.intensity = 0.25f;
             causticLight.range = 8f;
 
             causticLights.Add(lightObj);
@@ -346,6 +265,9 @@ public class WaterEffect : MonoBehaviour
             yield return new WaitForSeconds(Random.Range(0.05f, 0.15f));
 
             if (!MainMenu.GameStarted) continue;
+
+            // Skip sparkles in Ice Realm (causes polkadot appearance)
+            if (GameCache.IsInRealm(RealmType.IceRealm)) continue;
 
             // Only spawn sparkles during daytime
             float daylight = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetDaylightIntensity() : 1f;
@@ -431,6 +353,9 @@ public class WaterEffect : MonoBehaviour
             yield return new WaitForSeconds(Random.Range(0.08f, 0.2f));
 
             if (!MainMenu.GameStarted) continue;
+
+            // Skip sun glints in Ice Realm (causes polkadot appearance on icy water)
+            if (GameCache.IsInRealm(RealmType.IceRealm)) continue;
 
             // Only spawn during bright daylight
             float daylight = DayNightCycle.Instance != null ? DayNightCycle.Instance.GetDaylightIntensity() : 1f;
@@ -676,34 +601,7 @@ public class WaterEffect : MonoBehaviour
         // Create depth gradient rings around the island
         CreateDepthGradientRings();
 
-        // Create multiple thin wave layers for parallax effect - using ocean blue tints
-        for (int i = 0; i < 3; i++)
-        {
-            GameObject waveLayer = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            waveLayer.name = "WaveLayer_" + i;
-            waveLayer.transform.SetParent(transform);
-            waveLayer.transform.localPosition = new Vector3(0, 0.02f + i * 0.015f, 0);
-            waveLayer.transform.localScale = new Vector3(4.8f - i * 0.1f, 1, 4.8f - i * 0.1f);
-            Destroy(waveLayer.GetComponent<Collider>());
-
-            Material waveMat = new Material(Shader.Find("Standard"));
-            waveMat.SetFloat("_Mode", 3);
-            waveMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            waveMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            waveMat.SetInt("_ZWrite", 0);
-            waveMat.EnableKeyword("_ALPHABLEND_ON");
-            waveMat.renderQueue = 3001 + i;
-
-            // Each layer using turquoise-blue gradient colors
-            float alpha = 0.18f - i * 0.05f;
-            // Gradient from turquoise (inner) to deeper blue (outer)
-            float blueShift = i * 0.1f;
-            waveMat.color = new Color(0.12f - blueShift, 0.65f - blueShift * 0.5f, 0.72f - blueShift * 0.2f, alpha);
-            waveMat.SetFloat("_Glossiness", 0.95f);
-            waveMat.SetFloat("_Metallic", 0.1f);
-
-            waveLayer.GetComponent<Renderer>().material = waveMat;
-        }
+        // REMOVED: Multiple thin wave layer planes - they were "totally wrong" and have been removed
 
         // Create wave crest highlights (subtle light blue foam)
         CreateWaveCrests();
@@ -833,7 +731,7 @@ public class WaterEffect : MonoBehaviour
             beamMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One); // Additive
             beamMat.EnableKeyword("_ALPHABLEND_ON");
             beamMat.renderQueue = 2999;
-            beamMat.color = new Color(0.4f, 0.7f, 0.9f, 0.08f);
+            beamMat.color = new Color(0.4f, 0.7f, 0.9f, 0.04f);
 
             beam.GetComponent<Renderer>().material = beamMat;
 
@@ -856,7 +754,7 @@ public class WaterEffect : MonoBehaviour
             if (DayNightCycle.Instance != null)
             {
                 float daylight = DayNightCycle.Instance.GetDaylightIntensity();
-                float flicker = 0.05f + Mathf.Sin(Time.time * 3f + phaseOffset) * 0.03f;
+                float flicker = 0.025f + Mathf.Sin(Time.time * 3f + phaseOffset) * 0.015f;
                 Color c = mat.color;
                 c.a = flicker * daylight;
                 mat.color = c;
@@ -968,7 +866,7 @@ public class WaterEffect : MonoBehaviour
             );
 
             // Intensity based on daylight
-            light.intensity = 0.5f * daylight * (0.8f + Mathf.Sin(Time.time * 3f + i * 0.5f) * 0.2f);
+            light.intensity = 0.25f * daylight * (0.8f + Mathf.Sin(Time.time * 3f + i * 0.5f) * 0.2f);
             light.color = Color.Lerp(new Color(0.6f, 0.85f, 1f), sunColor, 0.3f);
         }
     }

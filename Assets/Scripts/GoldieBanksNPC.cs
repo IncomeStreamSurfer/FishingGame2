@@ -21,6 +21,9 @@ public class GoldieBanksNPC : MonoBehaviour
     private bool dialogOpen = false;
     private float interactionDistance = 4f;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     // Walking behavior
     private Vector3[] beachWaypoints;
     private int currentWaypoint = 0;
@@ -408,10 +411,9 @@ public class GoldieBanksNPC : MonoBehaviour
 
     void CheckPlayerProximity()
     {
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         playerNearby = distance < interactionDistance;
 
         if (!playerNearby && dialogOpen)
@@ -430,10 +432,9 @@ public class GoldieBanksNPC : MonoBehaviour
                 isWalking = false;
 
                 // Face the player
-                GameObject player = GameObject.Find("Player");
-                if (player != null)
+                if (GameCache.IsPlayerValid())
                 {
-                    Vector3 lookDir = (player.transform.position - transform.position).normalized;
+                    Vector3 lookDir = (GameCache.Player.position - transform.position).normalized;
                     lookDir.y = 0;
                     transform.rotation = Quaternion.LookRotation(lookDir);
                 }
@@ -460,7 +461,7 @@ public class GoldieBanksNPC : MonoBehaviour
     void SpawnWeedBag()
     {
         // Remove old bag if exists
-        GameObject oldBag = GameObject.Find("WeedBagCollectible");
+        GameObject oldBag = GameCache.FindCached("WeedBagCollectible");
         if (oldBag != null) Destroy(oldBag);
 
         // Spawn bag at random hidden location on the island
@@ -525,12 +526,21 @@ public class GoldieBanksNPC : MonoBehaviour
     void OnGUI()
     {
         if (!MainMenu.GameStarted) return;
+
+        // Performance: Skip frames when not actively interacting
+        if (!playerNearby && !dialogOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
         if (!playerNearby) return;
 
         // "Press E" prompt
         if (!dialogOpen)
         {
             DrawInteractionPrompt();
+            return; // Early return - don't process dialog UI
         }
         else
         {

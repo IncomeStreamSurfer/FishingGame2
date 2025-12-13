@@ -200,14 +200,20 @@ public class LevelingSystem : MonoBehaviour
     {
         switch (rarity)
         {
-            case Rarity.Common: return 10;
+            case Rarity.Common: return 5;      // Minnow
             case Rarity.Uncommon: return 25;
-            case Rarity.Rare: return 75;
-            case Rarity.Epic: return 200;
-            case Rarity.Legendary: return 500;
+            case Rarity.Rare: return 100;
+            case Rarity.Epic: return 300;
+            case Rarity.Legendary: return 1000;  // Shark
             case Rarity.Mythic: return 2000;
-            default: return 10;
+            default: return 5;
         }
+    }
+
+    public void AwardFishXP(Rarity rarity)
+    {
+        int xp = GetFishXP(rarity);
+        AddXP(xp);
     }
 
     public static int GetQuestXP()

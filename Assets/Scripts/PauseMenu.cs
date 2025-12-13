@@ -11,12 +11,13 @@ public class PauseMenu : MonoBehaviour
     public static PauseMenu Instance { get; private set; }
     public static bool IsPaused { get; private set; } = false;
 
-    private enum PauseState { Main, SaveConfirm, LoadConfirm }
+    private enum PauseState { Main, SaveConfirm, LoadConfirm, Controls }
     private PauseState currentState = PauseState.Main;
 
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
+    private int guiFrameSkip = 0;
 
     // Animation
     private float fadeAlpha = 0f;
@@ -146,6 +147,13 @@ public class PauseMenu : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!IsPaused)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!initialized || fadeAlpha < 0.01f) return;
 
         GUI.color = new Color(1, 1, 1, fadeAlpha);
@@ -154,8 +162,8 @@ public class PauseMenu : MonoBehaviour
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("overlay"));
 
         // Panel
-        float panelWidth = 350;
-        float panelHeight = currentState == PauseState.Main ? 320 : 380;
+        float panelWidth = currentState == PauseState.Controls ? 450 : 350;
+        float panelHeight = currentState == PauseState.Main ? 380 : (currentState == PauseState.Controls ? 520 : 380);
         float panelX = (Screen.width - panelWidth) / 2;
         float panelY = (Screen.height - panelHeight) / 2;
 
@@ -182,6 +190,9 @@ public class PauseMenu : MonoBehaviour
                 break;
             case PauseState.LoadConfirm:
                 DrawLoadMenu(panelX, panelY, panelWidth);
+                break;
+            case PauseState.Controls:
+                DrawControlsMenu(panelX, panelY, panelWidth);
                 break;
         }
 
@@ -212,22 +223,28 @@ public class PauseMenu : MonoBehaviour
             ResumeGame();
         }
 
+        // Controls button
+        if (DrawMenuButton(new Rect(centerX, startY + (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "CONTROLS"))
+        {
+            currentState = PauseState.Controls;
+        }
+
         // Save Game button
-        if (DrawMenuButton(new Rect(centerX, startY + (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "SAVE GAME"))
+        if (DrawMenuButton(new Rect(centerX, startY + 2 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "SAVE GAME"))
         {
             currentState = PauseState.SaveConfirm;
             selectedSlot = -1;
         }
 
         // Load Game button
-        if (DrawMenuButton(new Rect(centerX, startY + 2 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "LOAD GAME"))
+        if (DrawMenuButton(new Rect(centerX, startY + 3 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "LOAD GAME"))
         {
             currentState = PauseState.LoadConfirm;
             selectedSlot = -1;
         }
 
         // Quit button
-        if (DrawMenuButton(new Rect(centerX, startY + 3 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "QUIT TO MENU"))
+        if (DrawMenuButton(new Rect(centerX, startY + 4 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "QUIT TO MENU"))
         {
             QuitToMenu();
         }
@@ -303,6 +320,86 @@ public class PauseMenu : MonoBehaviour
         {
             currentState = PauseState.Main;
         }
+    }
+
+    void DrawControlsMenu(float panelX, float panelY, float panelWidth)
+    {
+        GUIStyle subHeader = new GUIStyle(GUI.skin.label);
+        subHeader.fontSize = 18;
+        subHeader.fontStyle = FontStyle.Bold;
+        subHeader.alignment = TextAnchor.MiddleCenter;
+        subHeader.normal.textColor = new Color(1f, 0.85f, 0.4f, fadeAlpha);
+        GUI.Label(new Rect(panelX, panelY + 50, panelWidth, 25), "CONTROLS", subHeader);
+
+        // Control list styles
+        GUIStyle keyStyle = new GUIStyle(GUI.skin.label);
+        keyStyle.fontSize = 14;
+        keyStyle.fontStyle = FontStyle.Bold;
+        keyStyle.alignment = TextAnchor.MiddleRight;
+        keyStyle.normal.textColor = new Color(0.5f, 0.8f, 1f, fadeAlpha);
+
+        GUIStyle actionStyle = new GUIStyle(GUI.skin.label);
+        actionStyle.fontSize = 14;
+        actionStyle.alignment = TextAnchor.MiddleLeft;
+        actionStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f, fadeAlpha);
+
+        GUIStyle categoryStyle = new GUIStyle(GUI.skin.label);
+        categoryStyle.fontSize = 12;
+        categoryStyle.fontStyle = FontStyle.Bold;
+        categoryStyle.alignment = TextAnchor.MiddleLeft;
+        categoryStyle.normal.textColor = new Color(0.7f, 0.7f, 0.5f, fadeAlpha);
+
+        float startY = panelY + 85;
+        float keyX = panelX + 20;
+        float actionX = panelX + 130;
+        float lineHeight = 22f;
+        float y = startY;
+
+        // Movement
+        GUI.Label(new Rect(keyX, y, 200, lineHeight), "-- MOVEMENT --", categoryStyle);
+        y += lineHeight;
+
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "W A S D", "Move", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "SPACE", "Jump", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "SHIFT", "Sprint", keyStyle, actionStyle);
+
+        y += 8; // Spacing
+        GUI.Label(new Rect(keyX, y, 200, lineHeight), "-- COMBAT --", categoryStyle);
+        y += lineHeight;
+
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "LEFT CLICK", "Attack / Cast Rod", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "Q", "Quick Swap Weapon", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "1-5", "Select Weapon Slot", keyStyle, actionStyle);
+
+        y += 8;
+        GUI.Label(new Rect(keyX, y, 200, lineHeight), "-- INTERACTION --", categoryStyle);
+        y += lineHeight;
+
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "E", "Interact / Talk", keyStyle, actionStyle);
+
+        y += 8;
+        GUI.Label(new Rect(keyX, y, 200, lineHeight), "-- UI PANELS --", categoryStyle);
+        y += lineHeight;
+
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "TAB / C", "Character Panel", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "I", "Inventory", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "F", "Fish Inventory", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "J", "Fish Diary", keyStyle, actionStyle);
+        DrawControlLine(keyX, actionX, ref y, lineHeight, "ESC", "Pause Menu", keyStyle, actionStyle);
+
+        // Back button at bottom
+        float buttonY = panelY + 470;
+        if (DrawMenuButton(new Rect(panelX + (panelWidth - 140) / 2, buttonY, 140, 40), "BACK"))
+        {
+            currentState = PauseState.Main;
+        }
+    }
+
+    void DrawControlLine(float keyX, float actionX, ref float y, float lineHeight, string key, string action, GUIStyle keyStyle, GUIStyle actionStyle)
+    {
+        GUI.Label(new Rect(keyX, y, 100, lineHeight), key, keyStyle);
+        GUI.Label(new Rect(actionX, y, 250, lineHeight), action, actionStyle);
+        y += lineHeight;
     }
 
     void DrawSaveSlot(Rect rect, int slotIndex)
@@ -405,10 +502,9 @@ public class PauseMenu : MonoBehaviour
         }
 
         // Save player position
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            Vector3 pos = player.transform.position;
+            Vector3 pos = GameCache.Player.position;
             PlayerPrefs.SetFloat($"Save{slot}_PosX", pos.x);
             PlayerPrefs.SetFloat($"Save{slot}_PosY", pos.y);
             PlayerPrefs.SetFloat($"Save{slot}_PosZ", pos.z);
@@ -443,13 +539,12 @@ public class PauseMenu : MonoBehaviour
         }
 
         // Load player position
-        GameObject player = GameObject.Find("Player");
-        if (player != null && PlayerPrefs.HasKey($"Save{slot}_PosX"))
+        if (GameCache.IsPlayerValid() && PlayerPrefs.HasKey($"Save{slot}_PosX"))
         {
             float x = PlayerPrefs.GetFloat($"Save{slot}_PosX");
             float y = PlayerPrefs.GetFloat($"Save{slot}_PosY");
             float z = PlayerPrefs.GetFloat($"Save{slot}_PosZ");
-            player.transform.position = new Vector3(x, y, z);
+            GameCache.Player.position = new Vector3(x, y, z);
         }
 
         // Load health
@@ -474,10 +569,9 @@ public class PauseMenu : MonoBehaviour
         MainMenu.GameStarted = false;
 
         // Reset player to spawn
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            player.transform.position = new Vector3(0, 2, 0);
+            GameCache.Player.position = new Vector3(0, 2, 0);
         }
 
         // Reset health

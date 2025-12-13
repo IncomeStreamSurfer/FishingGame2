@@ -19,6 +19,7 @@ public class SpawnNPC : MonoBehaviour
     private Texture2D borderTexture;
     private Texture2D pointerTexture;
     private bool stylesInitialized = false;
+    private int guiFrameSkip = 0;
 
     // Audio
     private AudioSource audioSource;
@@ -224,10 +225,9 @@ public class SpawnNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < interactionDistance;
 
             // Auto-close dialog when player wanders too far
@@ -240,7 +240,7 @@ public class SpawnNPC : MonoBehaviour
             // Face the player when nearby
             if (playerNearby)
             {
-                Vector3 dirToPlayer = player.transform.position - transform.position;
+                Vector3 dirToPlayer = GameCache.Player.position - transform.position;
                 dirToPlayer.y = 0;
                 if (dirToPlayer.magnitude > 0.1f)
                 {
@@ -343,6 +343,13 @@ public class SpawnNPC : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!dialogOpen && !playerNearby)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted || !stylesInitialized) return;
 
         if (dialogOpen)

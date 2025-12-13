@@ -69,10 +69,9 @@ public class WeedBagCollectible : MonoBehaviour
         }
 
         // Check for player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
 
             if (distance < interactionDistance)
             {
@@ -112,10 +111,9 @@ public class WeedBagCollectible : MonoBehaviour
         // Check if Goldie's quest is active
         if (GoldieBanksNPC.Instance == null || !GoldieBanksNPC.Instance.questActive) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         if (distance < interactionDistance)
         {
             GUIStyle promptStyle = new GUIStyle();

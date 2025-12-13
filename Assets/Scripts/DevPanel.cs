@@ -25,6 +25,18 @@ public class DevPanel : MonoBehaviour
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
+    private int guiFrameSkip = 0;
+
+    // Cached GUIStyles (initialized once in OnGUI to avoid allocations)
+    private static GUIStyle cachedTitleStyle;
+    private static GUIStyle cachedCloseStyle;
+    private static GUIStyle cachedStatStyle;
+    private static GUIStyle cachedSectionTitle;
+    private static GUIStyle cachedLabelStyle;
+    private static GUIStyle cachedInputStyle;
+    private static GUIStyle cachedBtnStyle;
+    private static GUIStyle cachedTimeLabel;
+    private static bool stylesInitialized = false;
 
     void Awake()
     {
@@ -75,6 +87,50 @@ public class DevPanel : MonoBehaviour
         return textureCache.TryGetValue(name, out Texture2D tex) ? tex : Texture2D.whiteTexture;
     }
 
+    void InitializeCachedStyles()
+    {
+        cachedTitleStyle = new GUIStyle(GUI.skin.label);
+        cachedTitleStyle.fontSize = 14;
+        cachedTitleStyle.fontStyle = FontStyle.Bold;
+        cachedTitleStyle.alignment = TextAnchor.MiddleCenter;
+        cachedTitleStyle.normal.textColor = Color.white;
+
+        cachedCloseStyle = new GUIStyle(GUI.skin.button);
+        cachedCloseStyle.normal.textColor = Color.white;
+        cachedCloseStyle.fontSize = 12;
+
+        cachedStatStyle = new GUIStyle(GUI.skin.label);
+        cachedStatStyle.fontSize = 12;
+        cachedStatStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
+
+        cachedSectionTitle = new GUIStyle(GUI.skin.label);
+        cachedSectionTitle.fontSize = 11;
+        cachedSectionTitle.fontStyle = FontStyle.Bold;
+        cachedSectionTitle.normal.textColor = new Color(1f, 0.8f, 0.4f);
+
+        cachedLabelStyle = new GUIStyle(GUI.skin.label);
+        cachedLabelStyle.fontSize = 11;
+        cachedLabelStyle.normal.textColor = Color.white;
+
+        cachedInputStyle = new GUIStyle(GUI.skin.textField);
+        cachedInputStyle.fontSize = 12;
+        cachedInputStyle.normal.background = GetTexture("inputBg");
+        cachedInputStyle.normal.textColor = Color.white;
+        cachedInputStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedBtnStyle = new GUIStyle(GUI.skin.label);
+        cachedBtnStyle.fontSize = 11;
+        cachedBtnStyle.fontStyle = FontStyle.Bold;
+        cachedBtnStyle.alignment = TextAnchor.MiddleCenter;
+        cachedBtnStyle.normal.textColor = Color.white;
+
+        cachedTimeLabel = new GUIStyle(GUI.skin.label);
+        cachedTimeLabel.fontSize = 11;
+        cachedTimeLabel.normal.textColor = Color.white;
+
+        stylesInitialized = true;
+    }
+
     void Update()
     {
         // Toggle with F12
@@ -104,7 +160,20 @@ public class DevPanel : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!isOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!isOpen || !initialized || !MainMenu.GameStarted) return;
+
+        // Initialize cached styles once (must be done in OnGUI context)
+        if (!stylesInitialized)
+        {
+            InitializeCachedStyles();
+        }
 
         // Main panel
         GUI.DrawTexture(windowRect, GetTexture("panelBg"));
@@ -113,13 +182,8 @@ public class DevPanel : MonoBehaviour
         Rect headerRect = new Rect(windowRect.x, windowRect.y, windowRect.width, 30);
         GUI.DrawTexture(headerRect, GetTexture("headerBg"));
 
-        // Header title
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label);
-        titleStyle.fontSize = 14;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = Color.white;
-        GUI.Label(headerRect, "DEV PANEL (F12)", titleStyle);
+        // Header title - use cached style
+        GUI.Label(headerRect, "DEV PANEL (F12)", cachedTitleStyle);
 
         // Handle dragging
         if (Event.current.type == EventType.MouseDown && headerRect.Contains(Event.current.mousePosition))
@@ -132,11 +196,8 @@ public class DevPanel : MonoBehaviour
             Event.current.Use();
         }
 
-        // Close button
-        GUIStyle closeStyle = new GUIStyle(GUI.skin.button);
-        closeStyle.normal.textColor = Color.white;
-        closeStyle.fontSize = 12;
-        if (GUI.Button(new Rect(windowRect.x + windowRect.width - 25, windowRect.y + 5, 20, 20), "X", closeStyle))
+        // Close button - use cached style
+        if (GUI.Button(new Rect(windowRect.x + windowRect.width - 25, windowRect.y + 5, 20, 20), "X", cachedCloseStyle))
         {
             isOpen = false;
         }
@@ -149,22 +210,18 @@ public class DevPanel : MonoBehaviour
         // Current Stats Section
         DrawSection("CURRENT STATS", ref contentY, padding, contentWidth, () =>
         {
-            GUIStyle statStyle = new GUIStyle(GUI.skin.label);
-            statStyle.fontSize = 12;
-            statStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
-
             int level = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetLevel() : 1;
             long xp = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetCurrentXP() : 0;
             int gold = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
             int fish = GameManager.Instance != null ? GameManager.Instance.GetTotalFishCaught() : 0;
 
-            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Level: {level} / {LevelingSystem.MAX_LEVEL}", statStyle);
+            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Level: {level} / {LevelingSystem.MAX_LEVEL}", cachedStatStyle);
             contentY += 20;
-            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"XP: {xp:N0} / {LevelingSystem.MAX_XP:N0}", statStyle);
+            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"XP: {xp:N0} / {LevelingSystem.MAX_XP:N0}", cachedStatStyle);
             contentY += 20;
-            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Gold: {gold:N0}", statStyle);
+            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Gold: {gold:N0}", cachedStatStyle);
             contentY += 20;
-            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Fish Caught: {fish}", statStyle);
+            GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Fish Caught: {fish}", cachedStatStyle);
             contentY += 25;
         });
 
@@ -209,11 +266,7 @@ public class DevPanel : MonoBehaviour
         GUI.DrawTexture(new Rect(windowRect.x + padding, contentY, contentWidth, 1), GetTexture("divider"));
         contentY += 10;
 
-        GUIStyle sectionTitle = new GUIStyle(GUI.skin.label);
-        sectionTitle.fontSize = 11;
-        sectionTitle.fontStyle = FontStyle.Bold;
-        sectionTitle.normal.textColor = new Color(1f, 0.8f, 0.4f);
-        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "QUICK ACTIONS", sectionTitle);
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "QUICK ACTIONS", cachedSectionTitle);
         contentY += 22;
 
         // Quick action buttons
@@ -247,11 +300,11 @@ public class DevPanel : MonoBehaviour
         GUI.DrawTexture(new Rect(windowRect.x + padding, contentY, contentWidth, 1), GetTexture("divider"));
         contentY += 10;
 
-        GUIStyle timeTitle = new GUIStyle(GUI.skin.label);
-        timeTitle.fontSize = 11;
-        timeTitle.fontStyle = FontStyle.Bold;
-        timeTitle.normal.textColor = new Color(0.4f, 0.8f, 1f);
-        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "TIME OF DAY", timeTitle);
+        // Use section title with different color for time
+        Color prevColor = cachedSectionTitle.normal.textColor;
+        cachedSectionTitle.normal.textColor = new Color(0.4f, 0.8f, 1f);
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "TIME OF DAY", cachedSectionTitle);
+        cachedSectionTitle.normal.textColor = prevColor;
         contentY += 22;
 
         // Get current time from DayNightCycle (0-24 hours)
@@ -262,12 +315,9 @@ public class DevPanel : MonoBehaviour
             timeSliderValue = currentHour / 24f; // Convert to 0-1 for slider
         }
 
-        // Time label
-        GUIStyle timeLabel = new GUIStyle(GUI.skin.label);
-        timeLabel.fontSize = 11;
-        timeLabel.normal.textColor = Color.white;
+        // Time label - use cached style
         string timeStr = GetTimeString(timeSliderValue);
-        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Time: {timeStr}", timeLabel);
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), $"Time: {timeStr}", cachedTimeLabel);
         contentY += 20;
 
         // Draw slider track
@@ -312,10 +362,11 @@ public class DevPanel : MonoBehaviour
         }
         contentY += 30;
 
-        // Danger zone
-        GUIStyle dangerTitle = new GUIStyle(sectionTitle);
-        dangerTitle.normal.textColor = new Color(1f, 0.4f, 0.4f);
-        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "DANGER ZONE", dangerTitle);
+        // Danger zone - use section title with different color
+        prevColor = cachedSectionTitle.normal.textColor;
+        cachedSectionTitle.normal.textColor = new Color(1f, 0.4f, 0.4f);
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "DANGER ZONE", cachedSectionTitle);
+        cachedSectionTitle.normal.textColor = prevColor;
         contentY += 22;
 
         if (DrawButton(new Rect(windowRect.x + padding, contentY, contentWidth, 25), "Reset All Progress", true))
@@ -326,12 +377,7 @@ public class DevPanel : MonoBehaviour
 
     void DrawSection(string title, ref float y, float padding, float width, System.Action content)
     {
-        GUIStyle sectionTitle = new GUIStyle(GUI.skin.label);
-        sectionTitle.fontSize = 11;
-        sectionTitle.fontStyle = FontStyle.Bold;
-        sectionTitle.normal.textColor = new Color(1f, 0.8f, 0.4f);
-
-        GUI.Label(new Rect(windowRect.x + padding, y, width, 18), title, sectionTitle);
+        GUI.Label(new Rect(windowRect.x + padding, y, width, 18), title, cachedSectionTitle);
         y += 20;
         content();
     }
@@ -339,19 +385,9 @@ public class DevPanel : MonoBehaviour
     void DrawInputWithButtons(ref float y, float padding, float width, ref string inputValue, string label,
         System.Action onApply, string[] presetLabels, int[] presetValues)
     {
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
-        labelStyle.fontSize = 11;
-        labelStyle.normal.textColor = Color.white;
-
-        GUIStyle inputStyle = new GUIStyle(GUI.skin.textField);
-        inputStyle.fontSize = 12;
-        inputStyle.normal.background = GetTexture("inputBg");
-        inputStyle.normal.textColor = Color.white;
-        inputStyle.alignment = TextAnchor.MiddleCenter;
-
-        // Label and input
-        GUI.Label(new Rect(windowRect.x + padding, y + 2, 45, 20), label, labelStyle);
-        inputValue = GUI.TextField(new Rect(windowRect.x + padding + 50, y, 80, 22), inputValue, inputStyle);
+        // Label and input - use cached styles
+        GUI.Label(new Rect(windowRect.x + padding, y + 2, 45, 20), label, cachedLabelStyle);
+        inputValue = GUI.TextField(new Rect(windowRect.x + padding + 50, y, 80, 22), inputValue, cachedInputStyle);
 
         // Apply button
         if (DrawButton(new Rect(windowRect.x + padding + 140, y, 60, 22), "Apply"))
@@ -382,13 +418,8 @@ public class DevPanel : MonoBehaviour
                           (hover ? GetTexture("buttonHover") : GetTexture("buttonNormal"));
         GUI.DrawTexture(rect, bgTex);
 
-        GUIStyle btnStyle = new GUIStyle(GUI.skin.label);
-        btnStyle.fontSize = 11;
-        btnStyle.fontStyle = FontStyle.Bold;
-        btnStyle.alignment = TextAnchor.MiddleCenter;
-        btnStyle.normal.textColor = Color.white;
-
-        GUI.Label(rect, text, btnStyle);
+        // Use cached button style
+        GUI.Label(rect, text, cachedBtnStyle);
 
         return GUI.Button(rect, "", GUIStyle.none);
     }

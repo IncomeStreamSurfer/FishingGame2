@@ -26,6 +26,7 @@ public class WeaponSystem : MonoBehaviour
     // UI
     private Texture2D hotbarTexture;
     private Texture2D selectedTexture;
+    private int guiFrameSkip = 0;
 
     // Attack animation
     private float attackAnimTime = 0f;
@@ -48,15 +49,14 @@ public class WeaponSystem : MonoBehaviour
     {
         CreateUITextures();
 
-        // Find weapon hand (create if not found)
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Find weapon hand using cached player reference
+        if (GameCache.IsPlayerValid())
         {
-            weaponHand = player.transform.Find("WeaponHand");
+            weaponHand = GameCache.Player.Find("WeaponHand");
             if (weaponHand == null)
             {
                 GameObject hand = new GameObject("WeaponHand");
-                hand.transform.SetParent(player.transform);
+                hand.transform.SetParent(GameCache.Player);
                 hand.transform.localPosition = new Vector3(0.4f, 0.8f, 0.3f);
                 weaponHand = hand.transform;
             }
@@ -85,23 +85,28 @@ public class WeaponSystem : MonoBehaviour
 
     bool IsInCombatRealm()
     {
-        // Check if player is in a realm with combat (Ice or Jungle)
-        RealmManager rm = FindObjectOfType<RealmManager>();
-        if (rm != null)
+        // Check if player is in a realm with combat (Ice or Jungle) - use cached reference
+        if (GameCache.Realm != null)
         {
+            RealmManager rm = GameCache.Realm;
             return rm.CurrentRealm == RealmType.IceRealm || rm.CurrentRealm == RealmType.JungleRealm;
         }
         // Fallback: check position (Ice: X > 400, Jungle: X > 900)
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            return player.transform.position.x > 400f;
+            return GameCache.Player.position.x > 400f;
         }
         return false;
     }
 
     void HandleInput()
     {
+        // Q key for quick swap between rod and last weapon
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            QuickSwapWeapon();
+        }
+
         // Number keys 1-4 for weapon slots, 0 or ` for fishing rod
         if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Alpha0))
         {
@@ -127,6 +132,44 @@ public class WeaponSystem : MonoBehaviour
         if (weaponMode && equippedWeapon != null && Input.GetMouseButtonDown(0))
         {
             TryAttack();
+        }
+    }
+
+    // Quick swap between fishing rod and last used weapon
+    private int lastWeaponIndex = 0;
+
+    void QuickSwapWeapon()
+    {
+        if (weaponMode)
+        {
+            // Currently using weapon, switch to rod
+            lastWeaponIndex = currentWeaponIndex;
+            SwitchToFishingRod();
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Fishing Rod", new Color(0.6f, 0.8f, 0.5f));
+            }
+        }
+        else
+        {
+            // Currently using rod, switch to weapon
+            if (ownedWeapons.Count > 0)
+            {
+                int idx = Mathf.Clamp(lastWeaponIndex, 0, ownedWeapons.Count - 1);
+                currentWeaponIndex = idx;
+                EquipWeapon(ownedWeapons[idx]);
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification($"Equipped: {ownedWeapons[idx].name}", new Color(0.8f, 0.6f, 0.5f));
+                }
+            }
+            else
+            {
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification("No weapons owned!", new Color(0.8f, 0.4f, 0.3f));
+                }
+            }
         }
     }
 
@@ -168,10 +211,10 @@ public class WeaponSystem : MonoBehaviour
         currentWeaponIndex = -1;
         RemoveWeaponModel();
 
-        // Re-enable fishing rod animator
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Re-enable fishing rod animator - use cached player reference
+        if (GameCache.IsPlayerValid())
         {
+            GameObject player = GameCache.Player.gameObject;
             FishingRodAnimator rodAnim = player.GetComponent<FishingRodAnimator>();
             if (rodAnim != null)
             {
@@ -189,10 +232,10 @@ public class WeaponSystem : MonoBehaviour
         weaponMode = true;
         equippedWeapon = weapon;
 
-        // Disable fishing rod
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Disable fishing rod - use cached player reference
+        if (GameCache.IsPlayerValid())
         {
+            GameObject player = GameCache.Player.gameObject;
             FishingRodAnimator rodAnim = player.GetComponent<FishingRodAnimator>();
             if (rodAnim != null)
             {
@@ -218,6 +261,21 @@ public class WeaponSystem : MonoBehaviour
         {
             ownedWeapons.Add(weapon);
         }
+    }
+
+    public List<WeaponData> GetOwnedWeapons()
+    {
+        return ownedWeapons;
+    }
+
+    public bool IsWeaponEquipped(WeaponData weapon)
+    {
+        return weaponMode && equippedWeapon != null && equippedWeapon.name == weapon.name;
+    }
+
+    public bool IsInWeaponMode()
+    {
+        return weaponMode;
     }
 
     void CreateWeaponModel(WeaponData weapon)
@@ -394,10 +452,10 @@ public class WeaponSystem : MonoBehaviour
             weaponModel = null;
         }
 
-        // Show fishing rod again
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Show fishing rod again - use cached player reference
+        if (GameCache.IsPlayerValid())
         {
+            GameObject player = GameCache.Player.gameObject;
             Transform rodPivot = player.transform.Find("RodPivot");
             if (rodPivot != null)
             {
@@ -461,8 +519,9 @@ public class WeaponSystem : MonoBehaviour
     {
         if (equippedWeapon == null) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        // Use cached player reference
+        if (!GameCache.IsPlayerValid()) return;
+        GameObject player = GameCache.Player.gameObject;
 
         // Find all polar bears
         PolarBearAI[] bears = FindObjectsOfType<PolarBearAI>();
@@ -517,13 +576,12 @@ public class WeaponSystem : MonoBehaviour
         return equippedWeapon;
     }
 
-    public List<WeaponData> GetOwnedWeapons()
-    {
-        return ownedWeapons;
-    }
-
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed (weapon UI is important but can skip some)
+        guiFrameSkip++;
+        if (guiFrameSkip % 2 != 0) return; // Skip every other frame
+
         if (!MainMenu.GameStarted) return;
         if (!IsInCombatRealm()) return;
 

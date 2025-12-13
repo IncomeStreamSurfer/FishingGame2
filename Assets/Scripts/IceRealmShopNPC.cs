@@ -34,6 +34,9 @@ public class IceRealmShopNPC : MonoBehaviour
     // Scroll position for items
     private Vector2 scrollPosition;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     // UI Textures
     private Texture2D panelTexture;
     private Texture2D buttonTexture;
@@ -157,10 +160,10 @@ public class IceRealmShopNPC : MonoBehaviour
     #region Pixel Art Icon Creation
     Texture2D CreateTexture()
     {
-        Texture2D tex = new Texture2D(24, 24);
+        Texture2D tex = new Texture2D(32, 32);
         Color clear = new Color(0, 0, 0, 0);
-        for (int x = 0; x < 24; x++)
-            for (int y = 0; y < 24; y++)
+        for (int x = 0; x < 32; x++)
+            for (int y = 0; y < 32; y++)
                 tex.SetPixel(x, y, clear);
         return tex;
     }
@@ -174,8 +177,8 @@ public class IceRealmShopNPC : MonoBehaviour
 
     void FillRect(Texture2D tex, int x, int y, int w, int h, Color col)
     {
-        for (int px = x; px < x + w && px < 24; px++)
-            for (int py = y; py < y + h && py < 24; py++)
+        for (int px = x; px < x + w && px < 32; px++)
+            for (int py = y; py < y + h && py < 32; py++)
                 if (px >= 0 && py >= 0)
                     tex.SetPixel(px, py, col);
     }
@@ -491,10 +494,10 @@ public class IceRealmShopNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        // Use cached player reference
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         playerNearby = distance < interactionDistance;
 
         if (playerNearby && !shopOpen && Input.GetKeyDown(KeyCode.E))
@@ -643,16 +646,16 @@ public class IceRealmShopNPC : MonoBehaviour
 
     void SpawnPolarBearCubPet()
     {
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            // Check if pet already exists
-            PolarBearCubPet existingPet = FindObjectOfType<PolarBearCubPet>();
+            // Check if pet already exists (use cached reference if available)
+            GameObject existingPet = GameCache.FindCached("PolarBearCubPet");
             if (existingPet == null)
             {
                 GameObject petObj = new GameObject("PolarBearCubPet");
-                petObj.transform.position = player.transform.position + Vector3.right * 2f;
+                petObj.transform.position = GameCache.Player.position + Vector3.right * 2f;
                 petObj.AddComponent<PolarBearCubPet>();
+                GameCache.RegisterNamedObject("PolarBearCubPet", petObj);
             }
         }
     }
@@ -683,10 +686,18 @@ public class IceRealmShopNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Performance: Skip frames when not actively interacting
+        if (!playerNearby && !shopOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
         // Interaction prompt
         if (playerNearby && !shopOpen)
         {
             DrawInteractionPrompt();
+            return; // Early return - don't process shop UI
         }
 
         // Shop UI
@@ -774,6 +785,15 @@ public class IceRealmShopNPC : MonoBehaviour
         if (GUI.Button(new Rect(panelRect.x + panelWidth - 22, panelRect.y + 4, 18, 18), "X", closeStyle))
         {
             CloseShop();
+        }
+
+        // Character Stats button
+        GUIStyle statsStyle = new GUIStyle(GUI.skin.button);
+        statsStyle.fontSize = 8;
+        statsStyle.fontStyle = FontStyle.Bold;
+        if (GUI.Button(new Rect(panelRect.x + panelWidth - 70, panelRect.y + 4, 45, 18), "STATS", statsStyle))
+        {
+            if (CharacterPanel.Instance != null) CharacterPanel.Instance.Toggle();
         }
 
         // Slot tabs - smaller

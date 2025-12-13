@@ -3,20 +3,41 @@ using System.Collections;
 
 /// <summary>
 /// Wetsuit Pete's Quest System with speech bubble dialog
-/// Two quests: Tackle Box retrieval and Salmon collection
+/// Initial quests: Tackle Box retrieval and Salmon collection
+/// Then offers random repeatable quests including the rare Whale quest (10% chance)
+/// All quests feature pirate/fisherman speak with colorful expressions
 /// </summary>
 public class WetsuitPeteQuests : MonoBehaviour
 {
     public static WetsuitPeteQuests Instance { get; private set; }
 
     // Quest state
-    public enum QuestState { None, TackleBoxAvailable, TackleBoxActive, SalmonAvailable, SalmonActive, AllComplete }
+    public enum QuestState { None, TackleBoxAvailable, TackleBoxActive, SalmonAvailable, SalmonActive, RandomQuestAvailable, RandomQuestActive, AllComplete }
     public QuestState currentState = QuestState.TackleBoxAvailable;
 
     // Quest tracking
     private int salmonCaught = 0;
     private const int salmonRequired = 5;
     public bool tackleBoxFound = false;
+
+    // Random quest system
+    [System.Serializable]
+    public class FishQuest
+    {
+        public string questName;
+        public string fishId;
+        public int requiredAmount;
+        public int goldReward;
+        public int xpReward;
+        public string acceptDialog;
+        public string progressDialog;
+        public string completeDialog;
+        public float offerChance; // Chance this quest is offered (0-1)
+    }
+
+    private FishQuest currentFishQuest;
+    private int currentQuestProgress = 0;
+    private System.Random questRNG;
 
     // UI State
     private bool playerNearby = false;
@@ -46,6 +67,7 @@ public class WetsuitPeteQuests : MonoBehaviour
     {
         SetupAudio();
         Invoke("InitializeStyles", 0.5f);
+        questRNG = new System.Random();
     }
 
     void SetupAudio()
@@ -75,10 +97,9 @@ public class WetsuitPeteQuests : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             bool wasNearby = playerNearby;
             playerNearby = distance < interactionDistance;
 
@@ -92,7 +113,7 @@ public class WetsuitPeteQuests : MonoBehaviour
             // Face the player when nearby
             if (playerNearby)
             {
-                Vector3 dirToPlayer = player.transform.position - transform.position;
+                Vector3 dirToPlayer = GameCache.Player.position - transform.position;
                 dirToPlayer.y = 0;
                 if (dirToPlayer.magnitude > 0.1f)
                 {
@@ -292,6 +313,30 @@ public class WetsuitPeteQuests : MonoBehaviour
                 }
                 break;
 
+            case QuestState.RandomQuestAvailable:
+                if (currentFishQuest != null)
+                {
+                    dialogText = currentFishQuest.acceptDialog;
+                    showAcceptButton = true;
+                }
+                break;
+
+            case QuestState.RandomQuestActive:
+                if (currentFishQuest != null)
+                {
+                    if (currentQuestProgress >= currentFishQuest.requiredAmount)
+                    {
+                        dialogText = currentFishQuest.completeDialog;
+                        showCompleteButton = true;
+                    }
+                    else
+                    {
+                        dialogText = currentFishQuest.progressDialog.Replace("{current}", currentQuestProgress.ToString())
+                                                                        .Replace("{required}", currentFishQuest.requiredAmount.ToString());
+                    }
+                }
+                break;
+
             case QuestState.AllComplete:
                 dialogText = "\"You've helped me out so much, mate! Cheers! Now go catch some big ones for yourself!\"";
                 break;
@@ -434,9 +479,10 @@ public class WetsuitPeteQuests : MonoBehaviour
         float promptY = Screen.height * 0.6f;
         string text = "[E] Talk to Pete";
 
-        bool hasQuest = currentState == QuestState.TackleBoxAvailable || currentState == QuestState.SalmonAvailable;
+        bool hasQuest = currentState == QuestState.TackleBoxAvailable || currentState == QuestState.SalmonAvailable || currentState == QuestState.RandomQuestAvailable;
         bool questReady = (currentState == QuestState.TackleBoxActive && tackleBoxFound) ||
-                         (currentState == QuestState.SalmonActive && salmonCaught >= salmonRequired);
+                         (currentState == QuestState.SalmonActive && salmonCaught >= salmonRequired) ||
+                         (currentState == QuestState.RandomQuestActive && currentFishQuest != null && currentQuestProgress >= currentFishQuest.requiredAmount);
 
         if (hasQuest)
         {
@@ -476,6 +522,17 @@ public class WetsuitPeteQuests : MonoBehaviour
                 UIManager.Instance.ShowLootNotification("Quest Started: Catch 5 Salmon!", new Color(0.3f, 0.7f, 1f));
             }
             Debug.Log("Salmon quest accepted - 40% salmon chance active");
+        }
+        else if (currentState == QuestState.RandomQuestAvailable && currentFishQuest != null)
+        {
+            currentState = QuestState.RandomQuestActive;
+            currentQuestProgress = 0;
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Quest Started: {currentFishQuest.questName}!", new Color(0.3f, 0.7f, 1f));
+            }
+            Debug.Log($"Random quest accepted: {currentFishQuest.questName}");
         }
 
         dialogOpen = false;
@@ -520,8 +577,30 @@ public class WetsuitPeteQuests : MonoBehaviour
                 UIManager.Instance.ShowLootNotification("Quest Complete! +300 Gold, +300 XP", new Color(1f, 0.85f, 0.2f));
             }
 
-            currentState = QuestState.AllComplete;
-            Debug.Log("Salmon quest complete! All Pete quests done.");
+            // After salmon quest, start offering random quests
+            OfferRandomQuest();
+        }
+        else if (currentState == QuestState.RandomQuestActive && currentFishQuest != null && currentQuestProgress >= currentFishQuest.requiredAmount)
+        {
+            // Reward based on quest
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.AddCoins(currentFishQuest.goldReward);
+            }
+            if (LevelingSystem.Instance != null)
+            {
+                LevelingSystem.Instance.AddXP(currentFishQuest.xpReward);
+            }
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Quest Complete! +{currentFishQuest.goldReward} Gold, +{currentFishQuest.xpReward} XP", new Color(1f, 0.85f, 0.2f));
+            }
+
+            Debug.Log($"Random quest complete: {currentFishQuest.questName}");
+
+            // Offer another random quest
+            OfferRandomQuest();
         }
 
         dialogOpen = false;
@@ -540,6 +619,19 @@ public class WetsuitPeteQuests : MonoBehaviour
                 if (UIManager.Instance != null)
                 {
                     UIManager.Instance.ShowLootNotification("All salmon caught! Return to Pete!", new Color(0.3f, 1f, 0.5f));
+                }
+            }
+        }
+        else if (currentState == QuestState.RandomQuestActive && currentFishQuest != null && fishId == currentFishQuest.fishId)
+        {
+            currentQuestProgress++;
+            Debug.Log($"{fishId} caught for Pete's quest: {currentQuestProgress}/{currentFishQuest.requiredAmount}");
+
+            if (currentQuestProgress >= currentFishQuest.requiredAmount)
+            {
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification($"All {currentFishQuest.requiredAmount} fish caught! Return to Pete!", new Color(0.3f, 1f, 0.5f));
                 }
             }
         }
@@ -573,6 +665,179 @@ public class WetsuitPeteQuests : MonoBehaviour
     }
 
     public bool IsDialogueOpen() => dialogOpen;
+
+    // Generate and offer a random quest
+    void OfferRandomQuest()
+    {
+        FishQuest[] availableQuests = GetAvailableQuests();
+
+        if (availableQuests.Length == 0)
+        {
+            currentState = QuestState.AllComplete;
+            return;
+        }
+
+        // Try to pick a quest based on their chance weights
+        FishQuest selectedQuest = null;
+        int maxAttempts = 10;
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            FishQuest candidateQuest = availableQuests[questRNG.Next(availableQuests.Length)];
+            float roll = (float)questRNG.NextDouble();
+
+            if (roll <= candidateQuest.offerChance)
+            {
+                selectedQuest = candidateQuest;
+                break;
+            }
+        }
+
+        // If no quest was selected by chance, pick a random one
+        if (selectedQuest == null)
+        {
+            selectedQuest = availableQuests[questRNG.Next(availableQuests.Length)];
+        }
+
+        currentFishQuest = selectedQuest;
+        currentQuestProgress = 0;
+        currentState = QuestState.RandomQuestAvailable;
+
+        Debug.Log($"Offering random quest: {selectedQuest.questName} (Chance: {selectedQuest.offerChance * 100}%)");
+    }
+
+    // Get all available fish quests with pirate speak
+    FishQuest[] GetAvailableQuests()
+    {
+        return new FishQuest[]
+        {
+            // WHALE QUEST - 10% chance, ultra rare
+            new FishQuest
+            {
+                questName = "The Great Whale Hunt",
+                fishId = "whale",
+                requiredAmount = 1,
+                goldReward = 1000,
+                xpReward = 10000,
+                offerChance = 0.1f,
+                acceptDialog = "\"Holy Dick!! I need 1 whale! Its rare ya know.. the rarest sight! Beautiful though when you do see it. Catch me one of these il pay you Realll well.....\"",
+                progressDialog = "\"Still searching for that whale, old mate? Keep yer eyes on the horizon! {current}/{required}\"",
+                completeDialog = "\"GREAT BARNACLES!! You caught a whale, ya absolute legend! Here's yer reward, me hearty!\""
+            },
+
+            // TUNA QUEST
+            new FishQuest
+            {
+                questName = "Tuna Time",
+                fishId = "tuna",
+                requiredAmount = 5,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Ahoy old mate! Bring me 5 Tuna and I'll make it worth yer while, me hearty!\"",
+                progressDialog = "\"Keep at it, young kipper! You've caught {current} out of {required} Tuna so far!\"",
+                completeDialog = "\"Salty gangplank! You got all the Tuna! Me scurvy hits harder in the mornin!! Here's yer gold!\""
+            },
+
+            // SWORDFISH QUEST
+            new FishQuest
+            {
+                questName = "Swordfish Bounty",
+                fishId = "swordfish",
+                requiredAmount = 3,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Great barnacles! I need some Swordfish, ya filthy sea dog! Fetch me 3!\"",
+                progressDialog = "\"How's the hunt going, old mate? {current}/{required} Swordfish in the net!\"",
+                completeDialog = "\"Ahoy! That's all the Swordfish I need! You're a proper fisherman, me hearty!\""
+            },
+
+            // BASS QUEST
+            new FishQuest
+            {
+                questName = "Bass Collection",
+                fishId = "bass",
+                requiredAmount = 8,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Arr, young kipper! I be needin' 8 Bass for me supper! Can ye help an old salt out?\"",
+                progressDialog = "\"Not bad, not bad! {current} Bass down, {required} total needed, ya filthy sea dog!\"",
+                completeDialog = "\"Great barnacles! That's enough Bass to feed me whole crew! Here's yer payment!\""
+            },
+
+            // HAMMERHEAD QUEST
+            new FishQuest
+            {
+                questName = "Hammerhead Hunt",
+                fishId = "hammerhead",
+                requiredAmount = 2,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Me hearty! I need 2 Hammerhead sharks! They're tricky, but I know you can do it, old mate!\"",
+                progressDialog = "\"Careful with those Hammerheads! {current} caught, {required} needed!\"",
+                completeDialog = "\"Salty gangplank! You caught the Hammerheads! Me scurvy hits harder in the mornin!!\""
+            },
+
+            // COD QUEST
+            new FishQuest
+            {
+                questName = "Cod Catch",
+                fishId = "cod",
+                requiredAmount = 10,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Ahoy! Get me 10 Cod, young kipper! They're everywhere in these waters!\"",
+                progressDialog = "\"Keep fishing, me hearty! {current}/{required} Cod caught!\"",
+                completeDialog = "\"Great barnacles! That's a lot of Cod! Here's yer reward, ya filthy sea dog!\""
+            },
+
+            // JELLYFISH QUEST
+            new FishQuest
+            {
+                questName = "Jellyfish Gathering",
+                fishId = "jellyfish",
+                requiredAmount = 6,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Old mate! I need 6 Jellyfish for... reasons. Don't ask! Just catch 'em, me hearty!\"",
+                progressDialog = "\"Watch out for the stingers! {current} Jellyfish caught, {required} needed!\"",
+                completeDialog = "\"Salty gangplank! You got all the Jellyfish! Me scurvy appreciates it!\""
+            },
+
+            // SHARK QUEST
+            new FishQuest
+            {
+                questName = "Shark Slayer",
+                fishId = "shark",
+                requiredAmount = 1,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Ya filthy sea dog! Bring me 1 Shark and prove yer worth on these waters!\"",
+                progressDialog = "\"A shark's no easy catch, young kipper! Keep trying! {current}/{required}\"",
+                completeDialog = "\"Great barnacles! You caught a shark, old mate! Yer a true ocean warrior!\""
+            },
+
+            // BABY TURTLE QUEST
+            new FishQuest
+            {
+                questName = "Turtle Rescue",
+                fishId = "baby_turtle",
+                requiredAmount = 4,
+                goldReward = 200,
+                xpReward = 2000,
+                offerChance = 1.0f,
+                acceptDialog = "\"Ahoy, me hearty! Find me 4 Baby Sea Turtles! They're adorable little things!\"",
+                progressDialog = "\"How many turtles ya found, old mate? {current} out of {required}!\"",
+                completeDialog = "\"Salty gangplank! All the baby turtles are safe! Me scurvy hits harder in the mornin!!\""
+            }
+        };
+    }
 
     void OnDestroy()
     {

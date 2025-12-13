@@ -15,6 +15,11 @@ public class CameraController : MonoBehaviour
     public float minZoom = 4f;
     public float maxZoom = 15f;
 
+    [Header("Orbit Camera Settings")]
+    public float orbitSensitivity = 5f;
+    public float minPitch = -10f;
+    public float maxPitch = 80f;
+
     // ============================================================
     // LIE DOWN CAMERA FIX - Keeps camera COMPLETELY FROZEN when lying down
     // To REVERT: Delete lines marked with "// LIE DOWN FIX" and
@@ -25,6 +30,11 @@ public class CameraController : MonoBehaviour
     private Quaternion frozenCameraRotation; // LIE DOWN FIX
     private bool wasLyingDown = false; // LIE DOWN FIX
     private PlayerController playerController; // LIE DOWN FIX
+
+    // Orbit camera variables
+    private float currentYaw = 0f;
+    private float currentPitch = 0f;
+    private bool isOrbiting = false;
 
     // Camera is locked behind player - follows player's rotation
     public float GetCurrentYaw()
@@ -41,14 +51,13 @@ public class CameraController : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // Auto-find player if not assigned
+        // Auto-find player if not assigned using cached reference
         if (target == null)
         {
-            GameObject player = GameObject.Find("Player");
-            if (player != null)
+            if (GameCache.IsPlayerValid())
             {
-                target = player.transform;
-                playerController = player.GetComponent<PlayerController>(); // LIE DOWN FIX
+                target = GameCache.Player;
+                playerController = target.GetComponent<PlayerController>(); // LIE DOWN FIX
             }
         }
 
@@ -56,6 +65,11 @@ public class CameraController : MonoBehaviour
         if (target != null)
         {
             lastStandingForward = target.forward; // LIE DOWN FIX
+
+            // Initialize orbit angles to match player's current rotation
+            currentYaw = target.eulerAngles.y;
+            currentPitch = 20f; // Start with a slight downward angle
+
             Vector3 behindPlayer = -target.forward * cameraDistance;
             Vector3 abovePlayer = Vector3.up * cameraHeight;
             transform.position = target.position + behindPlayer + abovePlayer;
@@ -81,14 +95,13 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        // Keep trying to find player if not found
+        // Keep trying to find player if not found using cached reference
         if (target == null)
         {
-            GameObject player = GameObject.Find("Player");
-            if (player != null)
+            if (GameCache.IsPlayerValid())
             {
-                target = player.transform;
-                playerController = player.GetComponent<PlayerController>(); // LIE DOWN FIX
+                target = GameCache.Player;
+                playerController = target.GetComponent<PlayerController>(); // LIE DOWN FIX
             }
             else
             {
@@ -128,11 +141,58 @@ public class CameraController : MonoBehaviour
             cameraDistance = Mathf.Clamp(cameraDistance, minZoom, maxZoom);
         }
 
-        // Camera is LOCKED behind the player - always sees the back of the character
-        Vector3 behindPlayer = -target.forward * cameraDistance;
-        Vector3 abovePlayer = Vector3.up * cameraHeight;
+        // Check if right mouse button is held for orbiting
+        if (Input.GetMouseButtonDown(1))
+        {
+            isOrbiting = true;
+            // Initialize orbit angles to current camera orientation when starting to orbit
+            if (!isOrbiting || currentYaw == 0f)
+            {
+                currentYaw = target.eulerAngles.y;
+            }
+        }
 
-        Vector3 desiredPosition = target.position + behindPlayer + abovePlayer;
+        if (Input.GetMouseButtonUp(1))
+        {
+            isOrbiting = false;
+        }
+
+        // Update orbit angles when right mouse is held
+        if (Input.GetMouseButton(1))
+        {
+            float mouseX = Input.GetAxis("Mouse X");
+            float mouseY = Input.GetAxis("Mouse Y");
+
+            currentYaw += mouseX * orbitSensitivity;
+            currentPitch -= mouseY * orbitSensitivity;
+
+            // Clamp pitch to prevent camera flipping
+            currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
+        }
+        else
+        {
+            // When not orbiting, sync yaw with player rotation for smooth transition
+            currentYaw = Mathf.LerpAngle(currentYaw, target.eulerAngles.y, smoothSpeed * Time.deltaTime);
+        }
+
+        // Calculate camera position using orbit or follow mode
+        Vector3 desiredPosition;
+
+        if (Input.GetMouseButton(1))
+        {
+            // ORBIT MODE: Use yaw and pitch to calculate offset
+            Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
+            Vector3 offset = rotation * Vector3.back * cameraDistance;
+            desiredPosition = target.position + offset;
+        }
+        else
+        {
+            // FOLLOW MODE: Camera locked behind player (original behavior)
+            Vector3 behindPlayer = -target.forward * cameraDistance;
+            Vector3 abovePlayer = Vector3.up * cameraHeight;
+            desiredPosition = target.position + behindPlayer + abovePlayer;
+        }
+
         Vector3 lookAtPoint = target.position + Vector3.up * lookAtHeight;
 
         // Smooth follow

@@ -13,10 +13,9 @@ public class PicketSignText : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         playerNearby = distance < interactionDistance;
     }
 

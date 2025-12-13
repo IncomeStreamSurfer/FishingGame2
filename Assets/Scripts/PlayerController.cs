@@ -36,14 +36,17 @@ public class PlayerController : MonoBehaviour
     private Vector3 moveDirection;
     private Rigidbody rb;
     private CameraController cameraController;
+    private FishingRodAnimator cachedRodAnimator; // Cache GetComponent result
 
     // Cached texture for death screen
     private Texture2D deathOverlayTexture;
+    private int guiFrameSkip = 0;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         cameraController = Camera.main?.GetComponent<CameraController>();
+        cachedRodAnimator = GetComponent<FishingRodAnimator>(); // Cache once
 
         // Setup audio source for stomp
         audioSource = gameObject.GetComponent<AudioSource>();
@@ -72,9 +75,9 @@ public class PlayerController : MonoBehaviour
         // Don't cast if any UI window is open or if lying down
         if (Input.GetMouseButtonDown(0) && !IsAnyUIOpen() && !isLyingDown)
         {
-            FishingRodAnimator rodAnimator = GetComponent<FishingRodAnimator>();
+            // Use cached rod animator reference
             // Only start fishing if line is not already out AND not already charging
-            if (rodAnimator != null && !rodAnimator.IsLineOut() && !rodAnimator.IsCharging())
+            if (cachedRodAnimator != null && !cachedRodAnimator.IsLineOut() && !cachedRodAnimator.IsCharging())
             {
                 if (FishingSystem.Instance != null && FishingSystem.Instance.CanFish())
                 {
@@ -111,20 +114,14 @@ public class PlayerController : MonoBehaviour
         // Handle stomp animation
         UpdateStompAnimation();
 
-        // Check if fallen in water
-        CheckWaterDeath();
+        // Water damage is now handled by PlayerHealth.cs (5hp/sec drowning)
+        // Removed instant water death - player can swim but takes damage
     }
 
     bool IsInJungleRealm()
     {
-        // Check via RealmManager
-        RealmManager rm = FindObjectOfType<RealmManager>();
-        if (rm != null)
-        {
-            return rm.CurrentRealm == RealmType.JungleRealm;
-        }
-        // Fallback: check position (Jungle: X > 900)
-        return transform.position.x > 900f;
+        // Use cached realm reference for performance
+        return GameCache.IsInRealm(RealmType.JungleRealm);
     }
 
     void TryStompAttack()
@@ -218,26 +215,27 @@ public class PlayerController : MonoBehaviour
 
     void CreateStompParticles()
     {
-        // Create ground impact particles
-        for (int i = 0; i < 15; i++)
+        // Use shared materials from GameCache instead of creating new ones each stomp
+        Material dirtMat = GameCache.GetSharedMaterial("stompDirt", new Color(0.4f, 0.3f, 0.2f));
+
+        // Reduced particle count for better performance (15 -> 8)
+        for (int i = 0; i < 8; i++)
         {
             GameObject particle = GameObject.CreatePrimitive(PrimitiveType.Cube);
             particle.name = "StompParticle";
 
             // Random position around player's feet
             float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-            float distance = Random.Range(0.5f, 2f);
-            Vector3 offset = new Vector3(Mathf.Cos(angle) * distance, 0.1f, Mathf.Sin(angle) * distance);
+            float dist = Random.Range(0.5f, 2f);
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * dist, 0.1f, Mathf.Sin(angle) * dist);
             particle.transform.position = transform.position + offset;
 
             // Random size
             float size = Random.Range(0.1f, 0.3f);
             particle.transform.localScale = new Vector3(size, size, size);
 
-            // Dirt/ground color
-            Material mat = new Material(Shader.Find("Standard"));
-            mat.color = new Color(0.4f, 0.3f, 0.2f); // Brown dirt
-            particle.GetComponent<Renderer>().material = mat;
+            // Use shared material
+            particle.GetComponent<Renderer>().sharedMaterial = dirtMat;
 
             // Remove collider
             Destroy(particle.GetComponent<Collider>());
@@ -263,9 +261,8 @@ public class PlayerController : MonoBehaviour
         ring.transform.position = transform.position + Vector3.up * 0.05f;
         ring.transform.localScale = new Vector3(0.2f, 0.005f, 0.2f);
 
-        Material ringMat = new Material(Shader.Find("Standard"));
-        ringMat.color = new Color(0.6f, 0.5f, 0.3f, 0.5f);
-        ring.GetComponent<Renderer>().material = ringMat;
+        Material ringMat = GameCache.GetSharedMaterial("stompRing", new Color(0.6f, 0.5f, 0.3f, 0.5f));
+        ring.GetComponent<Renderer>().sharedMaterial = ringMat;
         Destroy(ring.GetComponent<Collider>());
 
         // Animate ring expansion
@@ -303,12 +300,11 @@ public class PlayerController : MonoBehaviour
 
     void DamageNearbySnakes()
     {
-        // Find all snakes in the scene
-        SnakeAI[] snakes = FindObjectsOfType<SnakeAI>();
-
+        // Use cached snake list from GameCache instead of expensive FindObjectsOfType
         int snakesHit = 0;
-        foreach (SnakeAI snake in snakes)
+        foreach (SnakeAI snake in GameCache.Snakes)
         {
+            if (snake == null) continue;
             float distance = Vector3.Distance(transform.position, snake.transform.position);
 
             if (distance <= stompRadius)
@@ -390,25 +386,57 @@ public class PlayerController : MonoBehaviour
         bool isRunning = Input.GetKey(KeyCode.LeftShift);
         float currentSpeed = isRunning ? runSpeed : moveSpeed;
 
-        // Locked camera style: A/D always turns character, W/S moves forward/back
-        // Camera follows behind, so player always sees character's back
+        // WoW-style mouse movement: Both mouse buttons held = move forward in camera direction
+        bool leftMouseHeld = Input.GetMouseButton(0);
+        bool rightMouseHeld = Input.GetMouseButton(1);
+        bool bothMouseButtons = leftMouseHeld && rightMouseHeld;
 
-        // Turn left/right with A/D
-        if (Mathf.Abs(horizontal) > 0.1f)
+        if (bothMouseButtons)
         {
-            transform.Rotate(Vector3.up, horizontal * rotationSpeed * 12f * Time.deltaTime);
-        }
+            // Move forward in the direction the camera is facing
+            if (cameraController != null && Camera.main != null)
+            {
+                // Get the camera's forward direction, but keep it horizontal (no up/down movement)
+                Vector3 cameraForward = Camera.main.transform.forward;
+                cameraForward.y = 0f;
+                cameraForward.Normalize();
 
-        // Move forward/backward with W/S
-        if (Mathf.Abs(vertical) > 0.1f)
-        {
-            Vector3 moveDir = transform.forward * vertical;
-            transform.position += moveDir * currentSpeed * Time.deltaTime;
-            moveDirection = moveDir;
+                // Move the player in that direction
+                transform.position += cameraForward * currentSpeed * Time.deltaTime;
+                moveDirection = cameraForward;
+
+                // Optionally rotate the player to face the movement direction
+                if (cameraForward.magnitude > 0.1f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                }
+            }
         }
         else
         {
-            moveDirection = Vector3.zero;
+            // Normal keyboard movement
+
+            // Locked camera style: A/D always turns character, W/S moves forward/back
+            // Camera follows behind, so player always sees character's back
+
+            // Turn left/right with A/D
+            if (Mathf.Abs(horizontal) > 0.1f)
+            {
+                transform.Rotate(Vector3.up, horizontal * rotationSpeed * 12f * Time.deltaTime);
+            }
+
+            // Move forward/backward with W/S
+            if (Mathf.Abs(vertical) > 0.1f)
+            {
+                Vector3 moveDir = transform.forward * vertical;
+                transform.position += moveDir * currentSpeed * Time.deltaTime;
+                moveDirection = moveDir;
+            }
+            else
+            {
+                moveDirection = Vector3.zero;
+            }
         }
     }
 
@@ -502,6 +530,13 @@ public class PlayerController : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!showDeathScreen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted) return;
 
         if (showDeathScreen && deathOverlayTexture != null)
@@ -557,6 +592,9 @@ public class PlayerController : MonoBehaviour
         if (ClothingShopNPC.Instance != null && ClothingShopNPC.Instance.IsShopOpen()) return true;
         if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsDialogueOpen()) return true;
         if (GoldieBanksNPC.Instance != null && GoldieBanksNPC.Instance.IsDialogueOpen()) return true;
+        if (IceRealmShopNPC.Instance != null && IceRealmShopNPC.Instance.IsShopOpen()) return true;
+        if (WeaponShopNPC.Instance != null && WeaponShopNPC.Instance.IsShopOpen()) return true;
+        if (PauseMenu.IsPaused) return true;
         return false;
     }
 }

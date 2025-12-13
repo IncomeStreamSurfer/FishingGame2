@@ -10,6 +10,9 @@ public class RenaCumbiaQueen : MonoBehaviour
     private bool dialogueOpen = false;
     private int dialogueStage = 0;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     private enum QuestState { NotStarted, InProgress, Completed, Rewarded }
     private QuestState currentQuestState = QuestState.NotStarted;
 
@@ -177,10 +180,9 @@ public class RenaCumbiaQueen : MonoBehaviour
         if (!MainMenu.GameStarted) return;
 
         // Check distance to player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            float dist = Vector3.Distance(transform.position, player.transform.position);
+            float dist = Vector3.Distance(transform.position, GameCache.Player.position);
             isNearPlayer = dist < 3.5f;
         }
 
@@ -241,6 +243,13 @@ public class RenaCumbiaQueen : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Performance: Skip frames when not actively interacting
+        if (!isNearPlayer && !dialogueOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
         // Initialize styles
         if (headerStyle == null)
         {
@@ -276,6 +285,7 @@ public class RenaCumbiaQueen : MonoBehaviour
             string prompt = "[E] Talk to Rena";
             Vector2 size = promptStyle.CalcSize(new GUIContent(prompt));
             GUI.Label(new Rect((Screen.width - size.x) / 2, Screen.height - 120, size.x, size.y), prompt, promptStyle);
+            return; // Early return - don't process dialogue UI
         }
 
         if (!dialogueOpen) return;

@@ -16,11 +16,40 @@ public class FishInventoryPanel : MonoBehaviour
     private float scrollPos = 0f;
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
+    private int guiFrameSkip = 0;
+
+    // Draggable window support
+    private DraggableWindow window;
 
     // Sell mode - enabled when near NPC and pressing E
     public bool sellModeEnabled = false;
     public string currentNPCName = "";
     private AudioSource audioSource;
+
+    // Player stats tracking (stored in PlayerPrefs)
+    private float biggestFishWeight = 0f;
+    private int mostValuableCatch = 0;
+    private int totalFishCaught = 0;
+    private int totalGoldEarned = 0;
+
+    // Cached GUIStyles for performance (created once, reused every frame)
+    private static GUIStyle cachedTitleStyle;
+    private static GUIStyle cachedSellBannerStyle;
+    private static GUIStyle cachedXButtonStyle;
+    private static GUIStyle cachedStatsStyle;
+    private static GUIStyle cachedEmptyStyle;
+    private static GUIStyle cachedNameStyleCommon;
+    private static GUIStyle cachedNameStyleRare;
+    private static GUIStyle cachedRarityStyle;
+    private static GUIStyle cachedCountStyle;
+    private static GUIStyle cachedValueStyle;
+    private static GUIStyle cachedTotalStyle;
+    private static GUIStyle cachedSellBtnStyle;
+    private static GUIStyle cachedCookBtnStyle;
+    private static GUIStyle cachedHintStyle;
+    private static GUIStyle cachedTabStyle;
+    private static GUIStyle cachedTabActiveStyle;
+    private static bool stylesInitialized = false;
 
     void Awake()
     {
@@ -37,7 +66,51 @@ public class FishInventoryPanel : MonoBehaviour
     {
         CreateCachedTextures();
         SetupAudio();
+        LoadStats();
+        // Initialize draggable window (350x450)
+        float panelWidth = 350f;
+        float panelHeight = 450f;
+        Rect initialRect = new Rect(
+            (Screen.width - panelWidth) / 2f,
+            (Screen.height - panelHeight) / 2f,
+            panelWidth,
+            panelHeight
+        );
+        window = new DraggableWindow(initialRect, new Vector2(300, 350), new Vector2(600, 700));
         initialized = true;
+    }
+
+    void LoadStats()
+    {
+        biggestFishWeight = PlayerPrefs.GetFloat("BiggestFishWeight", 0f);
+        mostValuableCatch = PlayerPrefs.GetInt("MostValuableCatch", 0);
+        totalFishCaught = PlayerPrefs.GetInt("TotalFishCaught", 0);
+        totalGoldEarned = PlayerPrefs.GetInt("TotalGoldEarned", 0);
+    }
+
+    void SaveStats()
+    {
+        PlayerPrefs.SetFloat("BiggestFishWeight", biggestFishWeight);
+        PlayerPrefs.SetInt("MostValuableCatch", mostValuableCatch);
+        PlayerPrefs.SetInt("TotalFishCaught", totalFishCaught);
+        PlayerPrefs.SetInt("TotalGoldEarned", totalGoldEarned);
+        PlayerPrefs.Save();
+    }
+
+    public void UpdateStats(float fishWeight, int fishValue)
+    {
+        if (fishWeight > biggestFishWeight)
+            biggestFishWeight = fishWeight;
+        if (fishValue > mostValuableCatch)
+            mostValuableCatch = fishValue;
+        totalFishCaught++;
+        SaveStats();
+    }
+
+    public void AddGoldEarned(int gold)
+    {
+        totalGoldEarned += gold;
+        SaveStats();
     }
 
     void SetupAudio()
@@ -79,6 +152,29 @@ public class FishInventoryPanel : MonoBehaviour
     {
         sellModeEnabled = false;
         currentNPCName = "";
+    }
+
+    // Toggle the panel open/closed (called by UI button click)
+    public void TogglePanel()
+    {
+        isOpen = !isOpen;
+        if (isOpen)
+        {
+            scrollPos = 0f;
+        }
+    }
+
+    // Open the panel directly
+    public void OpenPanel()
+    {
+        isOpen = true;
+        scrollPos = 0f;
+    }
+
+    // Close the panel directly
+    public void ClosePanel()
+    {
+        isOpen = false;
     }
 
     void CreateCachedTextures()
@@ -143,29 +239,20 @@ public class FishInventoryPanel : MonoBehaviour
 
     bool IsNearInteractable()
     {
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return false;
+        // Use cached player reference
+        if (!GameCache.IsPlayerValid()) return false;
 
-        Vector3 playerPos = player.transform.position;
+        Vector3 playerPos = GameCache.Player.position;
+        float interactRange = 5f;
 
-        // Check VoidNightclub
-        VoidNightclub nightclub = FindObjectOfType<VoidNightclub>();
-        if (nightclub != null && Vector3.Distance(playerPos, nightclub.transform.position) < 6f)
+        // Check all NPCs that can enable sell mode - F key is handled by UIManager for these
+        if (GameCache.ClothingShop != null && Vector3.Distance(playerPos, GameCache.ClothingShop.transform.position) < interactRange)
             return true;
-
-        // Check PunkBarman
-        PunkBarman barman = FindObjectOfType<PunkBarman>();
-        if (barman != null && Vector3.Distance(playerPos, barman.transform.position) < 4f)
+        if (GameCache.WetsuitPete != null && Vector3.Distance(playerPos, GameCache.WetsuitPete.transform.position) < interactRange)
             return true;
-
-        // Check HazmatVendorNPC
-        HazmatVendorNPC hazmatVendor = FindObjectOfType<HazmatVendorNPC>();
-        if (hazmatVendor != null && Vector3.Distance(playerPos, hazmatVendor.transform.position) < 4f)
+        if (GameCache.GoldieBanks != null && Vector3.Distance(playerPos, GameCache.GoldieBanks.transform.position) < interactRange)
             return true;
-
-        // Check any NPC shops (ClothingShopNPC, etc)
-        ClothingShopNPC clothingShop = FindObjectOfType<ClothingShopNPC>();
-        if (clothingShop != null && Vector3.Distance(playerPos, clothingShop.transform.position) < 4f)
+        if (GameCache.TutCat != null && Vector3.Distance(playerPos, GameCache.TutCat.transform.position) < interactRange)
             return true;
 
         return false;
@@ -173,19 +260,127 @@ public class FishInventoryPanel : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!isOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted || !initialized || !isOpen) return;
 
         DrawFishInventory();
     }
 
+    void InitializeStyles()
+    {
+        if (stylesInitialized) return;
+
+        cachedTitleStyle = new GUIStyle();
+        cachedTitleStyle.fontSize = 18;
+        cachedTitleStyle.fontStyle = FontStyle.Bold;
+        cachedTitleStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedSellBannerStyle = new GUIStyle();
+        cachedSellBannerStyle.fontSize = 12;
+        cachedSellBannerStyle.fontStyle = FontStyle.Bold;
+        cachedSellBannerStyle.alignment = TextAnchor.MiddleCenter;
+        cachedSellBannerStyle.normal.textColor = new Color(0.8f, 1f, 0.8f);
+
+        cachedXButtonStyle = new GUIStyle();
+        cachedXButtonStyle.fontSize = 16;
+        cachedXButtonStyle.fontStyle = FontStyle.Bold;
+        cachedXButtonStyle.alignment = TextAnchor.MiddleCenter;
+        cachedXButtonStyle.normal.textColor = Color.white;
+
+        cachedStatsStyle = new GUIStyle();
+        cachedStatsStyle.fontSize = 11;
+        cachedStatsStyle.alignment = TextAnchor.MiddleCenter;
+        cachedStatsStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+
+        cachedEmptyStyle = new GUIStyle();
+        cachedEmptyStyle.fontSize = 14;
+        cachedEmptyStyle.alignment = TextAnchor.MiddleCenter;
+        cachedEmptyStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+
+        cachedNameStyleCommon = new GUIStyle();
+        cachedNameStyleCommon.fontSize = 10;
+        cachedNameStyleCommon.fontStyle = FontStyle.Normal;
+
+        cachedNameStyleRare = new GUIStyle();
+        cachedNameStyleRare.fontSize = 13;
+        cachedNameStyleRare.fontStyle = FontStyle.Bold;
+
+        cachedRarityStyle = new GUIStyle();
+        cachedRarityStyle.fontSize = 10;
+        cachedRarityStyle.normal.textColor = new Color(0.55f, 0.55f, 0.55f);
+
+        cachedCountStyle = new GUIStyle();
+        cachedCountStyle.fontSize = 14;
+        cachedCountStyle.fontStyle = FontStyle.Bold;
+        cachedCountStyle.alignment = TextAnchor.MiddleRight;
+        cachedCountStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
+
+        cachedValueStyle = new GUIStyle();
+        cachedValueStyle.fontSize = 12;
+        cachedValueStyle.fontStyle = FontStyle.Bold;
+        cachedValueStyle.alignment = TextAnchor.MiddleRight;
+        cachedValueStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+
+        cachedTotalStyle = new GUIStyle();
+        cachedTotalStyle.fontSize = 10;
+        cachedTotalStyle.alignment = TextAnchor.MiddleRight;
+        cachedTotalStyle.normal.textColor = new Color(0.6f, 0.6f, 0.5f);
+
+        cachedSellBtnStyle = new GUIStyle();
+        cachedSellBtnStyle.fontSize = 9;
+        cachedSellBtnStyle.fontStyle = FontStyle.Bold;
+        cachedSellBtnStyle.alignment = TextAnchor.MiddleCenter;
+        cachedSellBtnStyle.normal.textColor = Color.white;
+
+        cachedCookBtnStyle = new GUIStyle();
+        cachedCookBtnStyle.fontSize = 9;
+        cachedCookBtnStyle.fontStyle = FontStyle.Bold;
+        cachedCookBtnStyle.alignment = TextAnchor.MiddleCenter;
+        cachedCookBtnStyle.normal.textColor = Color.white;
+
+        cachedTabStyle = new GUIStyle();
+        cachedTabStyle.fontSize = 11;
+        cachedTabStyle.fontStyle = FontStyle.Bold;
+        cachedTabStyle.alignment = TextAnchor.MiddleCenter;
+        cachedTabStyle.normal.textColor = new Color(0.7f, 0.7f, 0.6f);
+
+        cachedTabActiveStyle = new GUIStyle();
+        cachedTabActiveStyle.fontSize = 11;
+        cachedTabActiveStyle.fontStyle = FontStyle.Bold;
+        cachedTabActiveStyle.alignment = TextAnchor.MiddleCenter;
+        cachedTabActiveStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
+
+        cachedHintStyle = new GUIStyle();
+        cachedHintStyle.fontSize = 10;
+        cachedHintStyle.alignment = TextAnchor.MiddleCenter;
+        cachedHintStyle.normal.textColor = new Color(0.8f, 0.6f, 0.4f);
+        cachedHintStyle.wordWrap = true;
+
+        stylesInitialized = true;
+    }
+
     void DrawFishInventory()
     {
-        if (FishingSystem.Instance == null || GameManager.Instance == null) return;
+        if (FishingSystem.Instance == null || GameManager.Instance == null || window == null) return;
 
-        float panelWidth = 350;
-        float panelHeight = 450;
-        float panelX = (Screen.width - panelWidth) / 2;
-        float panelY = (Screen.height - panelHeight) / 2;
+        // Initialize styles lazily (must be done inside OnGUI context)
+        InitializeStyles();
+
+        // Handle dragging and resizing
+        window.UpdateWindow();
+
+        // Get window rect
+        Rect rect = window.WindowRect;
+        float panelX = rect.x;
+        float panelY = rect.y;
+        float panelWidth = rect.width;
+        float panelHeight = rect.height;
 
         // Border and background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("border"));
@@ -194,53 +389,55 @@ public class FishInventoryPanel : MonoBehaviour
         // Header
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, 40), GetTexture("headerBg"));
 
-        GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 18;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = sellModeEnabled ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.85f, 0.4f);
+        // Update title color dynamically
+        cachedTitleStyle.normal.textColor = sellModeEnabled ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.85f, 0.4f);
         string title = sellModeEnabled ? $"SELL FISH TO {currentNPCName.ToUpper()}" : "FISH INVENTORY";
-        GUI.Label(new Rect(panelX, panelY + 5, panelWidth, 30), title, titleStyle);
+        GUI.Label(new Rect(panelX, panelY + 5, panelWidth, 30), title, cachedTitleStyle);
 
         // Show "SELL FISH" banner when sell mode is enabled
         if (sellModeEnabled)
         {
-            // Green banner
             GUI.DrawTexture(new Rect(panelX + 10, panelY + 38, panelWidth - 20, 22), GetOrCreateColorTexture(new Color(0.15f, 0.5f, 0.25f)));
-            GUIStyle sellBannerStyle = new GUIStyle();
-            sellBannerStyle.fontSize = 12;
-            sellBannerStyle.fontStyle = FontStyle.Bold;
-            sellBannerStyle.alignment = TextAnchor.MiddleCenter;
-            sellBannerStyle.normal.textColor = new Color(0.8f, 1f, 0.8f);
-            GUI.Label(new Rect(panelX + 10, panelY + 38, panelWidth - 20, 22), "Click any fish to SELL for gold!", sellBannerStyle);
+            GUI.Label(new Rect(panelX + 10, panelY + 38, panelWidth - 20, 22), "Click any fish to SELL for gold!", cachedSellBannerStyle);
         }
 
         // Red X close button
-        GUIStyle xButtonStyle = new GUIStyle();
-        xButtonStyle.fontSize = 16;
-        xButtonStyle.fontStyle = FontStyle.Bold;
-        xButtonStyle.alignment = TextAnchor.MiddleCenter;
-        xButtonStyle.normal.textColor = Color.white;
-        GUI.DrawTexture(new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
-        if (GUI.Button(new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22), "X", xButtonStyle))
+        Rect closeButtonRect = new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22);
+        GUI.DrawTexture(closeButtonRect, GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
+        GUI.Label(closeButtonRect, "X", cachedXButtonStyle);
+        if (GUI.Button(closeButtonRect, "", GUIStyle.none))
         {
             isOpen = false;
         }
 
+        // Draw fish inventory content
+        DrawInventoryTab(panelX, panelY, panelWidth, panelHeight);
+
+        // Draw resize handle
+        window.DrawResizeHandle();
+    }
+
+    void DrawInventoryTab(float panelX, float panelY, float panelWidth, float panelHeight)
+    {
         // Get fish sorted by value
         List<FishDisplayData> fishList = GetSortedFishList();
 
         // Stats header
-        GUIStyle statsStyle = new GUIStyle();
-        statsStyle.fontSize = 11;
-        statsStyle.alignment = TextAnchor.MiddleCenter;
-        statsStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
         int totalFish = fishList.Sum(f => f.count);
         int totalValue = fishList.Sum(f => f.coinValue * f.count);
-        GUI.Label(new Rect(panelX, panelY + 42, panelWidth, 18), $"Total: {totalFish} fish | Worth: {totalValue}g", statsStyle);
+        GUI.Label(new Rect(panelX, panelY + 68, panelWidth, 18), $"Total: {totalFish} fish | Worth: {totalValue}g", cachedStatsStyle);
+
+        // Check if near BBQ for cooking
+        bool nearBBQ = BBQStation.IsPlayerNearBBQ();
+
+        // Hint messages when actions are unavailable
+        if (!sellModeEnabled && !nearBBQ && fishList.Count > 0)
+        {
+            GUI.Label(new Rect(panelX + 10, panelY + 86, panelWidth - 20, 30), "Go to an NPC to sell fish or a BBQ to cook!", cachedHintStyle);
+        }
 
         // Fish list area (offset more when sell banner is shown)
-        float listY = sellModeEnabled ? panelY + 85 : panelY + 65;
+        float listY = sellModeEnabled ? panelY + 108 : panelY + 90;
         float listHeight = sellModeEnabled ? panelHeight - 95 : panelHeight - 75;
         float itemHeight = 50;
 
@@ -264,11 +461,7 @@ public class FishInventoryPanel : MonoBehaviour
 
         if (fishList.Count == 0)
         {
-            GUIStyle emptyStyle = new GUIStyle();
-            emptyStyle.fontSize = 14;
-            emptyStyle.alignment = TextAnchor.MiddleCenter;
-            emptyStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-            GUI.Label(new Rect(0, listHeight / 2 - 30, listArea.width, 60), "No fish caught yet!\n\nGo fishing to fill your inventory.", emptyStyle);
+            GUI.Label(new Rect(0, listHeight / 2 - 30, listArea.width, 60), "No fish caught yet!\n\nGo fishing to fill your inventory.", cachedEmptyStyle);
         }
         else
         {
@@ -301,42 +494,23 @@ public class FishInventoryPanel : MonoBehaviour
                     fishTex = GetOrCreateColorTexture(fish.color);  // Fallback to color
                 GUI.DrawTexture(new Rect(itemRect.x + 8, itemRect.y + (itemHeight - imgSize) / 2 - 2, imgSize, imgSize), fishTex);
 
-                // Fish name - smaller for common fish
-                GUIStyle nameStyle = new GUIStyle();
-                nameStyle.fontSize = fish.rarity == Rarity.Common ? 10 : 13;
-                nameStyle.fontStyle = fish.rarity == Rarity.Common ? FontStyle.Normal : FontStyle.Bold;
+                // Fish name - use cached styles, update color dynamically
+                GUIStyle nameStyle = fish.rarity == Rarity.Common ? cachedNameStyleCommon : cachedNameStyleRare;
                 nameStyle.normal.textColor = GetRarityColor(fish.rarity);
                 GUI.Label(new Rect(itemRect.x + 52, itemRect.y + (fish.rarity == Rarity.Common ? 8 : 6), 180, 20), fish.name, nameStyle);
 
                 // Rarity
-                GUIStyle rarityStyle = new GUIStyle();
-                rarityStyle.fontSize = 10;
-                rarityStyle.normal.textColor = new Color(0.55f, 0.55f, 0.55f);
-                GUI.Label(new Rect(itemRect.x + 52, itemRect.y + 24, 100, 16), fish.rarity.ToString(), rarityStyle);
+                GUI.Label(new Rect(itemRect.x + 52, itemRect.y + 24, 100, 16), fish.rarity.ToString(), cachedRarityStyle);
 
                 // Count
-                GUIStyle countStyle = new GUIStyle();
-                countStyle.fontSize = 14;
-                countStyle.fontStyle = FontStyle.Bold;
-                countStyle.alignment = TextAnchor.MiddleRight;
-                countStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 100, itemRect.y + 4, 40, 20), $"x{fish.count}", countStyle);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 100, itemRect.y + 4, 40, 20), $"x{fish.count}", cachedCountStyle);
 
                 // Value
-                GUIStyle valueStyle = new GUIStyle();
-                valueStyle.fontSize = 12;
-                valueStyle.fontStyle = FontStyle.Bold;
-                valueStyle.alignment = TextAnchor.MiddleRight;
-                valueStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 4, 55, 20), $"{fish.coinValue}g", valueStyle);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 4, 55, 20), $"{fish.coinValue}g", cachedValueStyle);
 
                 // Total value for this stack
-                GUIStyle totalStyle = new GUIStyle();
-                totalStyle.fontSize = 10;
-                totalStyle.alignment = TextAnchor.MiddleRight;
-                totalStyle.normal.textColor = new Color(0.6f, 0.6f, 0.5f);
                 int stackValue = fish.coinValue * fish.count;
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 80, itemRect.y + 24, 75, 16), $"({stackValue}g total)", totalStyle);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 80, itemRect.y + 24, 75, 16), $"({stackValue}g total)", cachedTotalStyle);
 
                 // Special fish glow indicator
                 if (fish.isSpecialFish && fish.glowIntensity > 0)
@@ -352,21 +526,28 @@ public class FishInventoryPanel : MonoBehaviour
                 // SELL button when in sell mode
                 if (sellModeEnabled && fish.coinValue > 0)
                 {
-                    GUIStyle sellBtnStyle = new GUIStyle();
-                    sellBtnStyle.fontSize = 9;
-                    sellBtnStyle.fontStyle = FontStyle.Bold;
-                    sellBtnStyle.alignment = TextAnchor.MiddleCenter;
-                    sellBtnStyle.normal.textColor = Color.white;
-
                     Rect sellBtnRect = new Rect(itemRect.x + itemRect.width - 62, itemRect.y + 14, 32, 18);
                     // Special fish get golden sell button
                     Color btnColor = fish.isSpecialFish ? new Color(0.7f, 0.5f, 0.2f) : new Color(0.2f, 0.6f, 0.3f);
                     GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(btnColor));
-                    GUI.Label(sellBtnRect, "SELL", sellBtnStyle);
+                    GUI.Label(sellBtnRect, "SELL", cachedSellBtnStyle);
 
                     if (GUI.Button(sellBtnRect, "", GUIStyle.none))
                     {
                         SellFish(fish.id, fish.coinValue, fish.isSpecialFish);
+                    }
+                }
+                // COOK button when near BBQ and not in sell mode
+                else if (nearBBQ && !sellModeEnabled && !fish.isSpecialFish)
+                {
+                    Rect cookBtnRect = new Rect(itemRect.x + itemRect.width - 62, itemRect.y + 14, 36, 18);
+                    Color btnColor = new Color(0.8f, 0.4f, 0.1f);
+                    GUI.DrawTexture(cookBtnRect, GetOrCreateColorTexture(btnColor));
+                    GUI.Label(cookBtnRect, "COOK", cachedCookBtnStyle);
+
+                    if (GUI.Button(cookBtnRect, "", GUIStyle.none))
+                    {
+                        CookFish(fish.id);
                     }
                 }
 
@@ -383,6 +564,74 @@ public class FishInventoryPanel : MonoBehaviour
             float scrollBarY = listY + (scrollPos / maxScroll) * (listHeight - scrollBarHeight);
             GUI.DrawTexture(new Rect(panelX + panelWidth - 8, scrollBarY, 4, scrollBarHeight), GetOrCreateColorTexture(new Color(0.5f, 0.45f, 0.35f)));
         }
+    }
+
+    void CookFish(string fishId)
+    {
+        if (GameManager.Instance == null || FoodInventory.Instance == null || FishingSystem.Instance == null) return;
+
+        // Check if fish exists in inventory
+        if (!GameManager.Instance.fishInventory.ContainsKey(fishId)) return;
+        if (GameManager.Instance.fishInventory[fishId] <= 0) return;
+
+        // Get the fish data
+        FishData fishData = FishingSystem.Instance.GetFishById(fishId);
+        if (fishData == null) return;
+
+        // Check if hotbar has space
+        if (FoodInventory.Instance.GetCookedFishCount() >= 4)
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Hotbar full! Eat some fish first.", new Color(1f, 0.4f, 0.2f));
+            }
+            return;
+        }
+
+        // Remove one fish from inventory
+        GameManager.Instance.fishInventory[fishId]--;
+        if (GameManager.Instance.fishInventory[fishId] <= 0)
+        {
+            GameManager.Instance.fishInventory.Remove(fishId);
+        }
+
+        // Directly add cooked fish to hotbar (bypasses BBQ.IsOpen check)
+        // Find empty hotbar slot
+        int emptySlot = -1;
+        for (int i = 0; i < FoodInventory.Instance.hotbar.Length; i++)
+        {
+            if (FoodInventory.Instance.hotbar[i] == null)
+            {
+                emptySlot = i;
+                break;
+            }
+        }
+
+        if (emptySlot >= 0)
+        {
+            // Create cooked fish item for hotbar
+            InventoryFish cookedFish = new InventoryFish();
+            cookedFish.fishId = fishData.id;
+            cookedFish.fishName = fishData.fishName;
+            cookedFish.color = fishData.fishColor;
+            cookedFish.healthValue = Mathf.Max(5, fishData.coinValue / 2); // HP = half coin value, min 5
+            cookedFish.isCooked = true;
+            FoodInventory.Instance.hotbar[emptySlot] = cookedFish;
+
+            // Show notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Cooked {fishData.fishName}! [Slot {emptySlot + 1}]", new Color(1f, 0.7f, 0.3f));
+            }
+        }
+
+        // Award XP for cooking
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.AwardFishXP(fishData.rarity);
+        }
+
+        Debug.Log($"Cooked fish {fishId} - added to hotbar slot {emptySlot + 1}");
     }
 
     List<FishDisplayData> GetSortedFishList()
@@ -491,22 +740,39 @@ public class FishInventoryPanel : MonoBehaviour
             // Add coins
             GameManager.Instance.AddCoins(coinValue);
 
+            // Track gold earned
+            AddGoldEarned(coinValue);
+
+            // Award XP for selling
+            if (LevelingSystem.Instance != null)
+            {
+                LevelingSystem.Instance.AwardFishXP(fish.rarity);
+            }
+
             // Play coin sound
             PlayCoinSound();
 
-            // Show notification with special message
+            // Show notification with gold AND XP
+            int xpAwarded = LevelingSystem.GetFishXP(fish.rarity);
             if (UIManager.Instance != null)
             {
-                UIManager.Instance.ShowLootNotification($"Sold {fish.fishName} for {coinValue}g!", new Color(1f, 0.7f, 0.9f));
+                UIManager.Instance.ShowLootNotification($"Sold {fish.fishName}: +{coinValue}g +{xpAwarded}XP!", new Color(1f, 0.7f, 0.9f));
             }
 
-            Debug.Log($"Sold SPECIAL fish {fishId} for {coinValue}g");
+            Debug.Log($"Sold SPECIAL fish {fishId} for {coinValue}g and {xpAwarded}XP");
         }
         else
         {
             // Sell from normal fish inventory
             if (!GameManager.Instance.fishInventory.ContainsKey(fishId)) return;
             if (GameManager.Instance.fishInventory[fishId] <= 0) return;
+
+            // Get fish data for rarity before removing
+            FishData fishData = null;
+            if (FishingSystem.Instance != null)
+            {
+                fishData = FishingSystem.Instance.fishDatabase.Find(f => f.id == fishId);
+            }
 
             // Remove one fish from inventory
             GameManager.Instance.fishInventory[fishId]--;
@@ -518,16 +784,27 @@ public class FishInventoryPanel : MonoBehaviour
             // Add coins
             GameManager.Instance.AddCoins(coinValue);
 
+            // Track gold earned
+            AddGoldEarned(coinValue);
+
+            // Award XP for selling
+            if (LevelingSystem.Instance != null && fishData != null)
+            {
+                LevelingSystem.Instance.AwardFishXP(fishData.rarity);
+            }
+
             // Play coin sound
             PlayCoinSound();
 
-            // Show notification
+            // Show notification with gold AND XP
+            int xpAwarded = fishData != null ? LevelingSystem.GetFishXP(fishData.rarity) : 5;
             if (UIManager.Instance != null)
             {
-                UIManager.Instance.ShowLootNotification($"Sold fish for {coinValue}g!", new Color(1f, 0.85f, 0.3f));
+                string fishName = fishData != null ? fishData.fishName : "fish";
+                UIManager.Instance.ShowLootNotification($"Sold {fishName}: +{coinValue}g +{xpAwarded}XP!", new Color(1f, 0.85f, 0.3f));
             }
 
-            Debug.Log($"Sold fish {fishId} for {coinValue}g");
+            Debug.Log($"Sold fish {fishId} for {coinValue}g and {xpAwarded}XP");
         }
     }
 

@@ -28,6 +28,7 @@ public class BBQStation : MonoBehaviour
 
     // UI
     private Texture2D promptBg;
+    private int guiFrameSkip = 0;
     private bool initialized = false;
 
     void Awake()
@@ -300,10 +301,9 @@ public class BBQStation : MonoBehaviour
         if (!MainMenu.GameStarted) return;
 
         // Check player distance
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < interactionDistance;
 
             // Toggle BBQ with E
@@ -417,6 +417,13 @@ public class BBQStation : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!isOpen && !playerNearby)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted || !initialized) return;
 
         if (playerNearby && !isOpen)
@@ -451,7 +458,7 @@ public class BBQStation : MonoBehaviour
     {
         float bgWidth = 200;
         float bgHeight = 85;
-        float bgX = (Screen.width - bgWidth) / 2;
+        float bgX = 20;  // Left side of screen
         float bgY = 100;
 
         // Background
@@ -492,6 +499,23 @@ public class BBQStation : MonoBehaviour
 
     public bool IsOpen() => isOpen;
     public bool IsPlayerNearby() => playerNearby;
+
+    // Static method to check if player is near ANY BBQ station
+    public static bool IsPlayerNearBBQ()
+    {
+        if (Instance != null && Instance.playerNearby)
+            return true;
+
+        // Also check for other BBQ instances in the scene
+        BBQStation[] allBBQs = FindObjectsOfType<BBQStation>();
+        foreach (BBQStation bbq in allBBQs)
+        {
+            if (bbq.playerNearby)
+                return true;
+        }
+
+        return false;
+    }
 
     void OnDestroy()
     {

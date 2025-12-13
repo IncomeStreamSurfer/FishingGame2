@@ -91,6 +91,10 @@ public class AutoSetup
         GameObject gm = new GameObject("GameManager");
         gm.AddComponent<GameManager>();
 
+        // Performance Cache (avoids expensive GameObject.Find calls)
+        GameObject gc = new GameObject("GameCache");
+        gc.AddComponent<GameCache>();
+
         GameObject fs = new GameObject("FishingSystem");
         fs.AddComponent<FishingSystem>();
 
@@ -120,6 +124,10 @@ public class AutoSetup
         // Realm Manager (handles portal teleportation between realms)
         GameObject rm = new GameObject("RealmManager");
         rm.AddComponent<RealmManager>();
+
+        // Realm Activator (disables inactive realms for performance)
+        GameObject ra = new GameObject("RealmActivator");
+        ra.AddComponent<RealmActivator>();
 
         // Bottle Event System (1/100 chance per cast)
         GameObject bes = new GameObject("BottleEventSystem");
@@ -181,9 +189,6 @@ public class AutoSetup
         // Create the Jungle Realm (at offset position)
         CreateJungleRealm();
 
-        // Create the Void Realm (at offset position)
-        CreateVoidRealm();
-
         // Create clothing shop island with Granny
         CreateClothingShopIsland();
 
@@ -203,7 +208,11 @@ public class AutoSetup
         GameObject candy = new GameObject("CandyCat");
         candy.AddComponent<CandyCat>();
 
-        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        // Only mark scene dirty if not in play mode
+        if (!Application.isPlaying)
+        {
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        }
         Debug.Log("=== FISHING GAME READY! Press PLAY, WASD to move, HOLD LEFT CLICK to charge cast! ===");
     }
 
@@ -2397,9 +2406,87 @@ public class AutoSetup
         dockRadio.transform.rotation = Quaternion.Euler(0, -30, 0);     // Angled toward player
         dockRadio.AddComponent<DockRadio>();
 
+        // Stats Board Sign at the end of the dock on the right side
+        CreateStatsSign();
+
+        // Drop Rates Sign on the beach
+        CreateDropRatesSign();
+
         // Shoulder Parrot system (spawns when purchased from shop)
         GameObject parrotSystem = new GameObject("ShoulderParrot");
         parrotSystem.AddComponent<ShoulderParrot>();
+    }
+
+    static void CreateStatsSign()
+    {
+        // Stats Board Sign at the end of the dock - wooden sign showing player stats
+        GameObject sign = new GameObject("StatsBoardSign");
+        sign.transform.position = new Vector3(-8f, 3.2f, 54f);  // End of dock, right side
+        sign.transform.rotation = Quaternion.Euler(0, 180, 0);  // Face toward player approaching
+
+        // Sign board (wooden plank)
+        GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        board.name = "SignBoard";
+        board.transform.parent = sign.transform;
+        board.transform.localPosition = new Vector3(0, 0.8f, 0);
+        board.transform.localScale = new Vector3(1.2f, 0.8f, 0.1f);
+
+        // Wood material for board
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.5f, 0.35f, 0.2f);
+        woodMat.SetFloat("_Glossiness", 0.2f);
+        board.GetComponent<Renderer>().material = woodMat;
+
+        // Support post
+        GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        post.name = "SignPost";
+        post.transform.parent = sign.transform;
+        post.transform.localPosition = new Vector3(0, 0, 0);
+        post.transform.localScale = new Vector3(0.1f, 0.8f, 0.1f);
+
+        Material postMat = new Material(Shader.Find("Standard"));
+        postMat.color = new Color(0.35f, 0.25f, 0.15f);
+        postMat.SetFloat("_Glossiness", 0.1f);
+        post.GetComponent<Renderer>().material = postMat;
+
+        // Add the StatsBoardSign component to the board (it needs a Renderer)
+        board.AddComponent<StatsBoardSign>();
+    }
+
+    static void CreateDropRatesSign()
+    {
+        // Drop Rates Sign on the beach - shows all fish drop rates and percentages
+        GameObject sign = new GameObject("DropRatesSign");
+        sign.transform.position = new Vector3(20f, 2.2f, 8f);  // On the beach near spawn
+        sign.transform.rotation = Quaternion.Euler(0, 220, 0);  // Face toward player spawn
+
+        // Sign board (wooden plank)
+        GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        board.name = "SignBoard";
+        board.transform.parent = sign.transform;
+        board.transform.localPosition = new Vector3(0, 0.8f, 0);
+        board.transform.localScale = new Vector3(1.4f, 0.9f, 0.1f);
+
+        // Wood material for board (darker beach wood)
+        Material woodMat = new Material(Shader.Find("Standard"));
+        woodMat.color = new Color(0.4f, 0.3f, 0.22f);
+        woodMat.SetFloat("_Glossiness", 0.15f);
+        board.GetComponent<Renderer>().material = woodMat;
+
+        // Support post
+        GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        post.name = "SignPost";
+        post.transform.parent = sign.transform;
+        post.transform.localPosition = new Vector3(0, 0, 0);
+        post.transform.localScale = new Vector3(0.12f, 0.8f, 0.12f);
+
+        Material postMat = new Material(Shader.Find("Standard"));
+        postMat.color = new Color(0.3f, 0.22f, 0.12f);
+        postMat.SetFloat("_Glossiness", 0.1f);
+        post.GetComponent<Renderer>().material = postMat;
+
+        // Add the DropRatesSign component to the board
+        board.AddComponent<DropRatesSign>();
     }
 
     static void CreateGoldieBanks()
@@ -2816,31 +2903,25 @@ public class AutoSetup
     {
         GameObject portalsParent = new GameObject("PortalsParent");
 
-        // 4 portals on the beach, behind where player spawns (negative Z)
+        // 2 portals on the beach, behind where player spawns (negative Z)
         // Spaced along the beach area
         Vector3[] portalPositions = {
-            new Vector3(-15f, 0.5f, -25f),  // Portal 1 - Jungle (Level 50)
-            new Vector3(-5f, 0.5f, -28f),   // Portal 2 - Volcanic (Level 100)
-            new Vector3(5f, 0.5f, -28f),    // Portal 3 - Ice (Level 200)
-            new Vector3(15f, 0.5f, -25f)    // Portal 4 - Void (Level 300)
+            new Vector3(-8f, 0.5f, -25f),   // Portal 1 - Jungle (Level 100)
+            new Vector3(8f, 0.5f, -25f)     // Portal 2 - Ice (Level 200)
         };
 
-        int[] requiredLevels = { 50, 100, 200, 300 };
-        string[] portalNames = { "JunglePortal", "VolcanicPortal", "IcePortal", "VoidPortal" };
+        int[] requiredLevels = { 100, 200 };
+        string[] portalNames = { "JunglePortal", "IcePortal" };
         Color[] portalColors = {
             new Color(0.2f, 0.8f, 0.3f),    // Green for jungle
-            new Color(1f, 0.4f, 0.1f),       // Orange/red for volcanic
-            new Color(0.4f, 0.8f, 1f),       // Light blue for ice
-            new Color(0.6f, 0.2f, 0.8f)      // Purple for void
+            new Color(0.4f, 0.8f, 1f)        // Light blue for ice
         };
         RealmType[] destinations = {
             RealmType.JungleRealm,
-            RealmType.VolcanicRealm,
-            RealmType.IceRealm,
-            RealmType.VoidRealm
+            RealmType.IceRealm
         };
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 2; i++)
         {
             CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i], destinations[i]);
         }
@@ -5325,20 +5406,7 @@ public class AutoSetup
         jungleGround.transform.localScale = new Vector3(mapRadius * 2, 0.5f, mapRadius * 2);
         jungleGround.GetComponent<Renderer>().sharedMaterial = grassMat;
 
-        // Dirt patches
-        for (int i = 0; i < 15; i++)
-        {
-            float x = Random.Range(-mapRadius * 0.8f, mapRadius * 0.8f);
-            float z = Random.Range(-mapRadius * 0.8f, mapRadius * 0.8f);
-            GameObject dirtPatch = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            dirtPatch.name = "DirtPatch";
-            dirtPatch.transform.SetParent(jungleRealm.transform);
-            dirtPatch.transform.localPosition = new Vector3(x, groundY + 0.26f, z);
-            dirtPatch.transform.localScale = new Vector3(Random.Range(3f, 8f), 0.02f, Random.Range(3f, 8f));
-            dirtPatch.transform.localRotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
-            dirtPatch.GetComponent<Renderer>().sharedMaterial = dirtMat;
-            Object.DestroyImmediate(dirtPatch.GetComponent<Collider>());
-        }
+        // Dirt patches removed for cleaner floor appearance
 
         // === SWAMP WATER AROUND EDGES (lowered) ===
         GameObject swampWater = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -5419,20 +5487,10 @@ public class AutoSetup
         // === RETURN PORTAL (edge of map) ===
         CreateReturnPortal(jungleRealm.transform, new Vector3(0, groundY - 0.75f, 35f), "TropicalPortal_Jungle", RealmType.TropicalIsland);
 
-        // === JUNGLE SOUNDS ===
-        GameObject soundsObj = new GameObject("JungleSounds");
-        soundsObj.transform.SetParent(jungleRealm.transform);
-        soundsObj.AddComponent<JungleSounds>();
-
         // === JUNGLE TIP SYSTEM ===
         GameObject jungleTip = new GameObject("JungleTip");
         jungleTip.transform.SetParent(jungleRealm.transform);
         jungleTip.AddComponent<JungleTip>();
-
-        // === FIREFLIES (ambient particles) ===
-        GameObject fireflies = new GameObject("Fireflies");
-        fireflies.transform.SetParent(jungleRealm.transform);
-        fireflies.AddComponent<FireflyParticles>();
 
         // === ORANGUTAN VENDOR (sells Snake Charm) ===
         CreateOrangutanVendor(jungleRealm.transform, new Vector3(8f, groundY, 15f));
@@ -6502,307 +6560,6 @@ public class AutoSetup
         }
     }
 
-    // ===========================================
-    // VOID REALM - Dystopian Cyberpunk City
-    // ===========================================
-    static void CreateVoidRealm()
-    {
-        // Void Realm origin at X = 2000
-        Vector3 voidOrigin = new Vector3(2000f, 0f, 0f);
-        float groundY = 1f;
-
-        GameObject voidRealm = new GameObject("VoidRealm");
-        voidRealm.transform.position = voidOrigin;
-
-        // === MATERIALS ===
-        Material darkConcreteMat = new Material(Shader.Find("Standard"));
-        darkConcreteMat.color = new Color(0.1f, 0.1f, 0.12f);
-
-        Material buildingMat = new Material(Shader.Find("Standard"));
-        buildingMat.color = new Color(0.08f, 0.08f, 0.1f);
-        buildingMat.SetFloat("_Metallic", 0.6f);
-        buildingMat.SetFloat("_Glossiness", 0.3f);
-
-        Material neonPurpleMat = new Material(Shader.Find("Standard"));
-        neonPurpleMat.color = new Color(0.6f, 0.2f, 0.9f);
-        neonPurpleMat.EnableKeyword("_EMISSION");
-        neonPurpleMat.SetColor("_EmissionColor", new Color(0.6f, 0.2f, 0.9f) * 3f);
-
-        Material neonCyanMat = new Material(Shader.Find("Standard"));
-        neonCyanMat.color = new Color(0.2f, 0.8f, 0.9f);
-        neonCyanMat.EnableKeyword("_EMISSION");
-        neonCyanMat.SetColor("_EmissionColor", new Color(0.2f, 0.8f, 0.9f) * 3f);
-
-        Material neonMagentaMat = new Material(Shader.Find("Standard"));
-        neonMagentaMat.color = new Color(0.9f, 0.2f, 0.6f);
-        neonMagentaMat.EnableKeyword("_EMISSION");
-        neonMagentaMat.SetColor("_EmissionColor", new Color(0.9f, 0.2f, 0.6f) * 3f);
-
-        Material toxicSlimeMat = new Material(Shader.Find("Standard"));
-        toxicSlimeMat.color = new Color(0.3f, 0.9f, 0.2f, 0.8f);
-        toxicSlimeMat.SetFloat("_Mode", 3);
-        toxicSlimeMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        toxicSlimeMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        toxicSlimeMat.EnableKeyword("_ALPHABLEND_ON");
-        toxicSlimeMat.EnableKeyword("_EMISSION");
-        toxicSlimeMat.SetColor("_EmissionColor", new Color(0.3f, 0.9f, 0.2f) * 2f);
-
-        Material moonMat = new Material(Shader.Find("Standard"));
-        moonMat.color = new Color(0.95f, 0.95f, 0.85f);
-        moonMat.EnableKeyword("_EMISSION");
-        moonMat.SetColor("_EmissionColor", new Color(0.95f, 0.95f, 0.85f) * 0.8f);
-
-        // === GROUND (dark cracked concrete) ===
-        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        ground.name = "VoidGround";
-        ground.transform.SetParent(voidRealm.transform);
-        ground.transform.localPosition = new Vector3(0, groundY - 0.5f, 0);
-        ground.transform.localScale = new Vector3(200, 1, 200);
-        ground.GetComponent<Renderer>().sharedMaterial = darkConcreteMat;
-
-        // === TOXIC VOID (water replacement) ===
-        GameObject toxicVoid = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        toxicVoid.name = "ToxicVoid";
-        toxicVoid.transform.SetParent(voidRealm.transform);
-        toxicVoid.transform.localPosition = new Vector3(0, -0.5f, 0);
-        toxicVoid.transform.localScale = new Vector3(200, 0.3f, 200);
-        toxicVoid.GetComponent<Renderer>().sharedMaterial = toxicSlimeMat;
-        Object.DestroyImmediate(toxicVoid.GetComponent<Collider>());
-
-        // === GIANT MOON ===
-        GameObject moon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        moon.name = "GiantMoon";
-        moon.transform.SetParent(voidRealm.transform);
-        moon.transform.localPosition = new Vector3(50f, 80f, -80f);
-        moon.transform.localScale = new Vector3(40f, 40f, 40f);
-        moon.GetComponent<Renderer>().sharedMaterial = moonMat;
-        Object.DestroyImmediate(moon.GetComponent<Collider>());
-
-        // === SKYSCRAPERS ===
-        CreateVoidSkyscrapers(voidRealm.transform, groundY, buildingMat, neonPurpleMat, neonCyanMat, neonMagentaMat);
-
-        // === TOXIC SLIME PUDDLES ===
-        CreateToxicPuddles(voidRealm.transform, groundY, toxicSlimeMat);
-
-        // === NIGHTCLUB ===
-        GameObject nightclub = new GameObject("VoidNightclub");
-        nightclub.transform.SetParent(voidRealm.transform);
-        nightclub.transform.localPosition = new Vector3(0, groundY, 20f);
-        nightclub.AddComponent<VoidNightclub>();
-
-        // === PUNK BARMAN ===
-        GameObject barman = new GameObject("PunkBarman");
-        barman.transform.SetParent(voidRealm.transform);
-        barman.transform.localPosition = new Vector3(8f, groundY, 18f);
-        barman.AddComponent<PunkBarman>();
-
-        // === HAZMAT VENDOR ===
-        CreateHazmatVendor(voidRealm.transform, groundY, neonCyanMat);
-
-        // === PORTAL BACK ===
-        CreateVoidPortal(voidRealm.transform, groundY, neonPurpleMat);
-
-        // === WANDERING NPCS ===
-        CreateVoidNPCs(voidRealm.transform, groundY);
-
-        // === VOID TIP DISPLAY ===
-        GameObject voidTip = new GameObject("VoidTip");
-        voidTip.transform.SetParent(voidRealm.transform);
-        voidTip.transform.localPosition = Vector3.zero;
-        voidTip.AddComponent<VoidTip>();
-
-        Debug.Log("Void Realm created with skyscrapers, nightclub, toxic puddles, punk barman, and hazmat vendor!");
-    }
-
-    static void CreateVoidSkyscrapers(Transform parent, float groundY, Material buildingMat, Material neonPurple, Material neonCyan, Material neonMagenta)
-    {
-        // Create tall skyscrapers around the perimeter
-        Vector3[] positions = {
-            // Back row
-            new Vector3(-40f, 0, -40f), new Vector3(-20f, 0, -45f), new Vector3(0f, 0, -40f),
-            new Vector3(20f, 0, -45f), new Vector3(40f, 0, -40f),
-            // Left side
-            new Vector3(-45f, 0, -20f), new Vector3(-50f, 0, 0f), new Vector3(-45f, 0, 20f),
-            // Right side
-            new Vector3(45f, 0, -20f), new Vector3(50f, 0, 0f), new Vector3(45f, 0, 20f),
-            // Far corners
-            new Vector3(-35f, 0, -35f), new Vector3(35f, 0, -35f)
-        };
-
-        Material[] neonMats = { neonPurple, neonCyan, neonMagenta };
-
-        for (int i = 0; i < positions.Length; i++)
-        {
-            float height = Random.Range(35f, 70f);
-            float width = Random.Range(8f, 15f);
-            float depth = Random.Range(8f, 15f);
-
-            // Main building
-            GameObject building = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            building.name = "Skyscraper_" + i;
-            building.transform.SetParent(parent);
-            building.transform.localPosition = positions[i] + new Vector3(0, groundY + height / 2f, 0);
-            building.transform.localScale = new Vector3(width, height, depth);
-            building.GetComponent<Renderer>().sharedMaterial = buildingMat;
-
-            // Windows (neon strips)
-            int stripCount = Random.Range(3, 6);
-            Material neonMat = neonMats[i % neonMats.Length];
-
-            for (int s = 0; s < stripCount; s++)
-            {
-                float stripY = (s + 1) * (height / (stripCount + 1)) - height / 2f;
-
-                // Front strip
-                GameObject strip = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                strip.name = "NeonStrip";
-                strip.transform.SetParent(building.transform);
-                strip.transform.localPosition = new Vector3(0, stripY / height, 0.51f);
-                strip.transform.localScale = new Vector3(0.8f, 0.02f, 0.01f);
-                strip.GetComponent<Renderer>().sharedMaterial = neonMat;
-                Object.DestroyImmediate(strip.GetComponent<Collider>());
-            }
-
-            // Rooftop antenna/spire
-            if (Random.value > 0.5f)
-            {
-                GameObject spire = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                spire.name = "Spire";
-                spire.transform.SetParent(building.transform);
-                spire.transform.localPosition = new Vector3(0, 0.55f, 0);
-                spire.transform.localScale = new Vector3(0.02f, 0.15f, 0.02f);
-                spire.GetComponent<Renderer>().sharedMaterial = neonMat;
-                Object.DestroyImmediate(spire.GetComponent<Collider>());
-            }
-        }
-    }
-
-    static void CreateToxicPuddles(Transform parent, float groundY, Material slimeMat)
-    {
-        // Scattered toxic puddles
-        Vector3[] puddlePositions = {
-            new Vector3(-15f, 0, 5f),
-            new Vector3(15f, 0, -10f),
-            new Vector3(-25f, 0, -15f),
-            new Vector3(25f, 0, 10f),
-            new Vector3(-10f, 0, -25f),
-            new Vector3(30f, 0, -5f),
-            new Vector3(-30f, 0, 8f),
-            new Vector3(5f, 0, 30f)
-        };
-
-        for (int i = 0; i < puddlePositions.Length; i++)
-        {
-            float size = Random.Range(2f, 5f);
-
-            GameObject puddle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            puddle.name = "ToxicPuddle_" + i;
-            puddle.transform.SetParent(parent);
-            puddle.transform.localPosition = puddlePositions[i] + new Vector3(0, groundY + 0.05f, 0);
-            puddle.transform.localScale = new Vector3(size, 0.05f, size);
-            puddle.GetComponent<Renderer>().sharedMaterial = slimeMat;
-
-            // Add toxic damage component
-            puddle.AddComponent<ToxicSlime>();
-
-            // Keep collider as trigger
-            puddle.GetComponent<Collider>().isTrigger = true;
-        }
-    }
-
-    static void CreateHazmatVendor(Transform parent, float groundY, Material neonMat)
-    {
-        GameObject vendor = new GameObject("HazmatVendor");
-        vendor.transform.SetParent(parent);
-        vendor.transform.localPosition = new Vector3(-15f, groundY, 0f);
-
-        // Vendor booth
-        Material boothMat = new Material(Shader.Find("Standard"));
-        boothMat.color = new Color(0.15f, 0.15f, 0.15f);
-
-        GameObject booth = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        booth.name = "VendorBooth";
-        booth.transform.SetParent(vendor.transform);
-        booth.transform.localPosition = new Vector3(0, 1f, 0);
-        booth.transform.localScale = new Vector3(3f, 2f, 2f);
-        booth.GetComponent<Renderer>().sharedMaterial = boothMat;
-
-        // Neon sign
-        GameObject sign = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        sign.name = "HazmatSign";
-        sign.transform.SetParent(vendor.transform);
-        sign.transform.localPosition = new Vector3(0, 2.5f, 1.05f);
-        sign.transform.localScale = new Vector3(2.5f, 0.5f, 0.1f);
-        sign.GetComponent<Renderer>().sharedMaterial = neonMat;
-        Object.DestroyImmediate(sign.GetComponent<Collider>());
-
-        // Add vendor NPC script
-        vendor.AddComponent<HazmatVendorNPC>();
-    }
-
-    static void CreateVoidPortal(Transform parent, float groundY, Material neonMat)
-    {
-        GameObject portal = new GameObject("VoidPortal");
-        portal.transform.SetParent(parent);
-        portal.transform.localPosition = new Vector3(0, groundY, -30f);
-
-        // Portal frame
-        Material frameMat = new Material(Shader.Find("Standard"));
-        frameMat.color = new Color(0.2f, 0.2f, 0.25f);
-        frameMat.SetFloat("_Metallic", 0.8f);
-
-        // Frame pillars
-        for (int side = -1; side <= 1; side += 2)
-        {
-            GameObject pillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            pillar.name = "PortalPillar";
-            pillar.transform.SetParent(portal.transform);
-            pillar.transform.localPosition = new Vector3(side * 2f, 2f, 0);
-            pillar.transform.localScale = new Vector3(0.5f, 4f, 0.5f);
-            pillar.GetComponent<Renderer>().sharedMaterial = frameMat;
-        }
-
-        // Top beam
-        GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        beam.name = "PortalBeam";
-        beam.transform.SetParent(portal.transform);
-        beam.transform.localPosition = new Vector3(0, 4f, 0);
-        beam.transform.localScale = new Vector3(4.5f, 0.5f, 0.5f);
-        beam.GetComponent<Renderer>().sharedMaterial = frameMat;
-
-        // Portal surface (glowing purple)
-        GameObject surface = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        surface.name = "PortalSurface";
-        surface.transform.SetParent(portal.transform);
-        surface.transform.localPosition = new Vector3(0, 2f, 0);
-        surface.transform.localScale = new Vector3(3.5f, 3.5f, 1f);
-        surface.GetComponent<Renderer>().sharedMaterial = neonMat;
-        Object.DestroyImmediate(surface.GetComponent<Collider>());
-
-        // Add portal interaction
-        GameObject portalTrigger = new GameObject("PortalTrigger");
-        portalTrigger.transform.SetParent(portal.transform);
-        portalTrigger.transform.localPosition = new Vector3(0, 2f, 0);
-        BoxCollider trigger = portalTrigger.AddComponent<BoxCollider>();
-        trigger.size = new Vector3(3f, 4f, 1f);
-        trigger.isTrigger = true;
-        PortalInteraction portalScript = portalTrigger.AddComponent<PortalInteraction>();
-        portalScript.destinationRealm = RealmType.TropicalIsland;
-    }
-
-    static void CreateVoidNPCs(Transform parent, float groundY)
-    {
-        // Create a few wandering punk NPCs
-        for (int i = 0; i < 5; i++)
-        {
-            GameObject npc = new GameObject("VoidNPC_" + i);
-            npc.transform.SetParent(parent);
-            float x = Random.Range(-30f, 30f);
-            float z = Random.Range(-20f, 35f);
-            npc.transform.localPosition = new Vector3(x, groundY, z);
-            npc.AddComponent<VoidWanderer>();
-        }
-    }
 
 }
 

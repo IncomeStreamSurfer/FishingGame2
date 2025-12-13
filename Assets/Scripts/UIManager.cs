@@ -9,7 +9,7 @@ public class UIManager : MonoBehaviour
     private bool inventoryOpen = false;
     private bool shopOpen = false;
     private int selectedRodIndex = 0;
-    private int currentTab = 0; // 0=Equipment, 1=Quests, 2=Shop, 3=Wardrobe
+    private int currentTab = 0; // 0=Equipment, 1=Quests, 2=Shop, 3=Wardrobe, 4=Gun Skins
 
     // Wardrobe data - tracks owned clothing items
     private List<WardrobeItem> ownedClothing = new List<WardrobeItem>();
@@ -64,6 +64,9 @@ public class UIManager : MonoBehaviour
     private string lootNotificationText = "";
     private Color lootNotificationColor = Color.white;
 
+    // Rod unlock notification
+    private float rodUnlockNotificationTime = 0f;
+
     // NPC Dialog
     private bool npcDialogOpen = false;
     private string currentNPCName = "";
@@ -71,8 +74,26 @@ public class UIManager : MonoBehaviour
     // Quest tracker visibility
     private bool questTrackerHidden = false;
 
+    // Draggable/Resizable Quest Tracker window
+    private DraggableWindow questTrackerWindow;
+
     // Close button style
     private GUIStyle closeButtonStyle;
+
+    // Rod/Weapon dropdown panel
+    private bool rodDropdownOpen = false;
+    private Rect rodSlotRect; // Cached rod slot position for click detection
+    private float equipmentScrollPos = 0f;
+    private int equipmentTab = 0; // 0 = RODS, 1 = WEAPONS
+
+    // Cached styles for OnGUI (avoid creating new ones every frame)
+    private GUIStyle cachedKeyStyle;
+    private GUIStyle cachedPromptTextStyle;
+    private GUIStyle cachedSlotLabelStyle;
+    private GUIStyle cachedCoinStyle;
+    private GUIStyle cachedFishStyle;
+    private GUIStyle cachedLvlStyle;
+    private GUIStyle cachedXpStyle;
 
     // NPC proximity for sell prompt
     private bool isNearNPC = false;
@@ -115,6 +136,18 @@ public class UIManager : MonoBehaviour
     void Initialize()
     {
         InitStyles();
+
+        // Initialize draggable quest tracker window (top right corner)
+        float questWidth = 220;
+        float questHeight = 80;
+        float questX = Screen.width - questWidth - 10;
+        float questY = 160;
+        questTrackerWindow = new DraggableWindow(
+            new Rect(questX, questY, questWidth, questHeight),
+            new Vector2(180, 60),   // Min size
+            new Vector2(350, 150)   // Max size
+        );
+
         initialized = true;
     }
 
@@ -198,6 +231,46 @@ public class UIManager : MonoBehaviour
         closeButtonStyle.fontStyle = FontStyle.Bold;
         closeButtonStyle.alignment = TextAnchor.MiddleCenter;
 
+        // Initialize cached styles for OnGUI (avoid creating new ones every frame)
+        cachedKeyStyle = new GUIStyle();
+        cachedKeyStyle.fontSize = 16;
+        cachedKeyStyle.fontStyle = FontStyle.Bold;
+        cachedKeyStyle.alignment = TextAnchor.MiddleCenter;
+        cachedKeyStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
+
+        cachedPromptTextStyle = new GUIStyle();
+        cachedPromptTextStyle.fontSize = 13;
+        cachedPromptTextStyle.fontStyle = FontStyle.Bold;
+        cachedPromptTextStyle.alignment = TextAnchor.MiddleLeft;
+        cachedPromptTextStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
+
+        cachedSlotLabelStyle = new GUIStyle();
+        cachedSlotLabelStyle.normal.textColor = new Color(0.6f, 0.55f, 0.4f);
+        cachedSlotLabelStyle.fontSize = 9;
+        cachedSlotLabelStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedCoinStyle = new GUIStyle();
+        cachedCoinStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+        cachedCoinStyle.fontSize = 14;
+        cachedCoinStyle.fontStyle = FontStyle.Bold;
+        cachedCoinStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedFishStyle = new GUIStyle();
+        cachedFishStyle.normal.textColor = new Color(0.5f, 0.8f, 1f);
+        cachedFishStyle.fontSize = 14;
+        cachedFishStyle.fontStyle = FontStyle.Bold;
+        cachedFishStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedLvlStyle = new GUIStyle();
+        cachedLvlStyle.fontSize = 16;
+        cachedLvlStyle.fontStyle = FontStyle.Bold;
+        cachedLvlStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedXpStyle = new GUIStyle();
+        cachedXpStyle.normal.textColor = Color.white;
+        cachedXpStyle.fontSize = 9;
+        cachedXpStyle.alignment = TextAnchor.MiddleCenter;
+
         stylesInitialized = true;
     }
 
@@ -243,28 +316,41 @@ public class UIManager : MonoBehaviour
         {
             inventoryOpen = false;
             shopOpen = false;
+            rodDropdownOpen = false;
         }
 
-        // Rod unlocks
-        if (GameManager.Instance != null)
+        // Rod unlocks - Level-based system
+        if (LevelingSystem.Instance != null)
         {
-            int coins = GameManager.Instance.GetCoins();
-            if (coins >= 100) rodsUnlocked[1] = true;
-            if (coins >= 500) rodsUnlocked[2] = true;
-            if (coins >= 2000) rodsUnlocked[3] = true;
-            if (coins >= 10000) rodsUnlocked[4] = true;
-            if (coins >= 100000) rodsUnlocked[5] = true;
+            int currentLevel = LevelingSystem.Instance.GetLevel();
+
+            // Check each rod and trigger notification if newly unlocked
+            // Bronze Rod: Level 25
+            if (currentLevel >= 25 && !rodsUnlocked[1]) { rodsUnlocked[1] = true; ShowRodUnlockNotification(); }
+            // Silver Rod: Level 55
+            if (currentLevel >= 55 && !rodsUnlocked[2]) { rodsUnlocked[2] = true; ShowRodUnlockNotification(); }
+            // Golden Rod: Level 100
+            if (currentLevel >= 100 && !rodsUnlocked[3]) { rodsUnlocked[3] = true; ShowRodUnlockNotification(); }
+            // Legendary Rod: Level 150
+            if (currentLevel >= 150 && !rodsUnlocked[4]) { rodsUnlocked[4] = true; ShowRodUnlockNotification(); }
+            // Epic Rod: Level 200
+            if (currentLevel >= 200 && !rodsUnlocked[5]) { rodsUnlocked[5] = true; ShowRodUnlockNotification(); }
         }
 
         // Check for epic rod from bottle (unlocks Legendary when obtained this way)
         if (BottleEventSystem.Instance != null && BottleEventSystem.Instance.hasEpicFishingRod)
         {
-            rodsUnlocked[4] = true; // Legendary rod from bottle
+            if (!rodsUnlocked[4])
+            {
+                rodsUnlocked[4] = true; // Legendary rod from bottle
+                ShowRodUnlockNotification();
+            }
         }
 
         // Update notification timers
         if (levelUpNotificationTime > 0) levelUpNotificationTime -= Time.deltaTime;
         if (lootNotificationTime > 0) lootNotificationTime -= Time.deltaTime;
+        if (rodUnlockNotificationTime > 0) rodUnlockNotificationTime -= Time.deltaTime;
 
         // Check for nearby NPCs periodically
         npcCheckTimer += Time.deltaTime;
@@ -280,7 +366,14 @@ public class UIManager : MonoBehaviour
             if (FishInventoryPanel.Instance != null)
             {
                 FishInventoryPanel.Instance.EnableSellMode(nearbyNPCName);
+                FishInventoryPanel.Instance.OpenPanel(); // Also open the panel!
             }
+        }
+
+        // Disable sell mode when player moves away from NPCs
+        if (!isNearNPC && FishInventoryPanel.Instance != null && FishInventoryPanel.Instance.sellModeEnabled)
+        {
+            FishInventoryPanel.Instance.DisableSellMode();
         }
     }
 
@@ -289,32 +382,36 @@ public class UIManager : MonoBehaviour
         isNearNPC = false;
         nearbyNPCName = "";
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        // Use cached player reference instead of GameObject.Find
+        if (!GameCache.IsPlayerValid()) return;
 
-        Vector3 playerPos = player.transform.position;
+        Vector3 playerPos = GameCache.GetPlayerPosition();
 
-        // Check known NPC locations
-        string[] npcNames = { "QuestNPC", "SpawnNPC", "ClothingShopNPC", "GoldieBanksNPC", "WetsuitPete" };
-
-        foreach (string npcName in npcNames)
+        // Check cached NPC references from GameCache instead of Find() calls
+        if (GameCache.GoldieBanks != null && GameCache.IsPlayerInRange(GameCache.GoldieBanks.transform.position, NPC_SELL_RANGE))
         {
-            GameObject npc = GameObject.Find(npcName);
-            if (npc != null)
-            {
-                float distance = Vector3.Distance(playerPos, npc.transform.position);
-                if (distance <= NPC_SELL_RANGE)
-                {
-                    isNearNPC = true;
-                    // Get a friendly name for the NPC
-                    if (npcName == "QuestNPC") nearbyNPCName = "Wetsuit Pete";
-                    else if (npcName == "SpawnNPC") nearbyNPCName = "Islander";
-                    else if (npcName == "ClothingShopNPC") nearbyNPCName = "Clothing Shop";
-                    else if (npcName == "GoldieBanksNPC") nearbyNPCName = "Goldie Banks";
-                    else nearbyNPCName = npcName;
-                    return;
-                }
-            }
+            isNearNPC = true;
+            nearbyNPCName = "Goldie Banks";
+            return;
+        }
+        if (GameCache.ClothingShop != null && GameCache.IsPlayerInRange(GameCache.ClothingShop.transform.position, NPC_SELL_RANGE))
+        {
+            isNearNPC = true;
+            nearbyNPCName = "Clothing Shop";
+            return;
+        }
+        if (GameCache.TutCat != null && GameCache.IsPlayerInRange(GameCache.TutCat.transform.position, NPC_SELL_RANGE))
+        {
+            isNearNPC = true;
+            nearbyNPCName = "Tutorial Cat";
+            return;
+        }
+        // Wetsuit Pete - the main fish selling NPC
+        if (GameCache.WetsuitPete != null && GameCache.IsPlayerInRange(GameCache.WetsuitPete.transform.position, NPC_SELL_RANGE))
+        {
+            isNearNPC = true;
+            nearbyNPCName = "Wetsuit Pete";
+            return;
         }
     }
 
@@ -330,6 +427,11 @@ public class UIManager : MonoBehaviour
         lootNotificationText = text;
         lootNotificationColor = color;
         lootNotificationTime = 3f;
+    }
+
+    public void ShowRodUnlockNotification()
+    {
+        rodUnlockNotificationTime = 4f;
     }
 
     public void OpenNPCDialog(string npcName)
@@ -350,6 +452,9 @@ public class UIManager : MonoBehaviour
 
     void OnGUI()
     {
+        // CRITICAL HUD - NO FRAME SKIPPING to prevent flickering
+        // The main HUD must update every frame for smooth display
+
         // Don't draw HUD if game hasn't started or not initialized
         if (!MainMenu.GameStarted || !initialized) return;
 
@@ -394,26 +499,14 @@ public class UIManager : MonoBehaviour
 
         GUI.color = Color.white;
 
-        // Key indicator
-        GUIStyle keyStyle = new GUIStyle();
-        keyStyle.fontSize = 16;
-        keyStyle.fontStyle = FontStyle.Bold;
-        keyStyle.alignment = TextAnchor.MiddleCenter;
-        keyStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
-
+        // Key indicator - use cached style
         GUI.color = new Color(0.2f, 0.25f, 0.2f, 1f);
         GUI.DrawTexture(new Rect(promptX + 10, promptY + 7, 26, 24), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        GUI.Label(new Rect(promptX + 10, promptY + 7, 26, 24), "F", keyStyle);
+        GUI.Label(new Rect(promptX + 10, promptY + 7, 26, 24), "F", cachedKeyStyle);
 
-        // Text
-        GUIStyle textStyle = new GUIStyle();
-        textStyle.fontSize = 13;
-        textStyle.fontStyle = FontStyle.Bold;
-        textStyle.alignment = TextAnchor.MiddleLeft;
-        textStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
-
-        GUI.Label(new Rect(promptX + 42, promptY, promptWidth - 50, promptHeight), "Sell fish!", textStyle);
+        // Text - use cached style
+        GUI.Label(new Rect(promptX + 42, promptY, promptWidth - 50, promptHeight), "Sell fish!", cachedPromptTextStyle);
     }
 
     void DrawNPCDialog()
@@ -584,14 +677,50 @@ public class UIManager : MonoBehaviour
 
         GUI.Box(new Rect(barX - 8, barY - 4, barWidth + 16, barHeight + 8), "", frameStyle);
 
-        // Rod slot
-        DrawEquipmentSlot(new Rect(barX, barY, 46, 46), "ROD", rodColors[selectedRodIndex]);
+        // Rod slot - cache rect for click detection
+        rodSlotRect = new Rect(barX, barY, 46, 46);
+        DrawEquipmentSlot(rodSlotRect, "ROD", rodColors[selectedRodIndex]);
+
+        // Check for rod slot click
+        if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+        {
+            Vector2 mousePos = Event.current.mousePosition;
+            if (rodSlotRect.Contains(mousePos))
+            {
+                rodDropdownOpen = !rodDropdownOpen;
+                Event.current.Use();
+            }
+            // Close dropdown if clicking outside
+            else if (rodDropdownOpen)
+            {
+                Rect dropdownRect = GetRodDropdownRect();
+                if (!dropdownRect.Contains(mousePos))
+                {
+                    rodDropdownOpen = false;
+                    Event.current.Use();
+                }
+            }
+        }
 
         // Wallet
         DrawWalletSlot(new Rect(barX + 50, barY, 46, 46));
 
-        // Fish count
-        DrawFishCountSlot(new Rect(barX + 100, barY, 46, 46));
+        // Fish count (clickable to open fish inventory)
+        Rect fishSlotRect = new Rect(barX + 100, barY, 46, 46);
+        DrawFishCountSlot(fishSlotRect);
+
+        // Check for fish slot click to open fish inventory
+        if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+        {
+            if (fishSlotRect.Contains(Event.current.mousePosition))
+            {
+                if (FishInventoryPanel.Instance != null)
+                {
+                    FishInventoryPanel.Instance.TogglePanel();
+                }
+                Event.current.Use();
+            }
+        }
 
         // Level display
         DrawLevelSlot(new Rect(barX + 150, barY, 58, 46));
@@ -620,15 +749,19 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        // Controls (top left - smaller text)
-        GUI.Label(new Rect(8, 8, 180, 16), "WASD - Move | SPACE - Jump", labelStyle);
-        GUI.Label(new Rect(8, 22, 180, 16), "LEFT CLICK - Fish | I - Menu", labelStyle);
+        // Controls hints removed - now in ESC > Controls menu
 
         // XP Bar (top center)
         DrawXPBar();
 
         // Quest tracker (top right)
         DrawQuestTracker();
+
+        // Rod/Weapon dropdown (draw after HUD so it overlays)
+        if (rodDropdownOpen)
+        {
+            DrawRodDropdownPanel();
+        }
     }
 
     void DrawEquipmentSlot(Rect rect, string label, Color itemColor)
@@ -668,19 +801,9 @@ public class UIManager : MonoBehaviour
 
         int coins = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
 
-        GUIStyle coinStyle = new GUIStyle();
-        coinStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        coinStyle.fontSize = 14;
-        coinStyle.fontStyle = FontStyle.Bold;
-        coinStyle.alignment = TextAnchor.MiddleCenter;
-
-        GUI.Label(new Rect(rect.x, rect.y + 8, rect.width, 25), FormatNumber(coins), coinStyle);
-
-        GUIStyle labelS = new GUIStyle();
-        labelS.normal.textColor = new Color(0.6f, 0.55f, 0.4f);
-        labelS.fontSize = 9;
-        labelS.alignment = TextAnchor.MiddleCenter;
-        GUI.Label(new Rect(rect.x, rect.y + rect.height - 12, rect.width, 12), "GOLD", labelS);
+        // Use cached styles instead of creating new ones
+        GUI.Label(new Rect(rect.x, rect.y + 8, rect.width, 25), FormatNumber(coins), cachedCoinStyle);
+        GUI.Label(new Rect(rect.x, rect.y + rect.height - 12, rect.width, 12), "GOLD", cachedSlotLabelStyle);
     }
 
     void DrawFishCountSlot(Rect rect)
@@ -689,19 +812,9 @@ public class UIManager : MonoBehaviour
 
         int fish = GameManager.Instance != null ? GameManager.Instance.GetTotalFishCaught() : 0;
 
-        GUIStyle fishStyle = new GUIStyle();
-        fishStyle.normal.textColor = new Color(0.5f, 0.8f, 1f);
-        fishStyle.fontSize = 14;
-        fishStyle.fontStyle = FontStyle.Bold;
-        fishStyle.alignment = TextAnchor.MiddleCenter;
-
-        GUI.Label(new Rect(rect.x, rect.y + 8, rect.width, 25), fish.ToString(), fishStyle);
-
-        GUIStyle labelS = new GUIStyle();
-        labelS.normal.textColor = new Color(0.6f, 0.55f, 0.4f);
-        labelS.fontSize = 9;
-        labelS.alignment = TextAnchor.MiddleCenter;
-        GUI.Label(new Rect(rect.x, rect.y + rect.height - 12, rect.width, 12), "FISH", labelS);
+        // Use cached styles instead of creating new ones
+        GUI.Label(new Rect(rect.x, rect.y + 8, rect.width, 25), fish.ToString(), cachedFishStyle);
+        GUI.Label(new Rect(rect.x, rect.y + rect.height - 12, rect.width, 12), "FISH", cachedSlotLabelStyle);
     }
 
     void DrawLevelSlot(Rect rect)
@@ -711,20 +824,12 @@ public class UIManager : MonoBehaviour
         int level = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetEffectiveLevel() : 1;
         int bonus = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetBonusLevels() : 0;
 
-        GUIStyle lvlStyle = new GUIStyle();
-        lvlStyle.normal.textColor = bonus > 0 ? new Color(0.3f, 1f, 0.8f) : new Color(0.9f, 0.9f, 0.5f);
-        lvlStyle.fontSize = 16;
-        lvlStyle.fontStyle = FontStyle.Bold;
-        lvlStyle.alignment = TextAnchor.MiddleCenter;
+        // Update cached style color based on bonus (cheaper than creating new style)
+        cachedLvlStyle.normal.textColor = bonus > 0 ? new Color(0.3f, 1f, 0.8f) : new Color(0.9f, 0.9f, 0.5f);
 
         string lvlText = bonus > 0 ? $"{level} (+{bonus})" : level.ToString();
-        GUI.Label(new Rect(rect.x, rect.y + 5, rect.width, 25), lvlText, lvlStyle);
-
-        GUIStyle labelS = new GUIStyle();
-        labelS.normal.textColor = new Color(0.6f, 0.55f, 0.4f);
-        labelS.fontSize = 9;
-        labelS.alignment = TextAnchor.MiddleCenter;
-        GUI.Label(new Rect(rect.x, rect.y + rect.height - 12, rect.width, 12), "LEVEL", labelS);
+        GUI.Label(new Rect(rect.x, rect.y + 5, rect.width, 25), lvlText, cachedLvlStyle);
+        GUI.Label(new Rect(rect.x, rect.y + rect.height - 12, rect.width, 12), "LEVEL", cachedSlotLabelStyle);
     }
 
     void DrawXPBar()
@@ -744,27 +849,19 @@ public class UIManager : MonoBehaviour
         GUI.DrawTexture(new Rect(barX + 2, barY + 2, (barWidth - 4) * progress, barHeight - 4),
             MakeTexture(2, 2, new Color(0.2f, 0.7f, 0.3f, 0.9f)));
 
-        // Text
-        GUIStyle xpStyle = new GUIStyle();
-        xpStyle.normal.textColor = Color.white;
-        xpStyle.fontSize = 9;
-        xpStyle.alignment = TextAnchor.MiddleCenter;
-
+        // Text - use cached style
         long currentXP = LevelingSystem.Instance.GetCurrentXP();
         long toNext = LevelingSystem.Instance.GetXPToNextLevel();
         int level = LevelingSystem.Instance.GetLevel();
 
         string xpText = $"Lv{level} | {FormatNumber(currentXP)} XP | {FormatNumber(toNext)} to next";
-        GUI.Label(new Rect(barX, barY, barWidth, barHeight), xpText, xpStyle);
+        GUI.Label(new Rect(barX, barY, barWidth, barHeight), xpText, cachedXpStyle);
     }
 
     void DrawQuestTracker()
     {
         if (QuestSystem.Instance == null) return;
         if (questTrackerHidden) return; // Allow hiding
-
-        float x = Screen.width - 185;
-        float y = 160; // Moved lower down
 
         bool hasActiveQuest = QuestSystem.Instance.HasActiveQuest();
         bool hasPendingQuest = QuestSystem.Instance.HasPendingQuest();
@@ -773,32 +870,53 @@ public class UIManager : MonoBehaviour
         {
             Quest quest = QuestSystem.Instance.GetActiveQuest();
 
-            GUI.Box(new Rect(x - 4, y - 4, 180, 50), "", frameStyle);
+            // Update window (handles dragging and resizing)
+            questTrackerWindow.UpdateWindow();
+
+            Rect rect = questTrackerWindow.WindowRect;
+            float panelWidth = rect.width;
+            float panelHeight = rect.height;
+            float x = rect.x;
+            float y = rect.y;
+
+            // Background
+            GUI.DrawTexture(new Rect(x, y, panelWidth, panelHeight), frameTex);
+
+            // Title bar (draggable area)
+            GUI.DrawTexture(new Rect(x, y, panelWidth, 20), MakeTexture(2, 2, new Color(0.08f, 0.08f, 0.1f, 0.98f)));
 
             // X close button
-            if (GUI.Button(new Rect(x - 4, y - 4, 18, 16), "X", closeButtonStyle))
+            if (GUI.Button(new Rect(x + 2, y + 2, 16, 16), "X", closeButtonStyle))
             {
                 questTrackerHidden = true;
             }
 
             GUIStyle titleStyle = new GUIStyle();
             titleStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
-            titleStyle.fontSize = 10;
+            titleStyle.fontSize = Mathf.Max(9, (int)(panelWidth * 0.045f));
             titleStyle.fontStyle = FontStyle.Bold;
+            titleStyle.alignment = TextAnchor.MiddleCenter;
 
-            GUI.Label(new Rect(x + 16, y, 150, 14), "Active Quest:", titleStyle);
+            GUI.Label(new Rect(x, y + 2, panelWidth, 16), "Active Quest", titleStyle);
+
+            // Content area
+            float contentY = y + 24;
 
             GUIStyle questStyle = new GUIStyle();
             questStyle.normal.textColor = new Color(0.9f, 0.9f, 0.8f);
-            questStyle.fontSize = 9;
+            questStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.04f));
+            questStyle.wordWrap = true;
 
-            GUI.Label(new Rect(x, y + 14, 170, 14), quest.questName, questStyle);
+            GUI.Label(new Rect(x + 8, contentY, panelWidth - 16, 24), quest.questName, questStyle);
 
             GUIStyle progressStyle = new GUIStyle();
             progressStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
-            progressStyle.fontSize = 9;
+            progressStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.04f));
 
-            GUI.Label(new Rect(x, y + 28, 170, 14), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
+            GUI.Label(new Rect(x + 8, contentY + 22, panelWidth - 16, 14), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
+
+            // Draw resize handle
+            questTrackerWindow.DrawResizeHandle();
         }
         // Don't show empty box for pending quests - removed the black empty box
     }
@@ -825,12 +943,43 @@ public class UIManager : MonoBehaviour
             float alpha = Mathf.Min(1f, lootNotificationTime);
             GUIStyle lootStyle = new GUIStyle();
             lootStyle.normal.textColor = new Color(lootNotificationColor.r, lootNotificationColor.g, lootNotificationColor.b, alpha);
-            lootStyle.fontSize = 22;
+            lootStyle.fontSize = 16; // Reduced from 22 to 16
             lootStyle.fontStyle = FontStyle.Bold;
             lootStyle.alignment = TextAnchor.MiddleCenter;
 
             float y = Screen.height / 2.5f;
+
+            // Draw black outline
+            GUIStyle outlineStyle = new GUIStyle(lootStyle);
+            outlineStyle.normal.textColor = new Color(0, 0, 0, alpha);
+
+            // Draw outline in 8 directions (up, down, left, right, and diagonals)
+            int outlineOffset = 2;
+            GUI.Label(new Rect(0, y - outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // up
+            GUI.Label(new Rect(0, y + outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // down
+            GUI.Label(new Rect(outlineOffset, y, Screen.width, 35), lootNotificationText, outlineStyle); // right
+            GUI.Label(new Rect(-outlineOffset, y, Screen.width, 35), lootNotificationText, outlineStyle); // left
+            GUI.Label(new Rect(outlineOffset, y - outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // top-right
+            GUI.Label(new Rect(-outlineOffset, y - outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // top-left
+            GUI.Label(new Rect(outlineOffset, y + outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // bottom-right
+            GUI.Label(new Rect(-outlineOffset, y + outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // bottom-left
+
+            // Draw main text on top
             GUI.Label(new Rect(0, y, Screen.width, 35), lootNotificationText, lootStyle);
+        }
+
+        // Rod unlock notification
+        if (rodUnlockNotificationTime > 0)
+        {
+            float alpha = Mathf.Min(1f, rodUnlockNotificationTime);
+            GUIStyle rodUnlockStyle = new GUIStyle();
+            rodUnlockStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, alpha);
+            rodUnlockStyle.fontSize = 24;
+            rodUnlockStyle.fontStyle = FontStyle.Bold;
+            rodUnlockStyle.alignment = TextAnchor.MiddleCenter;
+
+            float y = Screen.height / 2.5f;
+            GUI.Label(new Rect(0, y, Screen.width, 35), "Well done matey! Try out this new rod, you've earned it!", rodUnlockStyle);
         }
     }
 
@@ -867,7 +1016,7 @@ public class UIManager : MonoBehaviour
         }
 
         // Tabs - smaller
-        string[] tabs = { "Equipment", "Quests", "Shop", "Wardrobe" };
+        string[] tabs = { "Equipment", "Quests", "Shop", "Wardrobe", "Melee" };
         for (int i = 0; i < tabs.Length; i++)
         {
             GUIStyle style = (i == currentTab) ? tabActiveStyle : tabStyle;
@@ -886,6 +1035,7 @@ public class UIManager : MonoBehaviour
             case 1: DrawQuestsTab(contentRect); break;
             case 2: DrawShopTab(contentRect); break;
             case 3: DrawWardrobeTab(contentRect); break;
+            case 4: DrawMeleeWeaponsTab(contentRect); break;
         }
     }
 
@@ -1160,11 +1310,11 @@ public class UIManager : MonoBehaviour
         switch (item.itemType)
         {
             case ShopItemType.Rod:
-                if (item.name.Contains("Bronze")) rodsUnlocked[1] = true;
-                else if (item.name.Contains("Silver")) rodsUnlocked[2] = true;
-                else if (item.name.Contains("Golden")) rodsUnlocked[3] = true;
-                else if (item.name.Contains("Legendary")) rodsUnlocked[4] = true;
-                else if (item.name.Contains("Epic")) rodsUnlocked[5] = true;
+                if (item.name.Contains("Bronze") && !rodsUnlocked[1]) { rodsUnlocked[1] = true; ShowRodUnlockNotification(); }
+                else if (item.name.Contains("Silver") && !rodsUnlocked[2]) { rodsUnlocked[2] = true; ShowRodUnlockNotification(); }
+                else if (item.name.Contains("Golden") && !rodsUnlocked[3]) { rodsUnlocked[3] = true; ShowRodUnlockNotification(); }
+                else if (item.name.Contains("Legendary") && !rodsUnlocked[4]) { rodsUnlocked[4] = true; ShowRodUnlockNotification(); }
+                else if (item.name.Contains("Epic") && !rodsUnlocked[5]) { rodsUnlocked[5] = true; ShowRodUnlockNotification(); }
                 break;
         }
 
@@ -1489,6 +1639,452 @@ public class UIManager : MonoBehaviour
             if (item.itemName == itemName) return true;
         }
         return false;
+    }
+
+    // =============== MELEE WEAPONS TAB ===============
+
+    private float meleeScrollPos = 0f;
+
+    void DrawMeleeWeaponsTab(Rect rect)
+    {
+        GUI.Label(new Rect(rect.x, rect.y, 200, 20), "MELEE WEAPONS", headerStyle);
+
+        if (WeaponSystem.Instance == null)
+        {
+            GUIStyle errorStyle = new GUIStyle(labelStyle);
+            errorStyle.normal.textColor = new Color(0.8f, 0.3f, 0.3f);
+            GUI.Label(new Rect(rect.x, rect.y + 30, rect.width, 40),
+                "Weapon system not available.\nVisit a weapon shop to buy melee weapons!", errorStyle);
+            return;
+        }
+
+        // Controls help
+        GUIStyle helpStyle = new GUIStyle();
+        helpStyle.normal.textColor = new Color(0.7f, 0.8f, 0.6f);
+        helpStyle.fontSize = 9;
+        GUI.Label(new Rect(rect.x, rect.y + 18, rect.width, 14), "Press Q to swap Rod/Weapon, 1-4 for weapon slots", helpStyle);
+
+        // Get owned weapons
+        List<WeaponData> ownedWeapons = WeaponSystem.Instance.GetOwnedWeapons();
+
+        if (ownedWeapons == null || ownedWeapons.Count == 0)
+        {
+            GUIStyle emptyStyle = new GUIStyle(labelStyle);
+            emptyStyle.alignment = TextAnchor.MiddleCenter;
+            emptyStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+            GUI.Label(new Rect(rect.x, rect.y + 60, rect.width, 40),
+                "No weapons owned yet.\nVisit a weapon shop in Ice/Jungle realm!", emptyStyle);
+            return;
+        }
+
+        // Scrollable area
+        float itemHeight = 55f;
+        float contentHeight = ownedWeapons.Count * itemHeight;
+        float visibleHeight = rect.height - 40;
+
+        // Mouse wheel scrolling
+        Rect scrollArea = new Rect(rect.x, rect.y + 35, rect.width, visibleHeight);
+        if (scrollArea.Contains(Event.current.mousePosition))
+        {
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                meleeScrollPos += Event.current.delta.y * 20f;
+                meleeScrollPos = Mathf.Clamp(meleeScrollPos, 0, Mathf.Max(0, contentHeight - visibleHeight));
+                Event.current.Use();
+            }
+        }
+
+        // Content area background
+        GUI.DrawTexture(new Rect(rect.x, rect.y + 35, rect.width, visibleHeight),
+            MakeTexture(2, 2, new Color(0.06f, 0.06f, 0.08f, 0.9f)));
+
+        // Begin scroll area
+        GUI.BeginGroup(scrollArea);
+
+        for (int i = 0; i < ownedWeapons.Count; i++)
+        {
+            float itemY = i * itemHeight - meleeScrollPos;
+
+            // Skip items outside visible area
+            if (itemY + itemHeight < 0 || itemY > visibleHeight) continue;
+
+            DrawMeleeWeaponItem(new Rect(5, itemY + 5, rect.width - 30, itemHeight - 10), ownedWeapons[i], i);
+        }
+
+        GUI.EndGroup();
+
+        // Scrollbar
+        if (contentHeight > visibleHeight)
+        {
+            float scrollBarHeight = visibleHeight * (visibleHeight / contentHeight);
+            float scrollBarY = (meleeScrollPos / (contentHeight - visibleHeight)) * (visibleHeight - scrollBarHeight);
+
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 12, rect.y + 35, 10, visibleHeight),
+                MakeTexture(2, 2, new Color(0.15f, 0.15f, 0.15f, 0.8f)));
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 11, rect.y + 35 + scrollBarY, 8, scrollBarHeight),
+                MakeTexture(2, 2, new Color(0.4f, 0.35f, 0.2f, 0.9f)));
+        }
+    }
+
+    void DrawMeleeWeaponItem(Rect rect, WeaponData weapon, int index)
+    {
+        bool isEquipped = WeaponSystem.Instance.IsWeaponEquipped(weapon);
+
+        // Item background
+        Color bgColor = isEquipped ? new Color(0.2f, 0.3f, 0.25f, 0.95f) :
+                        new Color(0.12f, 0.12f, 0.14f, 0.95f);
+        GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
+
+        // Slot number
+        GUIStyle slotStyle = new GUIStyle();
+        slotStyle.fontSize = 16;
+        slotStyle.fontStyle = FontStyle.Bold;
+        slotStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f);
+        slotStyle.alignment = TextAnchor.MiddleCenter;
+        GUI.Label(new Rect(rect.x + 5, rect.y + 5, 25, 35), (index + 1).ToString(), slotStyle);
+
+        // Weapon name
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 12;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.normal.textColor = isEquipped ? new Color(0.5f, 1f, 0.6f) : Color.white;
+        GUI.Label(new Rect(rect.x + 35, rect.y + 5, 150, 18), weapon.name, nameStyle);
+
+        // Stats
+        GUIStyle statsStyle = new GUIStyle();
+        statsStyle.fontSize = 9;
+        statsStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+        GUI.Label(new Rect(rect.x + 35, rect.y + 22, 200, 14),
+            $"DMG: {weapon.damage}  SPD: {weapon.attackSpeed:F1}s  RNG: {weapon.range:F1}", statsStyle);
+
+        // Equip button
+        if (isEquipped)
+        {
+            GUIStyle equippedStyle = new GUIStyle();
+            equippedStyle.fontSize = 10;
+            equippedStyle.fontStyle = FontStyle.Bold;
+            equippedStyle.normal.textColor = new Color(0.4f, 0.9f, 0.4f);
+            equippedStyle.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(new Rect(rect.x + rect.width - 65, rect.y + 10, 60, 25), "ACTIVE", equippedStyle);
+        }
+        else
+        {
+            if (GUI.Button(new Rect(rect.x + rect.width - 65, rect.y + 8, 60, 28), "EQUIP", buttonStyle))
+            {
+                WeaponSystem.Instance.EquipWeapon(weapon);
+            }
+        }
+    }
+
+    // =============== ROD/WEAPON DROPDOWN ===============
+
+    Rect GetRodDropdownRect()
+    {
+        // Position dropdown above the rod slot
+        float panelWidth = 280;
+        float panelHeight = 320;
+        float panelX = rodSlotRect.x;
+        float panelY = rodSlotRect.y - panelHeight - 10;
+
+        return new Rect(panelX, panelY, panelWidth, panelHeight);
+    }
+
+    void DrawRodDropdownPanel()
+    {
+        Rect panelRect = GetRodDropdownRect();
+
+        // Panel background
+        GUI.DrawTexture(panelRect, MakeTexture(2, 2, new Color(0.1f, 0.1f, 0.12f, 0.95f)));
+
+        // Border
+        GUI.color = new Color(0.6f, 0.7f, 0.8f, 0.9f);
+        GUI.DrawTexture(new Rect(panelRect.x, panelRect.y, panelRect.width, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(panelRect.x, panelRect.y + panelRect.height - 2, panelRect.width, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(panelRect.x, panelRect.y, 2, panelRect.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(panelRect.x + panelRect.width - 2, panelRect.y, 2, panelRect.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        // Header
+        GUI.Label(new Rect(panelRect.x, panelRect.y, panelRect.width, 24), "EQUIPMENT SELECTION", headerStyle);
+
+        // Close button
+        if (GUI.Button(new Rect(panelRect.x + panelRect.width - 22, panelRect.y + 4, 18, 18), "X", closeButtonStyle))
+        {
+            rodDropdownOpen = false;
+        }
+
+        // Tab buttons
+        float tabY = panelRect.y + 28;
+        float tabWidth = (panelRect.width - 16) / 2f;
+        float tabHeight = 28;
+
+        // RODS tab
+        GUIStyle rodsTabStyle = new GUIStyle(buttonStyle);
+        rodsTabStyle.fontSize = 10;
+        rodsTabStyle.fontStyle = FontStyle.Bold;
+        Color rodsTabColor = equipmentTab == 0 ? new Color(0.2f, 0.4f, 0.5f, 0.95f) : new Color(0.12f, 0.12f, 0.14f, 0.9f);
+        GUI.DrawTexture(new Rect(panelRect.x + 6, tabY, tabWidth, tabHeight), MakeTexture(2, 2, rodsTabColor));
+        if (equipmentTab == 0)
+        {
+            GUI.color = new Color(0.4f, 0.8f, 1f);
+            GUI.DrawTexture(new Rect(panelRect.x + 6, tabY + tabHeight - 2, tabWidth, 2), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+        if (GUI.Button(new Rect(panelRect.x + 6, tabY, tabWidth, tabHeight), "RODS", rodsTabStyle))
+        {
+            equipmentTab = 0;
+            equipmentScrollPos = 0;
+        }
+
+        // WEAPONS tab
+        GUIStyle weaponsTabStyle = new GUIStyle(buttonStyle);
+        weaponsTabStyle.fontSize = 10;
+        weaponsTabStyle.fontStyle = FontStyle.Bold;
+        Color weaponsTabColor = equipmentTab == 1 ? new Color(0.2f, 0.4f, 0.5f, 0.95f) : new Color(0.12f, 0.12f, 0.14f, 0.9f);
+        GUI.DrawTexture(new Rect(panelRect.x + 10 + tabWidth, tabY, tabWidth, tabHeight), MakeTexture(2, 2, weaponsTabColor));
+        if (equipmentTab == 1)
+        {
+            GUI.color = new Color(0.4f, 0.8f, 1f);
+            GUI.DrawTexture(new Rect(panelRect.x + 10 + tabWidth, tabY + tabHeight - 2, tabWidth, 2), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+        if (GUI.Button(new Rect(panelRect.x + 10 + tabWidth, tabY, tabWidth, tabHeight), "WEAPONS", weaponsTabStyle))
+        {
+            equipmentTab = 1;
+            equipmentScrollPos = 0;
+        }
+
+        // Scrollable content area (starts below tabs)
+        Rect contentRect = new Rect(panelRect.x + 6, tabY + tabHeight + 4, panelRect.width - 12, panelRect.height - 66);
+
+        // Calculate total content height based on selected tab
+        int rodCount = rodNames.Length;
+        int weaponCount = WeaponSystem.Instance != null ? WeaponSystem.Instance.GetOwnedWeapons().Count : 0;
+        float itemHeight = 38;
+        float totalHeight = equipmentTab == 0 ? rodCount * itemHeight : weaponCount * itemHeight;
+        float visibleHeight = contentRect.height;
+
+        // Mouse wheel scrolling
+        if (contentRect.Contains(Event.current.mousePosition))
+        {
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                equipmentScrollPos += Event.current.delta.y * 20f;
+                equipmentScrollPos = Mathf.Clamp(equipmentScrollPos, 0, Mathf.Max(0, totalHeight - visibleHeight));
+                Event.current.Use();
+            }
+        }
+
+        // Begin scroll area
+        GUI.BeginGroup(contentRect);
+
+        float currentY = -equipmentScrollPos;
+
+        // Draw content based on selected tab
+        if (equipmentTab == 0)
+        {
+            // RODS TAB
+            for (int i = 0; i < rodNames.Length; i++)
+            {
+                if (currentY + itemHeight > 0 && currentY < visibleHeight)
+                {
+                    DrawDropdownRodItem(new Rect(4, currentY, contentRect.width - 8, itemHeight - 4), i);
+                }
+                currentY += itemHeight;
+            }
+        }
+        else
+        {
+            // WEAPONS TAB
+            if (WeaponSystem.Instance != null)
+            {
+                List<WeaponData> ownedWeapons = WeaponSystem.Instance.GetOwnedWeapons();
+
+                if (ownedWeapons != null && ownedWeapons.Count > 0)
+                {
+                    for (int i = 0; i < ownedWeapons.Count; i++)
+                    {
+                        if (currentY + itemHeight > 0 && currentY < visibleHeight)
+                        {
+                            DrawDropdownWeaponItem(new Rect(4, currentY, contentRect.width - 8, itemHeight - 4), ownedWeapons[i]);
+                        }
+                        currentY += itemHeight;
+                    }
+                }
+                else
+                {
+                    // No weapons owned message
+                    GUIStyle noWeaponsStyle = new GUIStyle();
+                    noWeaponsStyle.fontSize = 10;
+                    noWeaponsStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+                    noWeaponsStyle.alignment = TextAnchor.MiddleCenter;
+                    GUI.Label(new Rect(4, 20, contentRect.width - 8, 40), "No weapons owned.\nVisit the Weapons Shop!", noWeaponsStyle);
+                }
+            }
+        }
+
+        GUI.EndGroup();
+
+        // Scrollbar
+        if (totalHeight > visibleHeight)
+        {
+            float scrollBarHeight = visibleHeight * (visibleHeight / totalHeight);
+            float scrollBarY = (equipmentScrollPos / (totalHeight - visibleHeight)) * (visibleHeight - scrollBarHeight);
+
+            GUI.DrawTexture(new Rect(contentRect.x + contentRect.width - 8, contentRect.y, 6, visibleHeight),
+                MakeTexture(2, 2, new Color(0.15f, 0.15f, 0.15f, 0.8f)));
+            GUI.DrawTexture(new Rect(contentRect.x + contentRect.width - 7, contentRect.y + scrollBarY, 4, scrollBarHeight),
+                MakeTexture(2, 2, new Color(0.5f, 0.6f, 0.7f, 0.9f)));
+        }
+    }
+
+    void DrawDropdownRodItem(Rect rect, int rodIndex)
+    {
+        bool isSelected = selectedRodIndex == rodIndex && !IsInWeaponMode();
+        bool isUnlocked = rodsUnlocked[rodIndex];
+
+        Color bgColor = isSelected ? new Color(0.2f, 0.3f, 0.25f, 0.95f) :
+                        new Color(0.12f, 0.12f, 0.14f, 0.9f);
+        if (!isUnlocked) bgColor = new Color(0.08f, 0.08f, 0.08f, 0.9f);
+
+        GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
+
+        // Rod icon
+        Texture2D rodIcon = RodSprites.Instance != null ? RodSprites.Instance.GetRodTexture(rodIndex) : null;
+        if (rodIcon != null && isUnlocked)
+        {
+            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 26, 26), rodIcon);
+        }
+        else
+        {
+            Color iconColor = isUnlocked ? rodColors[rodIndex] : new Color(0.3f, 0.3f, 0.3f);
+            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 26, 26), MakeTexture(2, 2, iconColor));
+        }
+
+        // Rod name
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.normal.textColor = isUnlocked ? rodColors[rodIndex] : new Color(0.4f, 0.4f, 0.4f);
+        nameStyle.fontSize = 10;
+        nameStyle.fontStyle = FontStyle.Bold;
+        GUI.Label(new Rect(rect.x + 36, rect.y + 4, 140, 14), rodNames[rodIndex], nameStyle);
+
+        // Stats or locked text
+        GUIStyle statStyle = new GUIStyle();
+        statStyle.fontSize = 8;
+        if (isUnlocked)
+        {
+            statStyle.normal.textColor = new Color(0.5f, 0.8f, 0.5f);
+            string bonus = $"Luck: +{rodIndex * 5}%";
+            if (rodIndex > 0) bonus += $" | Spd: +{rodIndex * 10}%";
+            GUI.Label(new Rect(rect.x + 36, rect.y + 18, 140, 12), bonus, statStyle);
+        }
+        else
+        {
+            statStyle.normal.textColor = new Color(0.8f, 0.3f, 0.3f);
+            int required = rodIndex == 1 ? 100 : rodIndex == 2 ? 500 : rodIndex == 3 ? 2000 : rodIndex == 4 ? 10000 : 100000;
+            GUI.Label(new Rect(rect.x + 36, rect.y + 18, 140, 12), $"Locked: {FormatNumber(required)}g", statStyle);
+        }
+
+        // Equipped indicator or button
+        if (isSelected)
+        {
+            GUIStyle equippedStyle = new GUIStyle();
+            equippedStyle.fontSize = 9;
+            equippedStyle.fontStyle = FontStyle.Bold;
+            equippedStyle.normal.textColor = new Color(0.4f, 0.9f, 0.4f);
+            equippedStyle.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(new Rect(rect.x + rect.width - 60, rect.y + 6, 56, 22), "✓ ACTIVE", equippedStyle);
+        }
+        else if (isUnlocked)
+        {
+            if (GUI.Button(new Rect(rect.x + rect.width - 58, rect.y + 6, 54, 22), "EQUIP", buttonStyle))
+            {
+                selectedRodIndex = rodIndex;
+                // Switch out of weapon mode if needed
+                if (WeaponSystem.Instance != null && WeaponSystem.Instance.IsInWeaponMode())
+                {
+                    // Get player reference and re-enable fishing rod
+                    if (GameCache.IsPlayerValid())
+                    {
+                        GameObject player = GameCache.Player.gameObject;
+                        FishingRodAnimator rodAnim = player.GetComponent<FishingRodAnimator>();
+                        if (rodAnim != null)
+                        {
+                            rodAnim.enabled = true;
+                        }
+                    }
+                }
+                rodDropdownOpen = false;
+                ShowLootNotification($"Equipped: {rodNames[rodIndex]}", rodColors[rodIndex]);
+            }
+        }
+    }
+
+    void DrawDropdownWeaponItem(Rect rect, WeaponData weapon)
+    {
+        bool isEquipped = WeaponSystem.Instance != null && WeaponSystem.Instance.IsWeaponEquipped(weapon);
+
+        Color bgColor = isEquipped ? new Color(0.2f, 0.3f, 0.25f, 0.95f) :
+                        new Color(0.12f, 0.12f, 0.14f, 0.9f);
+
+        GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
+
+        // Weapon icon (if available)
+        Texture2D weaponIcon = WeaponShopNPC.Instance != null ?
+            WeaponShopNPC.Instance.GetWeaponIcon(weapon.name) : null;
+
+        if (weaponIcon != null)
+        {
+            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 26, 26), weaponIcon);
+        }
+        else
+        {
+            // Fallback colored square
+            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 4, 26, 26),
+                MakeTexture(2, 2, new Color(0.6f, 0.4f, 0.3f)));
+        }
+
+        // Weapon name
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 10;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.normal.textColor = isEquipped ? new Color(0.5f, 1f, 0.6f) : Color.white;
+        GUI.Label(new Rect(rect.x + 36, rect.y + 4, 140, 14), weapon.name, nameStyle);
+
+        // Stats
+        GUIStyle statStyle = new GUIStyle();
+        statStyle.fontSize = 8;
+        statStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+        GUI.Label(new Rect(rect.x + 36, rect.y + 18, 140, 12),
+            $"DMG: {weapon.damage} | SPD: {weapon.attackSpeed:F1}s | RNG: {weapon.range:F1}", statStyle);
+
+        // Equipped indicator or button
+        if (isEquipped)
+        {
+            GUIStyle equippedStyle = new GUIStyle();
+            equippedStyle.fontSize = 9;
+            equippedStyle.fontStyle = FontStyle.Bold;
+            equippedStyle.normal.textColor = new Color(0.4f, 0.9f, 0.4f);
+            equippedStyle.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(new Rect(rect.x + rect.width - 60, rect.y + 6, 56, 22), "✓ ACTIVE", equippedStyle);
+        }
+        else
+        {
+            if (GUI.Button(new Rect(rect.x + rect.width - 58, rect.y + 6, 54, 22), "EQUIP", buttonStyle))
+            {
+                if (WeaponSystem.Instance != null)
+                {
+                    WeaponSystem.Instance.EquipWeapon(weapon);
+                }
+                rodDropdownOpen = false;
+                ShowLootNotification($"Equipped: {weapon.name}", new Color(0.8f, 0.6f, 0.5f));
+            }
+        }
+    }
+
+    bool IsInWeaponMode()
+    {
+        return WeaponSystem.Instance != null && WeaponSystem.Instance.IsInWeaponMode();
     }
 }
 

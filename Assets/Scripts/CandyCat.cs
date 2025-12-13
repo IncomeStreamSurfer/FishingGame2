@@ -37,6 +37,7 @@ public class CandyCat : MonoBehaviour
     private float walkAnimTime = 0f;
     private Transform playerTransform;
     private bool isNearPlayer = false;
+    private int guiFrameSkip = 0;
 
     // Materials for fur pattern
     private Material blackFurMat;
@@ -534,6 +535,13 @@ public class CandyCat : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!isNearPlayer)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted) return;
         if (!isNearPlayer) return;
 

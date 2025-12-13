@@ -12,6 +12,9 @@ public class FrostZoneTip : MonoBehaviour
     private int currentTipIndex = 0;
     private bool isInIceRealm = false;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     private string[] tipMessages = {
         "Bears attack humans here!",
         "Press CTRL to play dead",
@@ -63,24 +66,22 @@ public class FrostZoneTip : MonoBehaviour
 
     bool IsPlayerInIceRealm()
     {
-        RealmManager rm = FindObjectOfType<RealmManager>();
-        if (rm != null)
-        {
-            return rm.CurrentRealm == RealmType.IceRealm;
-        }
-        // Fallback - ice realm is X > 400 and X < 900
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
-        {
-            float x = player.transform.position.x;
-            return x > 400f && x < 900f;
-        }
-        return false;
+        // Use cached realm reference for performance
+        return GameCache.IsInRealm(RealmType.IceRealm);
     }
 
     void OnGUI()
     {
-        if (!showingTip || !MainMenu.GameStarted) return;
+        if (!MainMenu.GameStarted) return;
+
+        // Performance: Skip frames when not showing tips
+        if (!showingTip)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
+        if (!showingTip) return;
         if (!isInIceRealm) return;
         if (currentTipIndex >= tipMessages.Length) return;
         if (tipTimer < 0) return; // During gap

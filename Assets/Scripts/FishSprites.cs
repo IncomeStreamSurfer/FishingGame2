@@ -41,6 +41,7 @@ public class FishSprites : MonoBehaviour
         fishTextures["bass"] = CreateBass();
         fishTextures["salmon"] = CreateSalmon();
         fishTextures["baby_sea_turtle"] = CreateBabySeaTurtle();
+        fishTextures["baby_turtle"] = CreateBabySeaTurtle();  // Alias for compatibility
         fishTextures["jellyfish"] = CreateJellyfish();
 
         // Rare
@@ -48,6 +49,7 @@ public class FishSprites : MonoBehaviour
         fishTextures["swordfish"] = CreateSwordfish();
         fishTextures["hammerhead"] = CreateHammerhead();
         fishTextures["ocean_sprinter_eel"] = CreateOceanSprinterEel();
+        fishTextures["ocean_eel"] = CreateOceanSprinterEel();  // Alias for compatibility
         fishTextures["red_snapper"] = CreateRedSnapper();
         fishTextures["blue_marlin"] = CreateBlueMarlin();
         fishTextures["rainbow_trout"] = CreateRainbowTrout();
@@ -61,6 +63,7 @@ public class FishSprites : MonoBehaviour
         fishTextures["sting_ray"] = CreateStingRay();
         fishTextures["rainbow_fish"] = CreateRainbowFish();
         fishTextures["hammerhead_shark"] = CreateHammerheadShark();
+        fishTextures["hammerhead_special"] = CreateHammerheadShark();  // Alias for special version
         fishTextures["whale_baby"] = CreateWhaleBaby();
         fishTextures["seahorse"] = CreateSeahorse();
 
@@ -72,6 +75,7 @@ public class FishSprites : MonoBehaviour
 
         // Special
         fishTextures["petes_tackle_box"] = CreateTackleBox();
+        fishTextures["tackle_box"] = CreateTackleBox();  // Alias for compatibility
     }
 
     Texture2D CreateTexture()

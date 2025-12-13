@@ -8,7 +8,7 @@ using System.Collections.Generic;
 public class SnowParticles : MonoBehaviour
 {
     [Header("Snow Settings")]
-    public int maxSnowflakes = 200;
+    public int maxSnowflakes = 40;  // Reduced from 200 to save RAM
     public float spawnRadius = 40f;
     public float spawnHeight = 25f;
     public float fallSpeed = 2f;
@@ -80,10 +80,10 @@ public class SnowParticles : MonoBehaviour
     {
         if (playerTransform == null)
         {
-            GameObject player = GameObject.Find("Player");
-            if (player != null)
+            // Use cached player reference for better performance
+            if (GameCache.IsPlayerValid())
             {
-                playerTransform = player.transform;
+                playerTransform = GameCache.Player;
             }
         }
     }
@@ -92,22 +92,8 @@ public class SnowParticles : MonoBehaviour
     {
         bool wasInIceRealm = isInIceRealm;
 
-        // Check via RealmManager first
-        RealmManager rm = RealmManager.Instance;
-        if (rm != null)
-        {
-            isInIceRealm = rm.CurrentRealm == RealmType.IceRealm;
-        }
-        else if (playerTransform != null)
-        {
-            // Fallback: check player X position
-            float playerX = playerTransform.position.x;
-            isInIceRealm = playerX > ICE_REALM_X_START && playerX < ICE_REALM_X_END;
-        }
-        else
-        {
-            isInIceRealm = false;
-        }
+        // Use cached realm reference for performance
+        isInIceRealm = GameCache.IsInRealm(RealmType.IceRealm);
 
         // Enable/disable snowflakes when entering/leaving Ice Realm
         if (isInIceRealm && !wasInIceRealm)
@@ -325,22 +311,8 @@ public class WindAmbience : MonoBehaviour
 
     bool IsPlayerInIceRealm()
     {
-        // Check via RealmManager first
-        RealmManager rm = RealmManager.Instance;
-        if (rm != null)
-        {
-            return rm.CurrentRealm == RealmType.IceRealm;
-        }
-
-        // Fallback: check player X position
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
-        {
-            float playerX = player.transform.position.x;
-            return playerX > ICE_REALM_X_START && playerX < ICE_REALM_X_END;
-        }
-
-        return false;
+        // Use cached realm reference for performance
+        return GameCache.IsInRealm(RealmType.IceRealm);
     }
 
     AudioClip CreateWindClip()

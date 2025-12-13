@@ -126,8 +126,7 @@ public class BottleEventSystem : MonoBehaviour
         glow.GetComponent<Renderer>().material = glowMat;
 
         // Start position (far in the water)
-        GameObject player = GameObject.Find("Player");
-        Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
+        Vector3 playerPos = GameCache.IsPlayerValid() ? GameCache.Player.position : Vector3.zero;
 
         Vector3 startPos = playerPos + new Vector3(Random.Range(-20f, 20f), 0.4f, 50f);
         Vector3 endPos = playerPos + new Vector3(Random.Range(-3f, 3f), 0.4f, Random.Range(5f, 10f));
@@ -166,9 +165,9 @@ public class BottleEventSystem : MonoBehaviour
             waitTime += Time.deltaTime;
 
             // Check if player is close and clicks
-            if (player != null && Input.GetMouseButtonDown(0))
+            if (GameCache.IsPlayerValid() && Input.GetMouseButtonDown(0))
             {
-                float dist = Vector3.Distance(player.transform.position, activeBottle.transform.position);
+                float dist = Vector3.Distance(GameCache.Player.position, activeBottle.transform.position);
                 if (dist < 5f)
                 {
                     OpenBottle();
@@ -300,17 +299,38 @@ public class BottleEventSystem : MonoBehaviour
 
             case LootType.GoldenFishingHat:
                 hasGoldenFishingHat = true;
+                // Add to wardrobe so player can see and equip it
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.AddToWardrobe("Golden Fishing Hat", "Head", new Color(1f, 0.85f, 0.2f));
+                }
                 break;
 
             case LootType.EpicFishingRod:
                 hasEpicFishingRod = true;
-                // Unlock in UI
+                // The rod is already unlocked via UIManager checking hasEpicFishingRod
+                // But also notify the rod animator to upgrade
+                if (FishingRodAnimator.Instance != null)
+                {
+                    FishingRodAnimator.Instance.SetRodTier(5); // Epic tier
+                }
                 break;
 
             case LootType.GroovyMarlinRing:
                 hasGroovyMarlinRing = true;
                 if (LevelingSystem.Instance != null)
                     LevelingSystem.Instance.SetBonusLevels(10);
+                // Add ring to accessory inventory
+                if (AccessorySystem.Instance != null)
+                {
+                    AccessoryItem ring = new AccessoryItem();
+                    ring.name = "Groovy Marlin Ring";
+                    ring.slot = "Ring";
+                    ring.price = 0; // Free from bottle
+                    ring.description = "+10 Fishing Levels when worn!";
+                    ring.effect = AccessoryEffect.None; // Bonus levels handled by LevelingSystem
+                    AccessorySystem.Instance.AddAccessory(ring);
+                }
                 break;
         }
 

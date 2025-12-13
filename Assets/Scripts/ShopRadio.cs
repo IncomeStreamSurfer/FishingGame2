@@ -24,11 +24,13 @@ public class ShopRadio : MonoBehaviour
     private bool isOn = false;  // Radio starts OFF
     private bool playerNearby = false;
     private float interactionDistance = 4f;  // Must be within 4 units to use radio
+    private int guiFrameSkip = 0;
 
     // Multiple songs
     private List<AudioClip> songs = new List<AudioClip>();
     private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" };
     private int currentSongIndex = 0;
+    private string nowPlayingText = "";
 
     void Awake()
     {
@@ -173,11 +175,10 @@ public class ShopRadio : MonoBehaviour
         if (!MainMenu.GameStarted) return;
         if (audioSource == null) return;
 
-        // Check distance to player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Check distance to player using cached reference
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < interactionDistance;
         }
 
@@ -198,6 +199,13 @@ public class ShopRadio : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!playerNearby && !isOn)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!initialized || !MainMenu.GameStarted) return;
 
         // Show interaction prompt when player is nearby
@@ -213,6 +221,18 @@ public class ShopRadio : MonoBehaviour
             float promptY = Screen.height * 0.65f;
             GUI.Label(new Rect(0, promptY, Screen.width, 30), promptText, promptStyle);
         }
+
+        // Show persistent "Now Playing" text at top-left when radio is on
+        if (isOn && !string.IsNullOrEmpty(nowPlayingText))
+        {
+            GUIStyle nowPlayingStyle = new GUIStyle(GUI.skin.label);
+            nowPlayingStyle.fontSize = 11;
+            nowPlayingStyle.fontStyle = FontStyle.Normal;
+            nowPlayingStyle.alignment = TextAnchor.UpperLeft;
+            nowPlayingStyle.normal.textColor = new Color(1f, 0.9f, 0.6f, 0.9f);
+
+            GUI.Label(new Rect(10, 10, 400, 20), nowPlayingText, nowPlayingStyle);
+        }
     }
 
     void ToggleRadio()
@@ -226,24 +246,15 @@ public class ShopRadio : MonoBehaviour
                 audioSource.clip = songs[currentSongIndex];
                 audioSource.volume = maxVolume;
                 audioSource.Play();
+                nowPlayingText = "Now Playing: " + songNames[currentSongIndex];
                 Debug.Log("ShopRadio: ON - Playing " + songNames[currentSongIndex]);
-
-                // Show notification
-                if (UIManager.Instance != null)
-                {
-                    UIManager.Instance.ShowLootNotification("Radio ON - " + songNames[currentSongIndex], new Color(0.3f, 0.8f, 0.5f));
-                }
             }
         }
         else
         {
             audioSource.Stop();
+            nowPlayingText = "";
             Debug.Log("ShopRadio: OFF");
-
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowLootNotification("Radio OFF", new Color(0.8f, 0.5f, 0.3f));
-            }
         }
     }
 
@@ -253,12 +264,8 @@ public class ShopRadio : MonoBehaviour
         audioSource.clip = songs[currentSongIndex];
         audioSource.volume = maxVolume;
         audioSource.Play();
+        nowPlayingText = "Now Playing: " + songNames[currentSongIndex];
         Debug.Log("ShopRadio: Now playing - " + songNames[currentSongIndex]);
-
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowLootNotification("Now playing: " + songNames[currentSongIndex], new Color(0.5f, 0.7f, 0.9f));
-        }
     }
 
     void UpdateLED()

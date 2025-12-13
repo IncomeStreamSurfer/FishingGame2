@@ -12,6 +12,9 @@ public class JungleTip : MonoBehaviour
     private int currentTipIndex = 0;
     private bool isInJungle = false;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     private string[] tipMessages = {
         "Watch out for snakes!",
         "Press G to STOMP snakes",
@@ -64,23 +67,30 @@ public class JungleTip : MonoBehaviour
 
     bool IsPlayerInJungle()
     {
-        RealmManager rm = FindObjectOfType<RealmManager>();
-        if (rm != null)
+        if (GameCache.Realm != null)
         {
-            return rm.CurrentRealm == RealmType.JungleRealm;
+            return GameCache.Realm.CurrentRealm == RealmType.JungleRealm;
         }
-        // Fallback
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Fallback using cached reference
+        if (GameCache.IsPlayerValid())
         {
-            return player.transform.position.x > 900f;
+            return GameCache.Player.position.x > 900f;
         }
         return false;
     }
 
     void OnGUI()
     {
-        if (!showingTip || !MainMenu.GameStarted) return;
+        if (!MainMenu.GameStarted) return;
+
+        // Performance: Skip frames when not showing tips
+        if (!showingTip)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
+        if (!showingTip) return;
         if (!isInJungle) return;
         if (currentTipIndex >= tipMessages.Length) return;
         if (tipTimer < 0) return; // During gap

@@ -289,16 +289,15 @@ public class BjorkHuntsman : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         playerNearby = distance < interactionDistance;
 
         // Face player when nearby
         if (playerNearby)
         {
-            Vector3 lookDir = (player.transform.position - transform.position).normalized;
+            Vector3 lookDir = (GameCache.Player.position - transform.position).normalized;
             lookDir.y = 0;
             if (lookDir.magnitude > 0.1f)
             {

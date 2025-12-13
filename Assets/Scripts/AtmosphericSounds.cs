@@ -39,10 +39,9 @@ public class AtmosphericSounds : MonoBehaviour
 
     void Initialize()
     {
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            playerTransform = player.transform;
+            playerTransform = GameCache.Player;
         }
 
         // Create ambient breeze (low volume, continuous)
@@ -199,7 +198,7 @@ public class AtmosphericSounds : MonoBehaviour
             birdSource.minDistance = 5f;
             birdSource.maxDistance = 50f;
             birdSource.rolloffMode = AudioRolloffMode.Linear;
-            birdSource.volume = 0.125f;  // 50% of original
+            birdSource.volume = 0.0625f;  // 50% reduced from previous
             birdSource.playOnAwake = false;
             birdSource.dopplerLevel = 0f;  // No doppler for ambient
 
@@ -211,6 +210,9 @@ public class AtmosphericSounds : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Adjust volumes based on current realm
+        UpdateRealmVolumes();
+
         // Update bird source positions relative to player for surround effect
         UpdateBirdPositions();
 
@@ -219,6 +221,39 @@ public class AtmosphericSounds : MonoBehaviour
         {
             PlayRandomBirdCall();
             nextBirdCallTime = Time.time + Random.Range(birdCallInterval * 0.5f, birdCallInterval * 1.5f);
+        }
+    }
+
+    void UpdateRealmVolumes()
+    {
+        RealmType currentRealm = GameCache.GetCurrentRealm();
+
+        // Jungle realm: reduce all sounds by 75%
+        float volumeMultiplier = 1f;
+        if (currentRealm == RealmType.JungleRealm)
+        {
+            volumeMultiplier = 0.25f; // 75% reduction
+        }
+
+        // Apply to breeze
+        if (breezeSource != null)
+        {
+            breezeSource.volume = 0.04f * volumeMultiplier;
+        }
+
+        // Apply to waves
+        if (wavesSource != null)
+        {
+            wavesSource.volume = 0.06f * volumeMultiplier;
+        }
+
+        // Apply to birds
+        foreach (AudioSource birdSource in birdSources)
+        {
+            if (birdSource != null)
+            {
+                birdSource.volume = 0.0625f * volumeMultiplier;
+            }
         }
     }
 

@@ -27,6 +27,9 @@ public class FoodInventory : MonoBehaviour
     private bool lunchBoxOpen = false;
     private float inventoryScrollPos = 0f;
 
+    // Draggable/Resizable Lunch Box window
+    private DraggableWindow lunchBoxWindow;
+
     // Health values per fish rarity
     private Dictionary<Rarity, int> fishHealthValues = new Dictionary<Rarity, int>()
     {
@@ -60,6 +63,18 @@ public class FoodInventory : MonoBehaviour
     {
         CreateCachedTextures();
         SetupAudio();
+
+        // Initialize draggable lunch box window (right side of screen, medium size)
+        float lunchBoxWidth = 300;
+        float lunchBoxHeight = 220;
+        float lunchBoxX = Screen.width - lunchBoxWidth - 20;
+        float lunchBoxY = Screen.height / 2 - lunchBoxHeight / 2;
+        lunchBoxWindow = new DraggableWindow(
+            new Rect(lunchBoxX, lunchBoxY, lunchBoxWidth, lunchBoxHeight),
+            new Vector2(250, 180),  // Min size
+            new Vector2(450, 350)   // Max size
+        );
+
         initialized = true;
     }
 
@@ -316,6 +331,12 @@ public class FoodInventory : MonoBehaviour
         hotbar[emptySlot] = fish;
         rawFish.RemoveAt(rawFishIndex);
 
+        // Award XP for cooking
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.AwardFishXP(fish.rarity);
+        }
+
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowLootNotification($"Cooked {fish.fishName}! (+{fish.healthValue} HP)", new Color(1f, 0.7f, 0.3f));
@@ -375,6 +396,8 @@ public class FoodInventory : MonoBehaviour
 
     void OnGUI()
     {
+        // CRITICAL: No frame skipping - hotbar must update every frame to prevent flickering
+
         if (!MainMenu.GameStarted || !initialized) return;
 
         // Always draw hotbar at bottom of screen
@@ -411,68 +434,82 @@ public class FoodInventory : MonoBehaviour
 
     void DrawLunchBoxUI()
     {
-        float panelWidth = 250;
-        float panelHeight = 180;
-        float panelX = Screen.width - panelWidth - 20;
-        float panelY = Screen.height / 2 - panelHeight / 2;
+        // Update window (handles dragging and resizing)
+        lunchBoxWindow.UpdateWindow();
+
+        Rect rect = lunchBoxWindow.WindowRect;
+        float panelWidth = rect.width;
+        float panelHeight = rect.height;
+        float panelX = rect.x;
+        float panelY = rect.y;
 
         // Background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("border"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("invBg"));
 
+        // Title bar (draggable area)
+        GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, 25), GetOrCreateColorTexture(new Color(0.15f, 0.1f, 0.08f, 1f)));
+
         // Title
         GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 16;
+        titleStyle.fontSize = Mathf.Max(12, (int)(panelWidth * 0.045f));
         titleStyle.fontStyle = FontStyle.Bold;
         titleStyle.alignment = TextAnchor.MiddleCenter;
         titleStyle.normal.textColor = new Color(0.8f, 0.5f, 0.2f);
-        GUI.Label(new Rect(panelX, panelY + 10, panelWidth, 24), "LUNCH BOX", titleStyle);
+        GUI.Label(new Rect(panelX, panelY + 3, panelWidth, 20), "LUNCH BOX", titleStyle);
 
         // Red X close button
         GUIStyle xButtonStyle = new GUIStyle();
-        xButtonStyle.fontSize = 14;
+        xButtonStyle.fontSize = 12;
         xButtonStyle.fontStyle = FontStyle.Bold;
         xButtonStyle.alignment = TextAnchor.MiddleCenter;
         xButtonStyle.normal.textColor = Color.white;
-        GUI.DrawTexture(new Rect(panelX + panelWidth - 26, panelY + 8, 20, 20), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
-        if (GUI.Button(new Rect(panelX + panelWidth - 26, panelY + 8, 20, 20), "X", xButtonStyle))
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 24, panelY + 4, 18, 18), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
+        if (GUI.Button(new Rect(panelX + panelWidth - 24, panelY + 4, 18, 18), "X", xButtonStyle))
         {
             lunchBoxOpen = false;
         }
 
-        // Lunch box icon (brown box)
+        // Content area starts below title bar
+        float contentY = panelY + 30;
+        float contentHeight = panelHeight - 30;
+
+        // Lunch box icon (brown box) - scaled based on window size
+        float boxWidth = Mathf.Min(60, panelWidth * 0.25f);
+        float boxHeight = boxWidth * 0.67f;
         Texture2D boxTex = GetOrCreateColorTexture(new Color(0.6f, 0.4f, 0.2f));
-        GUI.DrawTexture(new Rect(panelX + panelWidth/2 - 30, panelY + 45, 60, 40), boxTex);
+        GUI.DrawTexture(new Rect(panelX + panelWidth/2 - boxWidth/2, contentY + 10, boxWidth, boxHeight), boxTex);
 
         // Fish count display
         GUIStyle countStyle = new GUIStyle();
-        countStyle.fontSize = 20;
+        countStyle.fontSize = Mathf.Max(14, (int)(panelWidth * 0.06f));
         countStyle.fontStyle = FontStyle.Bold;
         countStyle.alignment = TextAnchor.MiddleCenter;
         bool isFull = lunchBoxFishCount >= LUNCHBOX_CAPACITY;
         countStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.9f, 0.5f);
-        GUI.Label(new Rect(panelX, panelY + 90, panelWidth, 30), $"{lunchBoxFishCount} / {LUNCHBOX_CAPACITY} fish", countStyle);
+        GUI.Label(new Rect(panelX, contentY + boxHeight + 20, panelWidth, 30), $"{lunchBoxFishCount} / {LUNCHBOX_CAPACITY} fish", countStyle);
 
         // Status text
         GUIStyle statusStyle = new GUIStyle();
-        statusStyle.fontSize = 10;
+        statusStyle.fontSize = Mathf.Max(9, (int)(panelWidth * 0.035f));
         statusStyle.alignment = TextAnchor.MiddleCenter;
         statusStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(0.6f, 0.6f, 0.6f);
+        statusStyle.wordWrap = true;
         string statusText = isFull ? "READY TO CONSUME!" : "Add cooked fish from hotbar";
-        GUI.Label(new Rect(panelX, panelY + 115, panelWidth, 16), statusText, statusStyle);
+        GUI.Label(new Rect(panelX + 10, contentY + boxHeight + 50, panelWidth - 20, 30), statusText, statusStyle);
 
-        // Buttons
-        float btnWidth = 100;
-        float btnHeight = 30;
-        float btnY = panelY + 140;
+        // Buttons - scaled and positioned relative to window size
+        float btnWidth = Mathf.Max(80, panelWidth * 0.35f);
+        float btnHeight = Mathf.Max(25, panelHeight * 0.12f);
+        float btnY = panelY + panelHeight - btnHeight - 35;
 
         // Add Fish button
         Texture2D addBtnTex = GetOrCreateColorTexture(new Color(0.3f, 0.5f, 0.7f));
-        Rect addBtnRect = new Rect(panelX + 20, btnY, btnWidth, btnHeight);
+        Rect addBtnRect = new Rect(panelX + 15, btnY, btnWidth, btnHeight);
         GUI.DrawTexture(addBtnRect, addBtnTex);
 
         GUIStyle btnStyle = new GUIStyle();
-        btnStyle.fontSize = 11;
+        btnStyle.fontSize = Mathf.Max(10, (int)(panelWidth * 0.038f));
         btnStyle.fontStyle = FontStyle.Bold;
         btnStyle.alignment = TextAnchor.MiddleCenter;
         btnStyle.normal.textColor = Color.white;
@@ -485,11 +522,11 @@ public class FoodInventory : MonoBehaviour
 
         // Consume button (only enabled when full)
         Texture2D consumeBtnTex = GetOrCreateColorTexture(isFull ? new Color(0.2f, 0.7f, 0.3f) : new Color(0.3f, 0.3f, 0.3f));
-        Rect consumeBtnRect = new Rect(panelX + panelWidth - btnWidth - 20, btnY, btnWidth, btnHeight);
+        Rect consumeBtnRect = new Rect(panelX + panelWidth - btnWidth - 15, btnY, btnWidth, btnHeight);
         GUI.DrawTexture(consumeBtnRect, consumeBtnTex);
 
         GUIStyle consumeStyle = new GUIStyle();
-        consumeStyle.fontSize = 11;
+        consumeStyle.fontSize = Mathf.Max(10, (int)(panelWidth * 0.038f));
         consumeStyle.fontStyle = FontStyle.Bold;
         consumeStyle.alignment = TextAnchor.MiddleCenter;
         consumeStyle.normal.textColor = isFull ? Color.white : new Color(0.5f, 0.5f, 0.5f);
@@ -504,11 +541,14 @@ public class FoodInventory : MonoBehaviour
         if (lunchBoxCount > 1)
         {
             GUIStyle boxCountStyle = new GUIStyle();
-            boxCountStyle.fontSize = 9;
+            boxCountStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.032f));
             boxCountStyle.alignment = TextAnchor.MiddleCenter;
             boxCountStyle.normal.textColor = new Color(0.6f, 0.5f, 0.4f);
-            GUI.Label(new Rect(panelX, panelY + panelHeight - 15, panelWidth, 14), $"({lunchBoxCount} lunch boxes owned)", boxCountStyle);
+            GUI.Label(new Rect(panelX, panelY + panelHeight - 18, panelWidth, 14), $"({lunchBoxCount} lunch boxes owned)", boxCountStyle);
         }
+
+        // Draw resize handle
+        lunchBoxWindow.DrawResizeHandle();
     }
 
     void DrawHotbar()
@@ -542,8 +582,14 @@ public class FoodInventory : MonoBehaviour
 
             if (hasItem)
             {
-                // Cooked fish icon
-                GUI.DrawTexture(new Rect(x + 8, startY + 8, slotSize - 16, slotSize - 16), GetTexture("cookedFish"));
+                // Fish pixel art sprite
+                float imgSize = slotSize - 16;
+                Texture2D fishTex = null;
+                if (FishSprites.Instance != null)
+                    fishTex = FishSprites.Instance.GetFishTexture(hotbar[i].fishId);
+                if (fishTex == null)
+                    fishTex = GetOrCreateColorTexture(hotbar[i].color);  // Fallback to color
+                GUI.DrawTexture(new Rect(x + 8, startY + 8, imgSize, imgSize), fishTex);
 
                 // Health value
                 GUIStyle hpStyle = new GUIStyle();
@@ -644,9 +690,14 @@ public class FoodInventory : MonoBehaviour
                 bool hover = new Rect(scrollArea.x, listY + itemY, scrollArea.width - 10, itemHeight - 5).Contains(Event.current.mousePosition);
                 GUI.DrawTexture(itemRect, hover ? GetTexture("slotHover") : GetTexture("slotBg"));
 
-                // Fish color swatch
-                Texture2D swatchTex = GetOrCreateColorTexture(fish.color);
-                GUI.DrawTexture(new Rect(itemRect.x + 5, itemRect.y + 5, 30, 30), swatchTex);
+                // Fish pixel art sprite
+                float imgSize = 30;
+                Texture2D fishTex = null;
+                if (FishSprites.Instance != null)
+                    fishTex = FishSprites.Instance.GetFishTexture(fish.fishId);
+                if (fishTex == null)
+                    fishTex = GetOrCreateColorTexture(fish.color);  // Fallback to color
+                GUI.DrawTexture(new Rect(itemRect.x + 5, itemRect.y + 5, imgSize, imgSize), fishTex);
 
                 // Fish name
                 GUIStyle nameStyle = new GUIStyle();

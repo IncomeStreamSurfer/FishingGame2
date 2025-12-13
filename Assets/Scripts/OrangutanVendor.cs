@@ -13,6 +13,9 @@ public class OrangutanVendor : MonoBehaviour
     private bool playerNearby = false;
     private float interactionDistance = 4f;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     // Shop item - Snake Charm
     private AccessoryItem snakeCharm;
 
@@ -283,10 +286,10 @@ public class OrangutanVendor : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        // Use cached player reference
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         playerNearby = distance < interactionDistance;
 
         if (playerNearby && !shopOpen && Input.GetKeyDown(KeyCode.E))
@@ -362,6 +365,13 @@ public class OrangutanVendor : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Performance: Skip frames when not actively interacting
+        if (!playerNearby && !shopOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
         if (playerNearby && !shopOpen)
         {
             GUIStyle promptStyle = new GUIStyle();
@@ -372,6 +382,7 @@ public class OrangutanVendor : MonoBehaviour
 
             GUI.Label(new Rect(Screen.width / 2 - 150, Screen.height - 150, 300, 30),
                 "[E] Talk to Orangutan", promptStyle);
+            return; // Early return - don't process shop UI
         }
 
         if (shopOpen)

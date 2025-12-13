@@ -273,10 +273,10 @@ public class PlayerHealth : MonoBehaviour
     {
         if (isDead) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        // Use cached player reference for performance
+        if (!GameCache.IsPlayerValid()) return;
 
-        float playerY = player.transform.position.y;
+        float playerY = GameCache.Player.position.y;
 
         // Check if player is below water level
         // Water (blue part) rapidly drains health - 5 HP per second!
@@ -399,11 +399,10 @@ public class PlayerHealth : MonoBehaviour
             FoodInventory.Instance.ClearInventory();
         }
 
-        // Move player back to spawn
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Move player back to spawn - use cached reference
+        if (GameCache.IsPlayerValid())
         {
-            player.transform.position = new Vector3(0, 2f, -5f);
+            GameCache.Player.position = new Vector3(0, 2f, -5f);
         }
 
         Debug.Log("Player respawned! Gold and cosmetics preserved.");
@@ -416,6 +415,9 @@ public class PlayerHealth : MonoBehaviour
 
     void OnGUI()
     {
+        // CRITICAL HUD - NO FRAME SKIPPING to prevent flickering
+        // Health bar and ECG must update every frame for smooth display
+
         if (!MainMenu.GameStarted || !initialized) return;
 
         DrawHealthUI();
@@ -569,9 +571,9 @@ public class PlayerHealth : MonoBehaviour
 
         GUI.Label(new Rect(panelX, panelY, panelWidth, hpBarHeight), $"HP: {Mathf.CeilToInt(currentHealth)}/{Mathf.CeilToInt(maxHealth)}", hpStyle);
 
-        // ECG Monitor below HP bar
-        float ecgY = panelY + hpBarHeight + 5;
-        float ecgHeight = 50;
+        // ECG Monitor below HP bar (compact version)
+        float ecgY = panelY + hpBarHeight + 3;
+        float ecgHeight = 32;
 
         DrawECGMonitor(new Rect(panelX, ecgY, panelWidth, ecgHeight));
     }

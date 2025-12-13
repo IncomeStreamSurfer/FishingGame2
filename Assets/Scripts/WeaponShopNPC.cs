@@ -14,6 +14,9 @@ public class WeaponShopNPC : MonoBehaviour
     private float interactionDistance = 4f;
     private int selectedWeaponIndex = 0;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     // Weapon inventory
     private List<WeaponData> weapons = new List<WeaponData>();
     private List<string> ownedWeapons = new List<string>();
@@ -79,10 +82,10 @@ public class WeaponShopNPC : MonoBehaviour
     #region Weapon Icon Creation
     Texture2D CreateTexture()
     {
-        Texture2D tex = new Texture2D(24, 24);
+        Texture2D tex = new Texture2D(32, 32);
         Color clear = new Color(0, 0, 0, 0);
-        for (int x = 0; x < 24; x++)
-            for (int y = 0; y < 24; y++)
+        for (int x = 0; x < 32; x++)
+            for (int y = 0; y < 32; y++)
                 tex.SetPixel(x, y, clear);
         return tex;
     }
@@ -95,8 +98,8 @@ public class WeaponShopNPC : MonoBehaviour
 
     void FillRect(Texture2D tex, int x, int y, int w, int h, Color col)
     {
-        for (int px = x; px < x + w && px < 24; px++)
-            for (int py = y; py < y + h && py < 24; py++)
+        for (int px = x; px < x + w && px < 32; px++)
+            for (int py = y; py < y + h && py < 32; py++)
                 if (px >= 0 && py >= 0)
                     tex.SetPixel(px, py, col);
     }
@@ -108,17 +111,20 @@ public class WeaponShopNPC : MonoBehaviour
         Color bladeShine = new Color(0.8f, 0.8f, 0.85f);
         Color handle = new Color(0.4f, 0.25f, 0.15f);
 
-        // Blade (diagonal)
-        for (int i = 0; i < 12; i++)
+        // Blade (diagonal) - scaled up
+        for (int i = 0; i < 16; i++)
         {
-            tex.SetPixel(6 + i, 6 + i, blade);
-            tex.SetPixel(7 + i, 6 + i, blade);
-            tex.SetPixel(6 + i, 7 + i, bladeShine);
+            tex.SetPixel(8 + i, 8 + i, blade);
+            tex.SetPixel(9 + i, 8 + i, blade);
+            tex.SetPixel(10 + i, 8 + i, blade);
+            tex.SetPixel(8 + i, 9 + i, bladeShine);
+            tex.SetPixel(8 + i, 10 + i, bladeShine);
         }
 
-        // Handle
-        FillRect(tex, 2, 2, 5, 5, handle);
-        tex.SetPixel(3, 3, new Color(0.5f, 0.35f, 0.2f));
+        // Handle - scaled up
+        FillRect(tex, 3, 3, 7, 7, handle);
+        tex.SetPixel(4, 4, new Color(0.5f, 0.35f, 0.2f));
+        tex.SetPixel(5, 5, new Color(0.5f, 0.35f, 0.2f));
 
         FinalizeTexture(tex);
         return tex;
@@ -131,18 +137,20 @@ public class WeaponShopNPC : MonoBehaviour
         Color tip = new Color(0.5f, 0.5f, 0.55f);
         Color tipShine = new Color(0.7f, 0.7f, 0.75f);
 
-        // Wooden shaft
-        for (int i = 0; i < 18; i++)
+        // Wooden shaft - scaled up
+        for (int i = 0; i < 24; i++)
         {
-            tex.SetPixel(3 + i, 3 + i, shaft);
-            tex.SetPixel(4 + i, 3 + i, shaft);
+            tex.SetPixel(4 + i, 4 + i, shaft);
+            tex.SetPixel(5 + i, 4 + i, shaft);
+            tex.SetPixel(6 + i, 4 + i, shaft);
         }
 
-        // Metal tip
-        FillRect(tex, 18, 18, 4, 4, tip);
-        FillRect(tex, 20, 20, 3, 3, tip);
-        tex.SetPixel(22, 22, tipShine);
-        tex.SetPixel(21, 21, tipShine);
+        // Metal tip - scaled up
+        FillRect(tex, 24, 24, 6, 6, tip);
+        FillRect(tex, 26, 26, 4, 4, tip);
+        tex.SetPixel(29, 29, tipShine);
+        tex.SetPixel(30, 30, tipShine);
+        tex.SetPixel(28, 28, tipShine);
 
         FinalizeTexture(tex);
         return tex;
@@ -156,19 +164,20 @@ public class WeaponShopNPC : MonoBehaviour
         Color guard = new Color(0.8f, 0.7f, 0.3f);
         Color handle = new Color(0.3f, 0.2f, 0.1f);
 
-        // Thin blade
-        for (int i = 0; i < 16; i++)
+        // Thin blade - scaled up
+        for (int i = 0; i < 22; i++)
         {
-            tex.SetPixel(8 + i, 8 + i, blade);
-            if (i % 3 == 0) tex.SetPixel(8 + i, 8 + i, bladeShine);
+            tex.SetPixel(10 + i, 10 + i, blade);
+            tex.SetPixel(11 + i, 10 + i, blade);
+            if (i % 4 == 0) tex.SetPixel(10 + i, 10 + i, bladeShine);
         }
 
-        // Guard (curved)
-        FillRect(tex, 4, 6, 6, 2, guard);
-        FillRect(tex, 6, 4, 2, 6, guard);
+        // Guard (curved) - scaled up
+        FillRect(tex, 5, 8, 8, 3, guard);
+        FillRect(tex, 8, 5, 3, 8, guard);
 
-        // Handle
-        FillRect(tex, 2, 2, 4, 4, handle);
+        // Handle - scaled up
+        FillRect(tex, 2, 2, 6, 6, handle);
 
         FinalizeTexture(tex);
         return tex;
@@ -181,26 +190,31 @@ public class WeaponShopNPC : MonoBehaviour
         Color gold = new Color(1f, 0.85f, 0.3f);
         Color goldShine = new Color(1f, 0.95f, 0.6f);
 
-        // Thick shaft
-        for (int i = 0; i < 16; i++)
+        // Thick shaft - scaled up
+        for (int i = 0; i < 22; i++)
         {
-            tex.SetPixel(2 + i, 2 + i, shaft);
-            tex.SetPixel(3 + i, 2 + i, shaft);
-            tex.SetPixel(2 + i, 3 + i, shaft);
+            tex.SetPixel(3 + i, 3 + i, shaft);
+            tex.SetPixel(4 + i, 3 + i, shaft);
+            tex.SetPixel(5 + i, 3 + i, shaft);
+            tex.SetPixel(3 + i, 4 + i, shaft);
+            tex.SetPixel(3 + i, 5 + i, shaft);
         }
 
-        // Golden tip (large)
-        FillRect(tex, 16, 16, 6, 6, gold);
-        FillRect(tex, 18, 18, 5, 5, gold);
-        FillRect(tex, 20, 20, 4, 4, goldShine);
-        tex.SetPixel(22, 22, goldShine);
-        tex.SetPixel(23, 23, goldShine);
+        // Golden tip (large) - scaled up
+        FillRect(tex, 22, 22, 8, 8, gold);
+        FillRect(tex, 24, 24, 6, 6, gold);
+        FillRect(tex, 26, 26, 5, 5, goldShine);
+        tex.SetPixel(29, 29, goldShine);
+        tex.SetPixel(30, 30, goldShine);
+        tex.SetPixel(31, 31, goldShine);
 
-        // Gold bands on shaft
-        tex.SetPixel(6, 6, gold);
-        tex.SetPixel(7, 7, gold);
+        // Gold bands on shaft - scaled up
+        tex.SetPixel(8, 8, gold);
+        tex.SetPixel(9, 9, gold);
         tex.SetPixel(10, 10, gold);
-        tex.SetPixel(11, 11, gold);
+        tex.SetPixel(14, 14, gold);
+        tex.SetPixel(15, 15, gold);
+        tex.SetPixel(16, 16, gold);
 
         FinalizeTexture(tex);
         return tex;
@@ -211,10 +225,10 @@ public class WeaponShopNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        // Use cached player reference
+        if (!GameCache.IsPlayerValid()) return;
 
-        float distance = Vector3.Distance(transform.position, player.transform.position);
+        float distance = Vector3.Distance(transform.position, GameCache.Player.position);
         playerNearby = distance < interactionDistance;
 
         if (playerNearby && !shopOpen && Input.GetKeyDown(KeyCode.E))
@@ -320,6 +334,13 @@ public class WeaponShopNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Performance: Skip frames when not actively interacting
+        if (!playerNearby && !shopOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
         if (playerNearby && !shopOpen)
         {
             GUIStyle promptStyle = new GUIStyle();
@@ -330,6 +351,7 @@ public class WeaponShopNPC : MonoBehaviour
 
             GUI.Label(new Rect(Screen.width / 2 - 150, Screen.height - 150, 300, 30),
                 "[E] Talk to Pik", promptStyle);
+            return; // Early return - don't process shop UI
         }
 
         if (shopOpen)
@@ -376,6 +398,15 @@ public class WeaponShopNPC : MonoBehaviour
         if (GUI.Button(new Rect(panelRect.x + panelWidth - 22, panelRect.y + 4, 18, 18), "X", closeStyle))
         {
             CloseShop();
+        }
+
+        // Character Stats button
+        GUIStyle statsStyle = new GUIStyle(GUI.skin.button);
+        statsStyle.fontSize = 8;
+        statsStyle.fontStyle = FontStyle.Bold;
+        if (GUI.Button(new Rect(panelRect.x + panelWidth - 70, panelRect.y + 4, 45, 18), "STATS", statsStyle))
+        {
+            if (CharacterPanel.Instance != null) CharacterPanel.Instance.Toggle();
         }
 
         // Subtitle - smaller

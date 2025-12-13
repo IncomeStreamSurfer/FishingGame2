@@ -12,10 +12,12 @@ public class PortalInteraction : MonoBehaviour
     private bool playerNearby = false;
     private Transform playerTransform;
     private GameObject lockSymbol;
+    private int guiFrameSkip = 0;
 
     void Start()
     {
-        playerTransform = GameObject.Find("Player")?.transform;
+        if (GameCache.IsPlayerValid())
+            playerTransform = GameCache.Player;
         lockSymbol = transform.Find("LockSymbol")?.gameObject;
 
         // Subscribe to level up events
@@ -30,6 +32,10 @@ public class PortalInteraction : MonoBehaviour
 
     void Update()
     {
+        // Update player reference if needed
+        if (playerTransform == null && GameCache.IsPlayerValid())
+            playerTransform = GameCache.Player;
+
         if (playerTransform == null) return;
 
         float distance = Vector3.Distance(transform.position, playerTransform.position);
@@ -117,6 +123,13 @@ public class PortalInteraction : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!playerNearby)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!MainMenu.GameStarted || !playerNearby) return;
 
         // Show portal info when nearby

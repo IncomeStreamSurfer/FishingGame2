@@ -27,6 +27,12 @@ public class ShoulderParrot : MonoBehaviour
     private float idleTimer = 0f;
     private float headBobAmount = 0f;
 
+    // Fly off behavior
+    private bool isFlyingAway = false;
+    private float nextFlyOffTime = 0f;
+    private float flyOffMinInterval = 60f;  // Minimum 60 seconds between fly offs
+    private float flyOffMaxInterval = 120f; // Maximum 120 seconds between fly offs
+
     // Audio
     private AudioSource audioSource;
 
@@ -34,6 +40,18 @@ public class ShoulderParrot : MonoBehaviour
     private Texture2D bubbleTexture;
     private bool showPlayerBubble = false;
     private bool showParrotResponse = false;
+
+    // Bonus fish mechanic
+    private bool showBonusBubble = false;
+    private string currentBonusPhrase = "";
+    private float bonusBubbleTimer = 0f;
+    private float bonusBubbleDuration = 2.5f;
+    private string[] bonusPhrases = new string[]
+    {
+        "Have a free one on me, mate!",
+        "Caught a wee kipper!!",
+        "Stick this in your lunch box!"
+    };
 
     void Awake()
     {
@@ -51,7 +69,7 @@ public class ShoulderParrot : MonoBehaviour
     {
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.spatialBlend = 0.5f;
-        audioSource.volume = 0.5f;
+        audioSource.volume = 0.25f; // Reduced by 50%
         audioSource.playOnAwake = false;
     }
 
@@ -67,10 +85,13 @@ public class ShoulderParrot : MonoBehaviour
         if (parrotModel != null) return;
 
         // Find player
-        GameObject player = GameObject.Find("Player");
-        if (player == null) return;
+        if (!GameCache.IsPlayerValid()) return;
 
-        playerTransform = player.transform;
+        playerTransform = GameCache.Player;
+
+        // Hide the static cosmetic parrot from PlayerClothingVisuals
+        // Only the interactive ShoulderParrot should be visible
+        HideCosmeticParrot();
 
         // Create parrot model
         CreateParrotModel();
@@ -238,6 +259,9 @@ public class ShoulderParrot : MonoBehaviour
         isEquipped = true;
         canInteract = true;
 
+        // Set first fly off time
+        nextFlyOffTime = Time.time + Random.Range(flyOffMinInterval, flyOffMaxInterval);
+
         // Reset wing positions
         if (leftWing != null)
             leftWing.localRotation = Quaternion.Euler(0, 0, -20);
@@ -261,7 +285,7 @@ public class ShoulderParrot : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        if (isEquipped && !isFlying && parrotModel != null && playerTransform != null)
+        if (isEquipped && !isFlying && !isFlyingAway && parrotModel != null && playerTransform != null)
         {
             // Keep parrot on shoulder
             Vector3 targetPos = playerTransform.position + playerTransform.TransformDirection(shoulderOffset);
@@ -289,6 +313,12 @@ public class ShoulderParrot : MonoBehaviour
             {
                 StartCoroutine(ParrotInteraction());
             }
+
+            // Random fly off behavior
+            if (Time.time >= nextFlyOffTime && !isInteracting)
+            {
+                StartCoroutine(FlyOffAndReturn());
+            }
         }
 
         // Handle interaction timer
@@ -300,6 +330,17 @@ public class ShoulderParrot : MonoBehaviour
                 isInteracting = false;
                 showPlayerBubble = false;
                 showParrotResponse = false;
+            }
+        }
+
+        // Handle bonus fish bubble timer
+        if (showBonusBubble)
+        {
+            bonusBubbleTimer += Time.deltaTime;
+            if (bonusBubbleTimer >= bonusBubbleDuration)
+            {
+                showBonusBubble = false;
+                bonusBubbleTimer = 0f;
             }
         }
     }
@@ -324,6 +365,208 @@ public class ShoulderParrot : MonoBehaviour
         isInteracting = false;
         showPlayerBubble = false;
         showParrotResponse = false;
+    }
+
+    IEnumerator FlyOffAndReturn()
+    {
+        isFlyingAway = true;
+        canInteract = false;
+
+        // Play excited squawk before flying off
+        PlayParrotSound(true);
+
+        // Get wing references for flapping
+        Transform leftWing = null;
+        foreach (Transform child in parrotModel.transform)
+        {
+            if (child.name == "ParrotWing")
+            {
+                leftWing = child;
+                break;
+            }
+        }
+
+        // Fly around the level for a while
+        float flyAroundDuration = 30f; // Fixed 30 seconds duration
+        float flyTimer = 0f;
+        float flyHeight = Random.Range(8f, 15f);
+        float flySpeed = Random.Range(8f, 12f);
+
+        // Current flight state
+        Vector3 currentTarget = GetRandomFlyTarget(flyHeight);
+        Vector3 lastPos = parrotModel.transform.position;
+
+        while (flyTimer < flyAroundDuration)
+        {
+            flyTimer += Time.deltaTime;
+
+            // Occasionally circle around the player (20% chance every 5 seconds)
+            if (Mathf.FloorToInt(flyTimer) % 5 == 0 && Random.value < 0.02f)
+            {
+                yield return StartCoroutine(CircleAroundPlayer(leftWing, flyHeight));
+                PlayParrotSound(true);
+            }
+
+            // Move toward current target
+            Vector3 direction = (currentTarget - parrotModel.transform.position).normalized;
+            parrotModel.transform.position += direction * flySpeed * Time.deltaTime;
+
+            // Add slight bobbing motion
+            parrotModel.transform.position += Vector3.up * Mathf.Sin(flyTimer * 3f) * 0.02f;
+
+            // Face direction of travel
+            Vector3 velocity = parrotModel.transform.position - lastPos;
+            if (velocity.magnitude > 0.01f)
+            {
+                parrotModel.transform.rotation = Quaternion.Slerp(
+                    parrotModel.transform.rotation,
+                    Quaternion.LookRotation(velocity.normalized),
+                    Time.deltaTime * 5f
+                );
+            }
+            lastPos = parrotModel.transform.position;
+
+            // Flap wings
+            if (leftWing != null)
+            {
+                float flapAngle = Mathf.Sin(flyTimer * 20f) * 40f;
+                leftWing.localRotation = Quaternion.Euler(0, 0, -20 + flapAngle);
+            }
+
+            // Pick new target when close to current one
+            if (Vector3.Distance(parrotModel.transform.position, currentTarget) < 3f)
+            {
+                // 30% chance to fly toward player, 70% random location
+                if (Random.value < 0.3f && playerTransform != null)
+                {
+                    currentTarget = playerTransform.position + new Vector3(
+                        Random.Range(-8f, 8f),
+                        flyHeight,
+                        Random.Range(-8f, 8f)
+                    );
+                }
+                else
+                {
+                    currentTarget = GetRandomFlyTarget(flyHeight);
+                }
+
+                // Occasional squawk
+                if (Random.value < 0.3f)
+                {
+                    PlayParrotSound(false);
+                }
+            }
+
+            yield return null;
+        }
+
+        // Final circle around player before landing
+        PlayParrotSound(true);
+        yield return StartCoroutine(CircleAroundPlayer(leftWing, flyHeight * 0.7f));
+
+        // Fly back to shoulder
+        PlayParrotSound(true);
+        Vector3 returnStartPos = parrotModel.transform.position;
+        float flyBackTime = 1.5f;
+        float t = 0f;
+
+        while (t < flyBackTime)
+        {
+            t += Time.deltaTime;
+            float progress = t / flyBackTime;
+
+            Vector3 shoulderPos = playerTransform.position + playerTransform.TransformDirection(shoulderOffset);
+            parrotModel.transform.position = Vector3.Lerp(returnStartPos, shoulderPos, EaseOutQuad(progress));
+
+            // Face direction of travel
+            Vector3 dir = (shoulderPos - parrotModel.transform.position).normalized;
+            if (dir.magnitude > 0.1f)
+            {
+                parrotModel.transform.rotation = Quaternion.LookRotation(dir);
+            }
+
+            // Flap wings faster when returning
+            if (leftWing != null)
+            {
+                float flapAngle = Mathf.Sin(t * 30f) * 50f;
+                leftWing.localRotation = Quaternion.Euler(0, 0, -20 + flapAngle);
+            }
+
+            yield return null;
+        }
+
+        // Reset wing position
+        if (leftWing != null)
+        {
+            leftWing.localRotation = Quaternion.Euler(0, 0, -20);
+        }
+
+        // Back on shoulder
+        isFlyingAway = false;
+        canInteract = true;
+
+        // Set next fly off time
+        nextFlyOffTime = Time.time + Random.Range(flyOffMinInterval, flyOffMaxInterval);
+
+        PlayParrotSound(false);
+    }
+
+    Vector3 GetRandomFlyTarget(float height)
+    {
+        Vector3 basePos = playerTransform != null ? playerTransform.position : Vector3.zero;
+        return basePos + new Vector3(
+            Random.Range(-30f, 30f),
+            height + Random.Range(-2f, 2f),
+            Random.Range(-30f, 30f)
+        );
+    }
+
+    IEnumerator CircleAroundPlayer(Transform leftWing, float height)
+    {
+        if (playerTransform == null) yield break;
+
+        float circleTime = Random.Range(3f, 5f);
+        float circleRadius = Random.Range(5f, 10f);
+        float circleSpeed = Random.Range(1.5f, 2.5f);
+        float startAngle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float t = 0f;
+
+        while (t < circleTime)
+        {
+            t += Time.deltaTime;
+            float angle = startAngle + t * circleSpeed;
+
+            // Circle position around player
+            Vector3 circlePos = playerTransform.position + new Vector3(
+                Mathf.Cos(angle) * circleRadius,
+                height,
+                Mathf.Sin(angle) * circleRadius
+            );
+
+            // Smoothly move to circle position
+            parrotModel.transform.position = Vector3.Lerp(
+                parrotModel.transform.position,
+                circlePos,
+                Time.deltaTime * 8f
+            );
+
+            // Face tangent direction (forward along circle)
+            Vector3 tangent = new Vector3(-Mathf.Sin(angle), 0, Mathf.Cos(angle));
+            parrotModel.transform.rotation = Quaternion.Slerp(
+                parrotModel.transform.rotation,
+                Quaternion.LookRotation(tangent),
+                Time.deltaTime * 5f
+            );
+
+            // Flap wings
+            if (leftWing != null)
+            {
+                float flapAngle = Mathf.Sin(t * 22f) * 45f;
+                leftWing.localRotation = Quaternion.Euler(0, 0, -20 + flapAngle);
+            }
+
+            yield return null;
+        }
     }
 
     void PlayParrotSound(bool excited)
@@ -431,6 +674,12 @@ public class ShoulderParrot : MonoBehaviour
         {
             DrawInteractionBubbles();
         }
+
+        // Draw bonus fish bubble
+        if (showBonusBubble)
+        {
+            DrawBonusFishBubble();
+        }
     }
 
     void DrawInteractionBubbles()
@@ -457,10 +706,10 @@ public class ShoulderParrot : MonoBehaviour
                 "\"Polly wants a cracker?\"", textStyle);
         }
 
-        // Parrot bubble - "KAWWW!"
+        // Parrot bubble - "KAWWW!" - positioned on right side
         if (showParrotResponse)
         {
-            float parrotBubbleX = Screen.width / 2 + 20;
+            float parrotBubbleX = Screen.width * 0.75f - 60; // Right side of screen
             float parrotBubbleY = Screen.height / 2 - 120;
             float parrotBubbleWidth = 120;
 
@@ -496,10 +745,100 @@ public class ShoulderParrot : MonoBehaviour
             canInteract = false;
             Object.Destroy(parrotModel);
             parrotModel = null;
+
+            // Show the cosmetic parrot again when unequipping
+            ShowCosmeticParrot();
+        }
+    }
+
+    /// <summary>
+    /// Hides the cosmetic parrot from PlayerClothingVisuals to avoid double parrots
+    /// </summary>
+    void HideCosmeticParrot()
+    {
+        if (playerTransform == null) return;
+
+        PlayerClothingVisuals visuals = playerTransform.GetComponent<PlayerClothingVisuals>();
+        if (visuals != null)
+        {
+            // Find and hide the cosmetic parrot object
+            Transform torso = playerTransform.Find("Torso");
+            if (torso != null)
+            {
+                Transform cosmeticParrot = torso.Find("ShoulderParrot");
+                if (cosmeticParrot != null)
+                {
+                    cosmeticParrot.gameObject.SetActive(false);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Shows the cosmetic parrot from PlayerClothingVisuals when interactive parrot is unequipped
+    /// </summary>
+    void ShowCosmeticParrot()
+    {
+        if (playerTransform == null) return;
+
+        PlayerClothingVisuals visuals = playerTransform.GetComponent<PlayerClothingVisuals>();
+        if (visuals != null)
+        {
+            // Find and show the cosmetic parrot object
+            Transform torso = playerTransform.Find("Torso");
+            if (torso != null)
+            {
+                Transform cosmeticParrot = torso.Find("ShoulderParrot");
+                if (cosmeticParrot != null)
+                {
+                    cosmeticParrot.gameObject.SetActive(true);
+                }
+            }
         }
     }
 
     public bool IsEquipped() => isEquipped;
+
+    /// <summary>
+    /// Shows a random bonus fish message when parrot grants an extra fish
+    /// </summary>
+    public void ShowBonusFishMessage()
+    {
+        if (!isEquipped) return;
+
+        // Pick random phrase
+        currentBonusPhrase = bonusPhrases[Random.Range(0, bonusPhrases.Length)];
+
+        // Show bubble and reset timer
+        showBonusBubble = true;
+        bonusBubbleTimer = 0f;
+
+        // Play excited parrot sound
+        PlayParrotSound(true);
+    }
+
+    void DrawBonusFishBubble()
+    {
+        float bubbleWidth = 250;
+        float bubbleHeight = 60;
+        float bubbleX = Screen.width / 2 - bubbleWidth / 2;
+        float bubbleY = Screen.height / 2 + 50;
+
+        // Green tinted bubble for parrot
+        GUI.color = new Color(0.8f, 1f, 0.8f);
+        GUI.DrawTexture(new Rect(bubbleX, bubbleY, bubbleWidth, bubbleHeight), bubbleTexture);
+        GUI.color = Color.white;
+
+        GUIStyle bonusStyle = new GUIStyle();
+        bonusStyle.fontSize = 16;
+        bonusStyle.fontStyle = FontStyle.Bold;
+        bonusStyle.alignment = TextAnchor.MiddleCenter;
+        bonusStyle.normal.textColor = new Color(0.2f, 0.6f, 0.2f);
+        bonusStyle.wordWrap = true;
+
+        GUI.Label(new Rect(bubbleX + 10, bubbleY + 10, bubbleWidth - 20, bubbleHeight - 20),
+            currentBonusPhrase, bonusStyle);
+    }
 
     void OnDestroy()
     {

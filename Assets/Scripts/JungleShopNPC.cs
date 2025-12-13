@@ -11,6 +11,9 @@ public class JungleShopNPC : MonoBehaviour
     private bool shopOpen = false;
     private Vector2 scrollPosition;
 
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
+
     private List<ClothingItem> shopItems = new List<ClothingItem>();
     private static Dictionary<string, string> playerEquipment = new Dictionary<string, string>();
 
@@ -120,11 +123,10 @@ public class JungleShopNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        // Check distance to player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Check distance to player using cached reference
+        if (GameCache.IsPlayerValid())
         {
-            float dist = Vector3.Distance(transform.position, player.transform.position);
+            float dist = Vector3.Distance(transform.position, GameCache.Player.position);
             isNearPlayer = dist < 4f;
         }
 
@@ -150,6 +152,13 @@ public class JungleShopNPC : MonoBehaviour
     void OnGUI()
     {
         if (!MainMenu.GameStarted) return;
+
+        // Performance: Skip frames when not actively interacting
+        if (!isNearPlayer && !shopOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
 
         // Initialize styles - consistent with UI overhaul
         if (headerStyle == null)
@@ -196,6 +205,7 @@ public class JungleShopNPC : MonoBehaviour
             string prompt = "[E] Talk to Tribal Trader";
             Vector2 size = promptStyle.CalcSize(new GUIContent(prompt));
             GUI.Label(new Rect((Screen.width - size.x) / 2, Screen.height - 80, size.x, size.y), prompt, promptStyle);
+            return; // Early return - don't process shop UI
         }
 
         if (!shopOpen) return;
@@ -269,17 +279,17 @@ public class JungleShopNPC : MonoBehaviour
         GUI.DrawTexture(new Rect(x, y, width, 52), itemBg);
         Object.Destroy(itemBg);
 
-        // Pixel art icon or color preview fallback - smaller
+        // Pixel art icon or color preview fallback - 32x32
         if (itemIcons.ContainsKey(item.name))
         {
-            GUI.DrawTexture(new Rect(x + 6, y + 6, 40, 40), itemIcons[item.name]);
+            GUI.DrawTexture(new Rect(x + 6, y + 10, 32, 32), itemIcons[item.name]);
         }
         else
         {
             // Fallback to color preview
             Color oldColor = GUI.color;
             GUI.color = item.previewColor;
-            GUI.DrawTexture(new Rect(x + 6, y + 6, 40, 40), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(x + 6, y + 10, 32, 32), Texture2D.whiteTexture);
             GUI.color = oldColor;
         }
 
@@ -377,10 +387,10 @@ public class JungleShopNPC : MonoBehaviour
 
     Texture2D CreateTexture()
     {
-        Texture2D tex = new Texture2D(24, 24);
+        Texture2D tex = new Texture2D(32, 32);
         Color clear = new Color(0, 0, 0, 0);
-        for (int x = 0; x < 24; x++)
-            for (int y = 0; y < 24; y++)
+        for (int x = 0; x < 32; x++)
+            for (int y = 0; y < 32; y++)
                 tex.SetPixel(x, y, clear);
         return tex;
     }
@@ -394,8 +404,8 @@ public class JungleShopNPC : MonoBehaviour
 
     void FillRect(Texture2D tex, int x, int y, int w, int h, Color col)
     {
-        for (int px = x; px < x + w && px < 24; px++)
-            for (int py = y; py < y + h && py < 24; py++)
+        for (int px = x; px < x + w && px < 32; px++)
+            for (int py = y; py < y + h && py < 32; py++)
                 if (px >= 0 && py >= 0)
                     tex.SetPixel(px, py, col);
     }
@@ -407,25 +417,33 @@ public class JungleShopNPC : MonoBehaviour
         Color tanDark = new Color(0.5f, 0.35f, 0.2f);
         Color brown = new Color(0.4f, 0.25f, 0.15f);
 
-        // Waistband
-        FillRect(tex, 4, 16, 16, 2, brown);
+        // Waistband - scaled up
+        FillRect(tex, 5, 21, 22, 3, brown);
 
-        // Loincloth flaps
-        FillRect(tex, 6, 8, 5, 9, tan);
-        FillRect(tex, 13, 8, 5, 9, tan);
+        // Loincloth flaps - scaled up
+        FillRect(tex, 8, 10, 7, 12, tan);
+        FillRect(tex, 17, 10, 7, 12, tan);
 
-        // Shading
-        FillRect(tex, 6, 8, 1, 9, tanDark);
-        FillRect(tex, 13, 8, 1, 9, tanDark);
+        // Shading - scaled up
+        FillRect(tex, 8, 10, 2, 12, tanDark);
+        FillRect(tex, 17, 10, 2, 12, tanDark);
 
-        // Fringe at bottom
-        for (int i = 6; i < 11; i++)
+        // Fringe at bottom - scaled up
+        for (int i = 8; i < 15; i++)
         {
-            if (i % 2 == 0) tex.SetPixel(i, 7, tanDark);
+            if (i % 2 == 0)
+            {
+                tex.SetPixel(i, 9, tanDark);
+                tex.SetPixel(i, 8, tanDark);
+            }
         }
-        for (int i = 13; i < 18; i++)
+        for (int i = 17; i < 24; i++)
         {
-            if (i % 2 == 0) tex.SetPixel(i, 7, tanDark);
+            if (i % 2 == 0)
+            {
+                tex.SetPixel(i, 9, tanDark);
+                tex.SetPixel(i, 8, tanDark);
+            }
         }
 
         FinalizeTexture(tex);
@@ -439,26 +457,28 @@ public class JungleShopNPC : MonoBehaviour
         Color greenDark = new Color(0.25f, 0.45f, 0.2f);
         Color leaf = new Color(0.3f, 0.5f, 0.2f);
 
-        // Vine straps wrapping around torso
-        FillRect(tex, 5, 4, 14, 14, greenLight);
+        // Vine straps wrapping around torso - scaled up
+        FillRect(tex, 6, 5, 20, 19, greenLight);
 
-        // Vine pattern (diagonal wrapping)
+        // Vine pattern (diagonal wrapping) - scaled up
         for (int i = 0; i < 3; i++)
         {
-            int offset = i * 5;
-            FillRect(tex, 5 + offset, 4, 2, 14, greenDark);
-            FillRect(tex, 7 + offset, 4, 1, 14, leaf);
+            int offset = i * 7;
+            FillRect(tex, 6 + offset, 5, 3, 19, greenDark);
+            FillRect(tex, 9 + offset, 5, 2, 19, leaf);
         }
 
-        // Shoulder straps
-        FillRect(tex, 7, 16, 3, 4, greenDark);
-        FillRect(tex, 14, 16, 3, 4, greenDark);
+        // Shoulder straps - scaled up
+        FillRect(tex, 9, 22, 4, 5, greenDark);
+        FillRect(tex, 19, 22, 4, 5, greenDark);
 
-        // Leaves accent
-        tex.SetPixel(6, 14, leaf);
-        tex.SetPixel(7, 15, leaf);
-        tex.SetPixel(16, 12, leaf);
-        tex.SetPixel(17, 13, leaf);
+        // Leaves accent - scaled up
+        tex.SetPixel(8, 19, leaf);
+        tex.SetPixel(9, 20, leaf);
+        tex.SetPixel(10, 20, leaf);
+        tex.SetPixel(22, 16, leaf);
+        tex.SetPixel(23, 17, leaf);
+        tex.SetPixel(23, 18, leaf);
 
         FinalizeTexture(tex);
         return tex;
@@ -472,26 +492,26 @@ public class JungleShopNPC : MonoBehaviour
         Color khakiDark = new Color(0.45f, 0.4f, 0.25f);
         Color pocket = new Color(0.35f, 0.3f, 0.2f);
 
-        // Vest body
-        FillRect(tex, 5, 2, 14, 16, khaki);
+        // Vest body - scaled up
+        FillRect(tex, 6, 3, 20, 22, khaki);
 
-        // Collar
-        FillRect(tex, 8, 16, 8, 3, khakiLight);
+        // Collar - scaled up
+        FillRect(tex, 10, 22, 12, 4, khakiLight);
 
-        // Pockets
-        FillRect(tex, 7, 6, 4, 4, pocket);
-        FillRect(tex, 13, 6, 4, 4, pocket);
+        // Pockets - scaled up
+        FillRect(tex, 9, 8, 6, 6, pocket);
+        FillRect(tex, 17, 8, 6, 6, pocket);
 
-        // Pocket flaps
-        FillRect(tex, 7, 9, 4, 1, khakiDark);
-        FillRect(tex, 13, 9, 4, 1, khakiDark);
+        // Pocket flaps - scaled up
+        FillRect(tex, 9, 12, 6, 2, khakiDark);
+        FillRect(tex, 17, 12, 6, 2, khakiDark);
 
-        // Buttons
-        tex.SetPixel(12, 12, khakiDark);
-        tex.SetPixel(12, 8, khakiDark);
+        // Buttons - scaled up
+        FillRect(tex, 15, 16, 2, 2, khakiDark);
+        FillRect(tex, 15, 10, 2, 2, khakiDark);
 
-        // Shading
-        FillRect(tex, 5, 2, 1, 16, khakiDark);
+        // Shading - scaled up
+        FillRect(tex, 6, 3, 2, 22, khakiDark);
 
         FinalizeTexture(tex);
         return tex;
@@ -506,20 +526,23 @@ public class JungleShopNPC : MonoBehaviour
         Color green = new Color(0.3f, 0.8f, 0.4f);
         Color band = new Color(0.5f, 0.35f, 0.2f);
 
-        // Headband
-        FillRect(tex, 4, 8, 16, 3, band);
+        // Headband - scaled up
+        FillRect(tex, 5, 10, 22, 4, band);
 
-        // Colorful feathers going upward
+        // Colorful feathers going upward - scaled up
         Color[] featherColors = { red, yellow, blue, green, red, yellow };
         for (int i = 0; i < 6; i++)
         {
-            int x = 6 + i * 2;
-            // Feather shaft
-            FillRect(tex, x, 11, 1, 8, featherColors[i]);
-            // Feather tip
-            tex.SetPixel(x - 1, 17, featherColors[i]);
-            tex.SetPixel(x + 1, 17, featherColors[i]);
-            tex.SetPixel(x, 19, featherColors[i]);
+            int x = 8 + i * 3;
+            // Feather shaft - scaled up
+            FillRect(tex, x, 14, 2, 11, featherColors[i]);
+            // Feather tip - scaled up
+            tex.SetPixel(x - 1, 23, featherColors[i]);
+            tex.SetPixel(x - 2, 22, featherColors[i]);
+            tex.SetPixel(x + 2, 23, featherColors[i]);
+            tex.SetPixel(x + 3, 22, featherColors[i]);
+            tex.SetPixel(x, 25, featherColors[i]);
+            tex.SetPixel(x + 1, 25, featherColors[i]);
         }
 
         FinalizeTexture(tex);
@@ -534,24 +557,25 @@ public class JungleShopNPC : MonoBehaviour
         Color beigeDark = new Color(0.7f, 0.65f, 0.5f);
         Color brown = new Color(0.4f, 0.3f, 0.2f);
 
-        // Hat dome (pith helmet shape)
-        FillRect(tex, 6, 12, 12, 8, beige);
-        FillRect(tex, 8, 18, 8, 3, beige);
+        // Hat dome (pith helmet shape) - scaled up
+        FillRect(tex, 8, 16, 16, 11, beige);
+        FillRect(tex, 10, 24, 12, 4, beige);
 
-        // Top highlight
-        FillRect(tex, 8, 18, 8, 2, beigeLight);
+        // Top highlight - scaled up
+        FillRect(tex, 10, 24, 12, 3, beigeLight);
 
-        // Brim
-        FillRect(tex, 2, 10, 20, 3, beige);
-        FillRect(tex, 2, 12, 20, 1, beigeDark);
+        // Brim - scaled up
+        FillRect(tex, 2, 13, 28, 4, beige);
+        FillRect(tex, 2, 16, 28, 2, beigeDark);
 
-        // Hat band
-        FillRect(tex, 6, 12, 12, 2, brown);
+        // Hat band - scaled up
+        FillRect(tex, 8, 16, 16, 3, brown);
 
-        // Shading ridges (pith helmet detail)
-        for (int i = 8; i < 16; i += 2)
+        // Shading ridges (pith helmet detail) - scaled up
+        for (int i = 10; i < 22; i += 3)
         {
-            tex.SetPixel(i, 16, beigeDark);
+            tex.SetPixel(i, 21, beigeDark);
+            tex.SetPixel(i + 1, 21, beigeDark);
         }
 
         FinalizeTexture(tex);
@@ -566,29 +590,30 @@ public class JungleShopNPC : MonoBehaviour
         Color green3 = new Color(0.2f, 0.35f, 0.15f);
         Color darkGreen = new Color(0.15f, 0.25f, 0.1f);
 
-        // Pants base
-        FillRect(tex, 4, 2, 7, 16, green1);
-        FillRect(tex, 13, 2, 7, 16, green1);
-        FillRect(tex, 4, 14, 16, 4, green1);
+        // Pants base - scaled up
+        FillRect(tex, 5, 3, 10, 22, green1);
+        FillRect(tex, 17, 3, 10, 22, green1);
+        FillRect(tex, 5, 19, 22, 6, green1);
 
-        // Camo pattern (irregular spots)
+        // Camo pattern (irregular spots) - scaled up
         System.Random rng = new System.Random(42); // Fixed seed for consistent pattern
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 30; i++)
         {
-            int x = 4 + rng.Next(16);
-            int y = 2 + rng.Next(16);
+            int x = 5 + rng.Next(22);
+            int y = 3 + rng.Next(22);
             Color camoColor = rng.Next(3) == 0 ? green2 : (rng.Next(2) == 0 ? green3 : darkGreen);
 
-            if (x >= 4 && x < 20 && y >= 2 && y < 18)
+            if (x >= 5 && x < 27 && y >= 3 && y < 25)
             {
                 tex.SetPixel(x, y, camoColor);
-                if (rng.Next(2) == 0 && x + 1 < 20) tex.SetPixel(x + 1, y, camoColor);
-                if (rng.Next(2) == 0 && y + 1 < 18) tex.SetPixel(x, y + 1, camoColor);
+                if (rng.Next(2) == 0 && x + 1 < 27) tex.SetPixel(x + 1, y, camoColor);
+                if (rng.Next(2) == 0 && y + 1 < 25) tex.SetPixel(x, y + 1, camoColor);
+                if (rng.Next(3) == 0 && x + 1 < 27 && y + 1 < 25) tex.SetPixel(x + 1, y + 1, camoColor);
             }
         }
 
-        // Waistband
-        FillRect(tex, 4, 16, 16, 2, darkGreen);
+        // Waistband - scaled up
+        FillRect(tex, 5, 21, 22, 3, darkGreen);
 
         FinalizeTexture(tex);
         return tex;
@@ -601,26 +626,26 @@ public class JungleShopNPC : MonoBehaviour
         Color red = new Color(0.8f, 0.2f, 0.2f);
         Color black = new Color(0.1f, 0.1f, 0.1f);
 
-        // Face outline
-        FillRect(tex, 7, 4, 10, 14, skin);
-        FillRect(tex, 9, 2, 6, 2, skin);
+        // Face outline - scaled up
+        FillRect(tex, 9, 5, 14, 19, skin);
+        FillRect(tex, 12, 3, 8, 3, skin);
 
-        // War paint stripes (horizontal red)
-        FillRect(tex, 7, 14, 10, 2, red);
-        FillRect(tex, 7, 10, 10, 2, red);
+        // War paint stripes (horizontal red) - scaled up
+        FillRect(tex, 9, 19, 14, 3, red);
+        FillRect(tex, 9, 13, 14, 3, red);
 
-        // Black stripes
-        FillRect(tex, 7, 16, 10, 1, black);
-        FillRect(tex, 7, 12, 10, 1, black);
+        // Black stripes - scaled up
+        FillRect(tex, 9, 21, 14, 2, black);
+        FillRect(tex, 9, 16, 14, 2, black);
 
-        // Eyes
-        tex.SetPixel(10, 8, black);
-        tex.SetPixel(14, 8, black);
+        // Eyes - scaled up
+        FillRect(tex, 13, 10, 2, 2, black);
+        FillRect(tex, 19, 10, 2, 2, black);
 
-        // Tribal symbols (dots and lines)
-        tex.SetPixel(8, 6, red);
-        tex.SetPixel(16, 6, red);
-        FillRect(tex, 11, 5, 2, 1, black);
+        // Tribal symbols (dots and lines) - scaled up
+        FillRect(tex, 10, 7, 2, 2, red);
+        FillRect(tex, 22, 7, 2, 2, red);
+        FillRect(tex, 14, 6, 4, 2, black);
 
         FinalizeTexture(tex);
         return tex;
@@ -634,34 +659,32 @@ public class JungleShopNPC : MonoBehaviour
         Color scale3 = new Color(0.3f, 0.25f, 0.2f);
         Color black = new Color(0.1f, 0.1f, 0.1f);
 
-        // Boot shape (tall boots)
-        FillRect(tex, 4, 2, 6, 14, scale1);
-        FillRect(tex, 14, 2, 6, 14, scale1);
+        // Boot shape (tall boots) - scaled up
+        FillRect(tex, 5, 3, 9, 19, scale1);
+        FillRect(tex, 18, 3, 9, 19, scale1);
 
-        // Snake scale pattern
-        for (int y = 3; y < 16; y += 2)
+        // Snake scale pattern - scaled up
+        for (int y = 4; y < 22; y += 3)
         {
-            for (int x = 4; x < 10; x += 2)
+            for (int x = 5; x < 14; x += 3)
             {
                 Color scaleColor = (x + y) % 4 == 0 ? scale2 : scale3;
-                tex.SetPixel(x, y, scaleColor);
-                tex.SetPixel(x + 1, y, scaleColor);
+                FillRect(tex, x, y, 2, 2, scaleColor);
             }
-            for (int x = 14; x < 20; x += 2)
+            for (int x = 18; x < 27; x += 3)
             {
                 Color scaleColor = (x + y) % 4 == 0 ? scale2 : scale3;
-                tex.SetPixel(x, y, scaleColor);
-                tex.SetPixel(x + 1, y, scaleColor);
+                FillRect(tex, x, y, 2, 2, scaleColor);
             }
         }
 
-        // Boot tops
-        FillRect(tex, 4, 14, 6, 2, black);
-        FillRect(tex, 14, 14, 6, 2, black);
+        // Boot tops - scaled up
+        FillRect(tex, 5, 19, 9, 3, black);
+        FillRect(tex, 18, 19, 9, 3, black);
 
-        // Soles
-        FillRect(tex, 4, 2, 6, 1, black);
-        FillRect(tex, 14, 2, 6, 1, black);
+        // Soles - scaled up
+        FillRect(tex, 5, 3, 9, 2, black);
+        FillRect(tex, 18, 3, 9, 2, black);
 
         FinalizeTexture(tex);
         return tex;
@@ -676,40 +699,40 @@ public class JungleShopNPC : MonoBehaviour
         Color mystical = new Color(0.8f, 0.6f, 1f);
         Color gold = new Color(0.9f, 0.75f, 0.3f);
 
-        // Robe body (long flowing)
-        FillRect(tex, 4, 0, 16, 20, purple);
+        // Robe body (long flowing) - scaled up
+        FillRect(tex, 5, 0, 22, 27, purple);
 
-        // Hood
-        FillRect(tex, 6, 18, 12, 4, purpleDark);
-        FillRect(tex, 8, 20, 8, 2, purpleDark);
+        // Hood - scaled up
+        FillRect(tex, 8, 24, 16, 5, purpleDark);
+        FillRect(tex, 10, 27, 12, 3, purpleDark);
 
-        // Wide sleeves
-        FillRect(tex, 0, 10, 5, 8, purple);
-        FillRect(tex, 19, 10, 5, 8, purple);
+        // Wide sleeves - scaled up
+        FillRect(tex, 0, 13, 7, 11, purple);
+        FillRect(tex, 25, 13, 7, 11, purple);
 
-        // Mystical symbols/runes
-        tex.SetPixel(12, 8, mystical);
-        tex.SetPixel(12, 9, mystical);
-        tex.SetPixel(11, 9, mystical);
-        tex.SetPixel(13, 9, mystical);
+        // Mystical symbols/runes - scaled up
+        FillRect(tex, 15, 11, 2, 2, mystical);
+        FillRect(tex, 15, 13, 2, 2, mystical);
+        FillRect(tex, 14, 13, 2, 2, mystical);
+        FillRect(tex, 17, 13, 2, 2, mystical);
 
-        tex.SetPixel(10, 4, gold);
-        tex.SetPixel(14, 4, gold);
-        FillRect(tex, 11, 6, 2, 1, gold);
+        FillRect(tex, 13, 5, 2, 2, gold);
+        FillRect(tex, 19, 5, 2, 2, gold);
+        FillRect(tex, 14, 8, 3, 2, gold);
 
-        // Mystical energy dots
-        tex.SetPixel(7, 12, mystical);
-        tex.SetPixel(17, 14, mystical);
-        tex.SetPixel(9, 6, mystical);
+        // Mystical energy dots - scaled up
+        FillRect(tex, 9, 16, 2, 2, mystical);
+        FillRect(tex, 23, 19, 2, 2, mystical);
+        FillRect(tex, 12, 8, 2, 2, mystical);
 
-        // Hem decoration
-        for (int x = 5; x < 19; x += 3)
+        // Hem decoration - scaled up
+        for (int x = 6; x < 26; x += 4)
         {
-            tex.SetPixel(x, 1, gold);
+            FillRect(tex, x, 1, 2, 2, gold);
         }
 
-        // Shading
-        FillRect(tex, 4, 0, 2, 20, purpleDark);
+        // Shading - scaled up
+        FillRect(tex, 5, 0, 3, 27, purpleDark);
 
         FinalizeTexture(tex);
         return tex;

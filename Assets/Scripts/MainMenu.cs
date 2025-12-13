@@ -33,9 +33,16 @@ public class MainMenu : MonoBehaviour
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
+    private int guiFrameSkip = 0;
 
     // Water animation for background
     private float waterTime = 0f;
+
+    // Cached GUIStyles for performance
+    private static GUIStyle cachedVersionStyle;
+    private static GUIStyle cachedTitleStyle;
+    private static GUIStyle cachedSubStyle;
+    private static bool stylesInitialized = false;
 
     void Awake()
     {
@@ -106,24 +113,22 @@ public class MainMenu : MonoBehaviour
     void DisableGameSystems()
     {
         // Disable player controls and other systems
-        var player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid() && GameCache.PlayerObject != null)
         {
-            var controller = player.GetComponent<PlayerController>();
+            var controller = GameCache.PlayerObject.GetComponent<PlayerController>();
             if (controller != null) controller.enabled = false;
-            var rodAnim = player.GetComponent<FishingRodAnimator>();
+            var rodAnim = GameCache.PlayerObject.GetComponent<FishingRodAnimator>();
             if (rodAnim != null) rodAnim.enabled = false;
         }
     }
 
     void EnableGameSystems()
     {
-        var player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid() && GameCache.PlayerObject != null)
         {
-            var controller = player.GetComponent<PlayerController>();
+            var controller = GameCache.PlayerObject.GetComponent<PlayerController>();
             if (controller != null) controller.enabled = true;
-            var rodAnim = player.GetComponent<FishingRodAnimator>();
+            var rodAnim = GameCache.PlayerObject.GetComponent<FishingRodAnimator>();
             if (rodAnim != null) rodAnim.enabled = true;
         }
     }
@@ -151,7 +156,34 @@ public class MainMenu : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed (menu is less critical)
+        if (!GameStarted)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 2 != 0) return; // Skip every other frame for smoother menu
+        }
+
         if (GameStarted || !initialized) return;
+
+        // Initialize styles lazily (must be done in OnGUI context) - BEFORE any drawing
+        if (!stylesInitialized)
+        {
+            cachedVersionStyle = new GUIStyle(GUI.skin.label);
+            cachedVersionStyle.fontSize = 12;
+            cachedVersionStyle.alignment = TextAnchor.LowerRight;
+
+            cachedTitleStyle = new GUIStyle(GUI.skin.label);
+            cachedTitleStyle.fontSize = 72;
+            cachedTitleStyle.fontStyle = FontStyle.Bold;
+            cachedTitleStyle.alignment = TextAnchor.MiddleCenter;
+
+            cachedSubStyle = new GUIStyle(GUI.skin.label);
+            cachedSubStyle.fontSize = 22;
+            cachedSubStyle.fontStyle = FontStyle.Italic;
+            cachedSubStyle.alignment = TextAnchor.MiddleCenter;
+
+            stylesInitialized = true;
+        }
 
         // Draw animated water background
         DrawWaterBackground();
@@ -180,12 +212,9 @@ public class MainMenu : MonoBehaviour
                 break;
         }
 
-        // Version and credits
-        GUIStyle versionStyle = new GUIStyle(GUI.skin.label);
-        versionStyle.fontSize = 12;
-        versionStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f, menuAlpha);
-        versionStyle.alignment = TextAnchor.LowerRight;
-        GUI.Label(new Rect(Screen.width - 210, Screen.height - 30, 200, 25), "v1.0 - Made with Claude", versionStyle);
+        // Version and credits - update color dynamically
+        cachedVersionStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f, menuAlpha);
+        GUI.Label(new Rect(Screen.width - 210, Screen.height - 30, 200, 25), "v1.0 - Made with Claude", cachedVersionStyle);
 
         GUI.color = Color.white;
     }
@@ -216,28 +245,20 @@ public class MainMenu : MonoBehaviour
         GUI.color = new Color(1, 1, 1, 0.3f * menuAlpha);
         GUI.DrawTexture(new Rect(Screen.width / 2 - 250, 50 + bobOffset - 10, 500, 100), GetTexture("titleGlow"));
 
-        // Title text
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label);
-        titleStyle.fontSize = 72;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(0.9f, 0.95f, 1f, menuAlpha);
+        // Title text - update color dynamically
+        cachedTitleStyle.normal.textColor = new Color(0.9f, 0.95f, 1f, menuAlpha);
 
         // Shadow
         GUI.color = new Color(0, 0, 0, 0.5f * menuAlpha);
-        GUI.Label(new Rect(4, 64 + bobOffset, Screen.width, 80), "FISHING GAME", titleStyle);
+        GUI.Label(new Rect(4, 64 + bobOffset, Screen.width, 80), "FISHING GAME", cachedTitleStyle);
 
         // Main title
         GUI.color = new Color(1, 1, 1, menuAlpha);
-        GUI.Label(new Rect(0, 60 + bobOffset, Screen.width, 80), "FISHING GAME", titleStyle);
+        GUI.Label(new Rect(0, 60 + bobOffset, Screen.width, 80), "FISHING GAME", cachedTitleStyle);
 
-        // Subtitle - Quote from Wetsuit Pete
-        GUIStyle subStyle = new GUIStyle(GUI.skin.label);
-        subStyle.fontSize = 22;
-        subStyle.fontStyle = FontStyle.Italic;
-        subStyle.alignment = TextAnchor.MiddleCenter;
-        subStyle.normal.textColor = new Color(0.6f, 0.8f, 1f, menuAlpha);
-        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "\"eat fish, don't drown\" - wetsuit pete", subStyle);
+        // Subtitle - Quote from Wetsuit Pete - update color dynamically
+        cachedSubStyle.normal.textColor = new Color(0.6f, 0.8f, 1f, menuAlpha);
+        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "\"eat fish, don't drown\" - wetsuit pete", cachedSubStyle);
     }
 
     void DrawMainMenu()

@@ -6,8 +6,7 @@ public enum RealmType
     TropicalIsland,
     IceRealm,
     JungleRealm,
-    VolcanicRealm,
-    VoidRealm
+    VolcanicRealm
 }
 
 public class RealmManager : MonoBehaviour
@@ -21,12 +20,12 @@ public class RealmManager : MonoBehaviour
     public static readonly Vector3 IceRealmOrigin = new Vector3(500f, 0f, 0f);
     public static readonly Vector3 JungleRealmOrigin = new Vector3(1000f, 0f, 0f);
     public static readonly Vector3 VolcanicRealmOrigin = new Vector3(1500f, 0f, 0f);
-    public static readonly Vector3 VoidRealmOrigin = new Vector3(2000f, 0f, 0f);
 
     // Transition state
     private bool isTransitioning = false;
     private float transitionAlpha = 0f;
     private Texture2D fadeTexture;
+    private int guiFrameSkip = 0;
 
     void Awake()
     {
@@ -53,7 +52,6 @@ public class RealmManager : MonoBehaviour
             case RealmType.IceRealm: return IceRealmOrigin;
             case RealmType.JungleRealm: return JungleRealmOrigin;
             case RealmType.VolcanicRealm: return VolcanicRealmOrigin;
-            case RealmType.VoidRealm: return VoidRealmOrigin;
             default: return TropicalIslandOrigin;
         }
     }
@@ -67,7 +65,8 @@ public class RealmManager : MonoBehaviour
     IEnumerator RealmTransition(RealmType targetRealm, Vector3 spawnOffset)
     {
         isTransitioning = true;
-        GameObject player = GameObject.Find("Player");
+        // Use cached player reference
+        GameObject player = GameCache.IsPlayerValid() ? GameCache.Player.gameObject : null;
 
         // Fade to black
         float fadeTime = 0.5f;
@@ -125,6 +124,13 @@ public class RealmManager : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (transitionAlpha <= 0f)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (transitionAlpha > 0f)
         {
             GUI.color = new Color(0, 0, 0, transitionAlpha);
@@ -150,7 +156,6 @@ public class RealmManager : MonoBehaviour
             case RealmType.IceRealm: return new Color(0.6f, 0.85f, 1f);
             case RealmType.JungleRealm: return new Color(0.2f, 0.8f, 0.3f);
             case RealmType.VolcanicRealm: return new Color(1f, 0.4f, 0.2f);
-            case RealmType.VoidRealm: return new Color(0.6f, 0.3f, 0.9f);
             default: return Color.white;
         }
     }

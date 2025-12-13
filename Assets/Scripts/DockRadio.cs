@@ -28,13 +28,16 @@ public class DockRadio : MonoBehaviour
     private bool isOn = false;
     private bool playerNearby = false;
     private float interactionDistance = 3.5f;
+    private int guiFrameSkip = 0;
     private float songEndCheckDelay = 0.5f;  // Delay before checking if song ended
 
-    // Multiple songs from CUMBIASCAPE folder
+    // Multiple songs - loaded based on current realm
     private List<AudioClip> songs = new List<AudioClip>();
     private List<string> loadedSongNames = new List<string>();
     private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" }; // Fallback only
     private int currentSongIndex = 0;
+    private RealmType lastLoadedRealm = RealmType.TropicalIsland;
+    private string nowPlayingText = "";
 
     void Awake()
     {
@@ -59,45 +62,12 @@ public class DockRadio : MonoBehaviour
 
     void SetupAudio()
     {
-        // Load ONLY songs from CUMBIASCAPE folder
-        AudioClip[] cumbiaClips = Resources.LoadAll<AudioClip>("CUMBIASCAPE");
-
-        if (cumbiaClips != null && cumbiaClips.Length > 0)
-        {
-            foreach (AudioClip clip in cumbiaClips)
-            {
-                songs.Add(clip);
-                loadedSongNames.Add(clip.name);
-                Debug.Log("DockRadio: Loaded CUMBIASCAPE song - " + clip.name);
-            }
-        }
-
-        // Fallback: if CUMBIASCAPE folder is empty, load all Resources as before
-        if (songs.Count == 0)
-        {
-            Debug.LogWarning("DockRadio: No CUMBIASCAPE songs found! Loading default songs...");
-            foreach (string songName in songNames)
-            {
-                AudioClip clip = Resources.Load<AudioClip>(songName);
-                if (clip != null)
-                {
-                    songs.Add(clip);
-                    loadedSongNames.Add(clip.name);
-                }
-            }
-        }
-
-        if (songs.Count == 0)
-        {
-            Debug.LogWarning("DockRadio: No songs found!");
-            return;
-        }
-
-        Debug.Log("DockRadio: Loaded " + songs.Count + " songs total!");
+        LoadSongsForCurrentRealm();
 
         // Create audio source with 3D spatial audio (doppler effect)
         audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.clip = songs[0];
+        if (songs.Count > 0)
+            audioSource.clip = songs[0];
         audioSource.loop = true;  // Loop single song
         audioSource.volume = maxVolume;
         audioSource.spatialBlend = 1f;  // Full 3D sound
@@ -109,7 +79,76 @@ public class DockRadio : MonoBehaviour
         audioSource.priority = 0;
 
         initialized = true;
-        Debug.Log("DockRadio: Ready! Press F to toggle music.");
+        Debug.Log("DockRadio: Ready! Press R to toggle music.");
+    }
+
+    void LoadSongsForCurrentRealm()
+    {
+        // Get current realm
+        RealmType currentRealm = GameCache.GetCurrentRealm();
+
+        // Don't reload if same realm
+        if (songs.Count > 0 && currentRealm == lastLoadedRealm)
+            return;
+
+        // Clear existing songs
+        songs.Clear();
+        loadedSongNames.Clear();
+        lastLoadedRealm = currentRealm;
+
+        // Determine folder based on realm:
+        // Tropical Island -> dubscape
+        // Jungle -> cumbiascape
+        // Ice -> hardscape
+        string folderName = GetMusicFolderForRealm(currentRealm);
+
+        Debug.Log("DockRadio: Loading music from " + folderName + " for realm " + currentRealm);
+
+        AudioClip[] clips = Resources.LoadAll<AudioClip>(folderName);
+
+        if (clips != null && clips.Length > 0)
+        {
+            foreach (AudioClip clip in clips)
+            {
+                songs.Add(clip);
+                loadedSongNames.Add(clip.name);
+                Debug.Log("DockRadio: Loaded " + clip.name + " from " + folderName);
+            }
+        }
+
+        // Fallback if folder empty
+        if (songs.Count == 0)
+        {
+            Debug.LogWarning("DockRadio: No songs in " + folderName + "! Trying fallback...");
+            foreach (string songName in songNames)
+            {
+                AudioClip clip = Resources.Load<AudioClip>(songName);
+                if (clip != null)
+                {
+                    songs.Add(clip);
+                    loadedSongNames.Add(clip.name);
+                }
+            }
+        }
+
+        Debug.Log("DockRadio: Loaded " + songs.Count + " songs for " + currentRealm);
+    }
+
+    string GetMusicFolderForRealm(RealmType realm)
+    {
+        switch (realm)
+        {
+            case RealmType.TropicalIsland:
+                return "dubscape";
+            case RealmType.JungleRealm:
+                return "CUMBIASCAPE";
+            case RealmType.IceRealm:
+                return "HARDSCAPE";
+            case RealmType.VolcanicRealm:
+                return "dubscape";  // Default to dubscape for volcanic
+            default:
+                return "dubscape";
+        }
     }
 
     void CreateRadioVisuals()
@@ -185,11 +224,10 @@ public class DockRadio : MonoBehaviour
         if (!MainMenu.GameStarted) return;
         if (audioSource == null) return;
 
-        // Check distance to player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Check distance to player using cached reference
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < interactionDistance;
         }
 
@@ -206,6 +244,13 @@ public class DockRadio : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!playerNearby && !isOn)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!initialized || !MainMenu.GameStarted) return;
 
         // Show interaction prompt when player is nearby
@@ -221,6 +266,18 @@ public class DockRadio : MonoBehaviour
             float promptY = Screen.height * 0.65f;
             GUI.Label(new Rect(0, promptY, Screen.width, 30), promptText, promptStyle);
         }
+
+        // Show persistent "Now Playing" text at top-left when radio is on
+        if (isOn && !string.IsNullOrEmpty(nowPlayingText))
+        {
+            GUIStyle nowPlayingStyle = new GUIStyle(GUI.skin.label);
+            nowPlayingStyle.fontSize = 11;
+            nowPlayingStyle.fontStyle = FontStyle.Normal;
+            nowPlayingStyle.alignment = TextAnchor.UpperLeft;
+            nowPlayingStyle.normal.textColor = new Color(0.7f, 0.9f, 1f, 0.9f);
+
+            GUI.Label(new Rect(10, 10, 400, 20), nowPlayingText, nowPlayingStyle);
+        }
     }
 
     void ToggleRadio()
@@ -232,6 +289,13 @@ public class DockRadio : MonoBehaviour
             // Stop ALL other radios first
             StopAllOtherRadios();
 
+            // Reload songs if realm changed
+            RealmType currentRealm = GameCache.GetCurrentRealm();
+            if (currentRealm != lastLoadedRealm)
+            {
+                LoadSongsForCurrentRealm();
+            }
+
             if (songs.Count > 0)
             {
                 // Start at random song for variety
@@ -241,7 +305,8 @@ public class DockRadio : MonoBehaviour
                 audioSource.Play();
                 currentlyPlaying = this;
                 songEndCheckDelay = 0.5f;  // Reset delay
-                Debug.Log("DockRadio: ON - Playing " + songs[currentSongIndex].name);
+                nowPlayingText = "Now Playing: " + loadedSongNames[currentSongIndex];
+                Debug.Log("DockRadio: ON - Playing " + songs[currentSongIndex].name + " (" + GetMusicFolderForRealm(currentRealm) + ")");
             }
         }
         else
@@ -249,6 +314,7 @@ public class DockRadio : MonoBehaviour
             audioSource.Stop();
             if (currentlyPlaying == this)
                 currentlyPlaying = null;
+            nowPlayingText = "";
             Debug.Log("DockRadio: OFF");
         }
     }
@@ -272,6 +338,7 @@ public class DockRadio : MonoBehaviour
         audioSource.volume = maxVolume;
         audioSource.Play();
         songEndCheckDelay = 0.5f;  // Reset delay after starting new song
+        nowPlayingText = "Now Playing: " + loadedSongNames[currentSongIndex];
         Debug.Log("DockRadio: Now playing " + songs[currentSongIndex].name);
     }
 

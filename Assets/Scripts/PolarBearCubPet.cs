@@ -61,10 +61,9 @@ public class PolarBearCubPet : MonoBehaviour
         nextQuestionTime = Time.time + Random.Range(15f, 30f);
 
         // Find player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            playerTransform = player.transform;
+            playerTransform = GameCache.Player;
             targetPosition = playerTransform.position - playerTransform.forward * followDistance;
         }
     }
@@ -250,8 +249,7 @@ public class PolarBearCubPet : MonoBehaviour
     {
         if (playerTransform == null)
         {
-            GameObject player = GameObject.Find("Player");
-            if (player != null) playerTransform = player.transform;
+            if (GameCache.IsPlayerValid()) playerTransform = GameCache.Player;
             return;
         }
 

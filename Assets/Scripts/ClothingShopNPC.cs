@@ -36,6 +36,7 @@ public class ClothingShopNPC : MonoBehaviour
 
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
+    private Dictionary<string, Texture2D> clothingIcons = new Dictionary<string, Texture2D>();
     private bool initialized = false;
 
     // Audio for voice
@@ -66,6 +67,7 @@ public class ClothingShopNPC : MonoBehaviour
     void Initialize()
     {
         CreateCachedTextures();
+        CreateClothingIcons();
         SetupAudio();
         initialized = true;
     }
@@ -232,6 +234,394 @@ public class ClothingShopNPC : MonoBehaviour
         return textureCache.TryGetValue(name, out Texture2D tex) ? tex : Texture2D.whiteTexture;
     }
 
+    #region Clothing Icon Creation
+    void CreateClothingIcons()
+    {
+        // Create procedural 32x32 pixel art icons for each clothing item
+        clothingIcons["Straw Hat"] = CreateStrawHatIcon();
+        clothingIcons["Baseball Cap"] = CreateBaseballCapIcon();
+        clothingIcons["Fancy Top Hat"] = CreateTopHatIcon();
+        clothingIcons["Coconut Bra"] = CreateCoconutBraIcon();
+        clothingIcons["Red T-Shirt"] = CreateTShirtIcon(new Color(0.85f, 0.15f, 0.1f));
+        clothingIcons["Blue Shirt"] = CreateShirtIcon(new Color(0.15f, 0.35f, 0.65f));
+        clothingIcons["Lumberjack Shirt"] = CreateLumberjackShirtIcon();
+        clothingIcons["Red Pants"] = CreatePantsIcon(new Color(0.8f, 0.15f, 0.1f));
+        clothingIcons["Green Pants"] = CreatePantsIcon(new Color(0.2f, 0.5f, 0.2f));
+        clothingIcons["Black Pants"] = CreatePantsIcon(new Color(0.12f, 0.12f, 0.12f));
+        clothingIcons["Blue Jeans"] = CreateJeansIcon();
+        clothingIcons["Pimp Cane"] = CreatePimpCaneIcon();
+        clothingIcons["Shoulder Parrot"] = CreateParrotIcon();
+        clothingIcons["Lunch Box"] = CreateLunchBoxIcon();
+        clothingIcons["Fancy Tuxedo"] = CreateTuxedoIcon();
+    }
+
+    Texture2D CreateIconTexture()
+    {
+        Texture2D tex = new Texture2D(32, 32);
+        Color clear = new Color(0, 0, 0, 0);
+        for (int x = 0; x < 32; x++)
+            for (int y = 0; y < 32; y++)
+                tex.SetPixel(x, y, clear);
+        return tex;
+    }
+
+    void FinalizeIcon(Texture2D tex)
+    {
+        tex.Apply();
+        tex.filterMode = FilterMode.Point;
+    }
+
+    void FillIconRect(Texture2D tex, int x, int y, int w, int h, Color col)
+    {
+        for (int px = x; px < x + w && px < 32; px++)
+            for (int py = y; py < y + h && py < 32; py++)
+                if (px >= 0 && py >= 0)
+                    tex.SetPixel(px, py, col);
+    }
+
+    Texture2D CreateStrawHatIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color straw = new Color(0.9f, 0.8f, 0.5f);
+        Color strawDark = new Color(0.75f, 0.65f, 0.4f);
+        Color ribbon = new Color(0.6f, 0.15f, 0.1f);
+
+        // Hat dome
+        FillIconRect(tex, 8, 16, 16, 10, straw);
+        FillIconRect(tex, 10, 24, 12, 4, straw);
+
+        // Brim
+        FillIconRect(tex, 2, 13, 28, 4, straw);
+        FillIconRect(tex, 2, 16, 28, 1, strawDark);
+
+        // Ribbon band
+        FillIconRect(tex, 8, 16, 16, 2, ribbon);
+
+        // Weave texture
+        for (int i = 10; i < 22; i += 3)
+        {
+            tex.SetPixel(i, 20, strawDark);
+            tex.SetPixel(i + 1, 21, strawDark);
+        }
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateBaseballCapIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color capRed = new Color(0.85f, 0.15f, 0.1f);
+        Color capDark = new Color(0.6f, 0.1f, 0.05f);
+        Color button = new Color(0.7f, 0.1f, 0.05f);
+
+        // Cap crown
+        FillIconRect(tex, 6, 14, 20, 12, capRed);
+        FillIconRect(tex, 8, 24, 16, 4, capRed);
+
+        // Brim
+        FillIconRect(tex, 4, 8, 24, 6, capRed);
+        FillIconRect(tex, 4, 10, 24, 2, capDark);
+
+        // Button on top
+        FillIconRect(tex, 14, 26, 4, 4, button);
+
+        // Shading
+        FillIconRect(tex, 6, 14, 2, 10, capDark);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateTopHatIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color black = new Color(0.1f, 0.1f, 0.1f);
+        Color blackLight = new Color(0.2f, 0.2f, 0.2f);
+        Color ribbon = new Color(0.7f, 0.15f, 0.1f);
+
+        // Hat body (tall)
+        FillIconRect(tex, 8, 12, 16, 16, black);
+
+        // Brim
+        FillIconRect(tex, 2, 8, 28, 5, black);
+        FillIconRect(tex, 2, 10, 28, 2, blackLight);
+
+        // Top
+        FillIconRect(tex, 8, 26, 16, 4, black);
+        FillIconRect(tex, 10, 28, 12, 2, blackLight);
+
+        // Ribbon
+        FillIconRect(tex, 8, 13, 16, 2, ribbon);
+
+        // Shine
+        FillIconRect(tex, 12, 20, 3, 6, blackLight);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateCoconutBraIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color coconut = new Color(0.55f, 0.35f, 0.2f);
+        Color coconutDark = new Color(0.45f, 0.25f, 0.15f);
+        Color string_col = new Color(0.7f, 0.6f, 0.4f);
+
+        // Two coconut halves
+        FillIconRect(tex, 6, 10, 8, 10, coconut);
+        FillIconRect(tex, 18, 10, 8, 10, coconut);
+
+        // Texture/shading
+        FillIconRect(tex, 6, 10, 2, 10, coconutDark);
+        FillIconRect(tex, 18, 10, 2, 10, coconutDark);
+
+        // String connecting them
+        FillIconRect(tex, 10, 18, 12, 1, string_col);
+        FillIconRect(tex, 14, 16, 1, 4, string_col);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateTShirtIcon(Color shirtColor)
+    {
+        Texture2D tex = CreateIconTexture();
+        Color shirtDark = new Color(shirtColor.r * 0.7f, shirtColor.g * 0.7f, shirtColor.b * 0.7f);
+
+        // Shirt body
+        FillIconRect(tex, 6, 4, 20, 20, shirtColor);
+
+        // Sleeves
+        FillIconRect(tex, 2, 16, 5, 8, shirtColor);
+        FillIconRect(tex, 25, 16, 5, 8, shirtColor);
+
+        // Neck opening
+        FillIconRect(tex, 12, 22, 8, 4, new Color(0, 0, 0, 0));
+
+        // Shading
+        FillIconRect(tex, 6, 4, 2, 18, shirtDark);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateShirtIcon(Color shirtColor)
+    {
+        Texture2D tex = CreateIconTexture();
+        Color shirtDark = new Color(shirtColor.r * 0.7f, shirtColor.g * 0.7f, shirtColor.b * 0.7f);
+        Color button = new Color(0.9f, 0.9f, 0.9f);
+
+        // Shirt body
+        FillIconRect(tex, 6, 4, 20, 22, shirtColor);
+
+        // Collar
+        FillIconRect(tex, 10, 22, 6, 4, shirtDark);
+        FillIconRect(tex, 16, 22, 6, 4, shirtDark);
+
+        // Buttons
+        for (int i = 16; i < 24; i += 3)
+        {
+            FillIconRect(tex, 15, i, 2, 2, button);
+        }
+
+        // Pocket
+        FillIconRect(tex, 10, 10, 5, 4, shirtDark);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateLumberjackShirtIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color red = new Color(0.8f, 0.1f, 0.1f);
+        Color black = new Color(0.1f, 0.1f, 0.1f);
+
+        // Checkered pattern
+        for (int y = 4; y < 26; y += 4)
+        {
+            for (int x = 6; x < 26; x += 4)
+            {
+                Color squareColor = ((x + y) / 4) % 2 == 0 ? red : black;
+                FillIconRect(tex, x, y, 4, 4, squareColor);
+            }
+        }
+
+        // Buttons
+        Color button = new Color(0.7f, 0.7f, 0.3f);
+        FillIconRect(tex, 15, 12, 2, 2, button);
+        FillIconRect(tex, 15, 18, 2, 2, button);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreatePantsIcon(Color pantsColor)
+    {
+        Texture2D tex = CreateIconTexture();
+        Color pantsDark = new Color(pantsColor.r * 0.7f, pantsColor.g * 0.7f, pantsColor.b * 0.7f);
+
+        // Pants legs
+        FillIconRect(tex, 6, 3, 9, 22, pantsColor);
+        FillIconRect(tex, 17, 3, 9, 22, pantsColor);
+
+        // Waistband
+        FillIconRect(tex, 6, 21, 20, 4, pantsDark);
+
+        // Shading
+        FillIconRect(tex, 6, 3, 2, 18, pantsDark);
+        FillIconRect(tex, 17, 3, 2, 18, pantsDark);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateJeansIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color denim = new Color(0.2f, 0.35f, 0.6f);
+        Color denimLight = new Color(0.3f, 0.45f, 0.7f);
+        Color denimDark = new Color(0.15f, 0.25f, 0.45f);
+        Color stitch = new Color(0.9f, 0.7f, 0.3f);
+
+        // Pants legs
+        FillIconRect(tex, 6, 3, 9, 22, denim);
+        FillIconRect(tex, 17, 3, 9, 22, denim);
+
+        // Waistband
+        FillIconRect(tex, 6, 21, 20, 4, denimDark);
+
+        // Stitching
+        FillIconRect(tex, 10, 6, 1, 16, stitch);
+        FillIconRect(tex, 21, 6, 1, 16, stitch);
+
+        // Pockets
+        FillIconRect(tex, 7, 16, 4, 4, denimLight);
+        FillIconRect(tex, 18, 16, 4, 4, denimLight);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreatePimpCaneIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color gold = new Color(0.85f, 0.7f, 0.2f);
+        Color goldShine = new Color(1f, 0.9f, 0.4f);
+        Color black = new Color(0.1f, 0.1f, 0.1f);
+
+        // Cane shaft
+        for (int i = 0; i < 22; i++)
+        {
+            tex.SetPixel(8 + i, 4 + i, black);
+            tex.SetPixel(9 + i, 4 + i, black);
+        }
+
+        // Golden handle (curved)
+        FillIconRect(tex, 4, 20, 8, 4, gold);
+        FillIconRect(tex, 4, 24, 6, 4, gold);
+        FillIconRect(tex, 6, 26, 4, 3, goldShine);
+
+        // Golden tip
+        FillIconRect(tex, 28, 24, 3, 4, gold);
+        tex.SetPixel(29, 26, goldShine);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateParrotIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color red = new Color(0.9f, 0.2f, 0.2f);
+        Color green = new Color(0.2f, 0.8f, 0.3f);
+        Color blue = new Color(0.2f, 0.4f, 0.9f);
+        Color yellow = new Color(0.95f, 0.85f, 0.3f);
+        Color beak = new Color(0.95f, 0.6f, 0.2f);
+        Color eye = Color.black;
+
+        // Body (green)
+        FillIconRect(tex, 10, 6, 12, 16, green);
+
+        // Head (red)
+        FillIconRect(tex, 12, 18, 10, 10, red);
+
+        // Wing (blue)
+        FillIconRect(tex, 10, 10, 6, 10, blue);
+
+        // Tail feathers (yellow/green)
+        FillIconRect(tex, 14, 2, 3, 6, yellow);
+        FillIconRect(tex, 17, 3, 3, 5, green);
+
+        // Beak
+        FillIconRect(tex, 20, 22, 4, 3, beak);
+
+        // Eye
+        FillIconRect(tex, 18, 24, 2, 2, eye);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateLunchBoxIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color box = new Color(0.7f, 0.4f, 0.2f);
+        Color boxDark = new Color(0.5f, 0.3f, 0.15f);
+        Color metal = new Color(0.6f, 0.6f, 0.65f);
+
+        // Box body
+        FillIconRect(tex, 6, 6, 20, 14, box);
+
+        // Lid
+        FillIconRect(tex, 6, 18, 20, 4, boxDark);
+
+        // Handle
+        FillIconRect(tex, 13, 20, 6, 2, metal);
+        FillIconRect(tex, 13, 22, 2, 4, metal);
+        FillIconRect(tex, 17, 22, 2, 4, metal);
+
+        // Clasp
+        FillIconRect(tex, 15, 6, 2, 4, metal);
+
+        // Shading
+        FillIconRect(tex, 6, 6, 2, 12, boxDark);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+
+    Texture2D CreateTuxedoIcon()
+    {
+        Texture2D tex = CreateIconTexture();
+        Color black = new Color(0.1f, 0.1f, 0.1f);
+        Color white = new Color(0.95f, 0.95f, 0.95f);
+        Color button = new Color(0.9f, 0.9f, 0.9f);
+
+        // Jacket
+        FillIconRect(tex, 6, 4, 20, 24, black);
+
+        // White shirt front
+        FillIconRect(tex, 12, 14, 8, 12, white);
+
+        // Lapels
+        FillIconRect(tex, 8, 18, 4, 8, black);
+        FillIconRect(tex, 20, 18, 4, 8, black);
+
+        // Bow tie
+        FillIconRect(tex, 12, 22, 8, 3, black);
+        FillIconRect(tex, 15, 21, 2, 5, black);
+
+        // Buttons
+        FillIconRect(tex, 15, 16, 2, 2, button);
+        FillIconRect(tex, 15, 11, 2, 2, button);
+
+        FinalizeIcon(tex);
+        return tex;
+    }
+    #endregion
+
     void InitializeClothingItems()
     {
         // === HEAD ITEMS ===
@@ -268,11 +658,10 @@ public class ClothingShopNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
-        // Check distance to player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        // Check distance to player using cached reference
+        if (GameCache.IsPlayerValid())
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < interactionDistance;
 
             // Show interaction prompt
@@ -338,10 +727,18 @@ public class ClothingShopNPC : MonoBehaviour
     {
         if (!initialized || !MainMenu.GameStarted) return;
 
+        // Performance: Skip frames when not actively interacting
+        if (!playerNearby && !shopOpen)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return; // Skip 2 out of 3 frames
+        }
+
         // Show interaction prompt when nearby
         if (playerNearby && !shopOpen)
         {
             DrawInteractionPrompt();
+            return; // Early return - don't process shop UI
         }
 
         // Draw shop UI
@@ -369,6 +766,9 @@ public class ClothingShopNPC : MonoBehaviour
 
     // Scroll position for clothing items
     private float clothingScrollPosition = 0f;
+
+    // Performance: Frame skip for OnGUI
+    private int guiFrameSkip = 0;
 
     void DrawShopUI()
     {
@@ -417,6 +817,21 @@ public class ClothingShopNPC : MonoBehaviour
             CloseShop();
         }
 
+        // Character Stats button
+        GUIStyle statsButtonStyle = new GUIStyle();
+        statsButtonStyle.fontSize = 9;
+        statsButtonStyle.fontStyle = FontStyle.Bold;
+        statsButtonStyle.alignment = TextAnchor.MiddleCenter;
+        statsButtonStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
+        GUI.DrawTexture(new Rect(panelX + panelWidth - 85, panelY + 8, 50, 22), GetOrCreateColorTexture(new Color(0.2f, 0.35f, 0.5f)));
+        if (GUI.Button(new Rect(panelX + panelWidth - 85, panelY + 8, 50, 22), "STATS", statsButtonStyle))
+        {
+            if (CharacterPanel.Instance != null)
+            {
+                CharacterPanel.Instance.Toggle();
+            }
+        }
+
         // Divider
         GUI.DrawTexture(new Rect(panelX + 15, panelY + 48, panelWidth - 30, 2), GetTexture("divider"));
 
@@ -455,14 +870,21 @@ public class ClothingShopNPC : MonoBehaviour
             itemNameStyle.normal.textColor = equipped == "None" ? new Color(0.5f, 0.5f, 0.5f) : new Color(0.9f, 0.85f, 0.7f);
             GUI.Label(new Rect(slotRect.x + 6, slotRect.y + 18, slotWidth - 30, 16), equipped, itemNameStyle);
 
-            // Color swatch for equipped item
+            // Icon or color swatch for equipped item
             if (equipped != "None")
             {
                 ClothingItem equippedItem = clothingItems.Find(x => x.name == equipped);
                 if (equippedItem != null)
                 {
-                    Texture2D swatchTex = GetOrCreateColorTexture(equippedItem.previewColor);
-                    GUI.DrawTexture(new Rect(slotRect.x + slotWidth - 24, slotRect.y + 14, 18, 18), swatchTex);
+                    if (clothingIcons.ContainsKey(equipped))
+                    {
+                        GUI.DrawTexture(new Rect(slotRect.x + slotWidth - 26, slotRect.y + 12, 20, 20), clothingIcons[equipped]);
+                    }
+                    else
+                    {
+                        Texture2D swatchTex = GetOrCreateColorTexture(equippedItem.previewColor);
+                        GUI.DrawTexture(new Rect(slotRect.x + slotWidth - 24, slotRect.y + 14, 18, 18), swatchTex);
+                    }
                 }
             }
 
@@ -544,14 +966,14 @@ public class ClothingShopNPC : MonoBehaviour
                 GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, 3, itemRect.height), GetTexture("equipped"));
             }
 
-            // Item sprite (pixel art) or color swatch fallback
-            Texture2D itemSprite = null;
-            if (ClothingSprites.Instance != null)
-                itemSprite = ClothingSprites.Instance.GetClothingTexture(item.name);
-            if (itemSprite != null)
-                GUI.DrawTexture(new Rect(itemRect.x + 6, itemRect.y + 6, 28, 28), itemSprite);
+            // Item pixel art icon (32x32)
+            if (clothingIcons.ContainsKey(item.name))
+            {
+                GUI.DrawTexture(new Rect(itemRect.x + 5, itemRect.y + 5, 32, 32), clothingIcons[item.name]);
+            }
             else
             {
+                // Fallback to color swatch if icon not found
                 Texture2D itemSwatch = GetOrCreateColorTexture(item.previewColor);
                 GUI.DrawTexture(new Rect(itemRect.x + 6, itemRect.y + 6, 28, 28), itemSwatch);
             }

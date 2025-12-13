@@ -24,6 +24,7 @@ public class TutorialCat : MonoBehaviour
 
     // Audio
     private AudioSource audioSource;
+    private int guiFrameSkip = 0;
 
     void Awake()
     {
@@ -80,12 +81,11 @@ public class TutorialCat : MonoBehaviour
     {
         yield return new WaitForSeconds(0.5f);
 
-        GameObject player = GameObject.Find("Player");
-        if (player == null) yield break;
+        if (!GameCache.IsPlayerValid()) yield break;
 
         // Spawn position near player
-        Vector3 spawnPos = player.transform.position + player.transform.right * 2f;
-        spawnPos.y = player.transform.position.y;
+        Vector3 spawnPos = GameCache.Player.position + GameCache.Player.right * 2f;
+        spawnPos.y = GameCache.Player.position.y;
 
         // Create smoke poof effect
         CreateSmokeEffect(spawnPos);
@@ -166,10 +166,9 @@ public class TutorialCat : MonoBehaviour
         catObject.transform.position = position;
 
         // Face the player
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (GameCache.IsPlayerValid())
         {
-            Vector3 lookDir = player.transform.position - position;
+            Vector3 lookDir = GameCache.Player.position - position;
             lookDir.y = 0;
             if (lookDir.magnitude > 0.1f)
             {
@@ -335,6 +334,13 @@ public class TutorialCat : MonoBehaviour
 
     void OnGUI()
     {
+        // Performance: Skip frames when not actively needed
+        if (!showingMessage)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
+
         if (!showingMessage || !catVisible || catObject == null || !MainMenu.GameStarted) return;
 
         // Get cat screen position

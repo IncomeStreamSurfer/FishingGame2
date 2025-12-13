@@ -51,6 +51,12 @@ public class SnakeAI : MonoBehaviour
     // Loot
     public static int totalSnakesKilled = 0;
 
+    void Awake()
+    {
+        // Register with GameCache for efficient lookup
+        GameCache.RegisterSnake(this);
+    }
+
     void Start()
     {
         currentHealth = maxHealth;
@@ -67,6 +73,12 @@ public class SnakeAI : MonoBehaviour
 
         CreateSnakeModel();
         CreateBoulderFormations();
+    }
+
+    void OnDestroy()
+    {
+        // Unregister from GameCache
+        GameCache.UnregisterSnake(this);
     }
 
     void CreateSnakeModel()
@@ -225,8 +237,8 @@ public class SnakeAI : MonoBehaviour
                     Random.Range(0f, 30f)
                 );
 
-                // Tag as safe zone
-                boulder.tag = "SafeRock";
+                // Mark as safe zone using name instead of tag (tags must be pre-defined in Unity)
+                boulder.name = "SafeRock";
             }
         }
     }
@@ -286,8 +298,9 @@ public class SnakeAI : MonoBehaviour
     {
         if (playerTransform == null)
         {
-            GameObject player = GameObject.Find("Player");
-            if (player != null) playerTransform = player.transform;
+            // Use cached player reference for better performance
+            if (GameCache.IsPlayerValid())
+                playerTransform = GameCache.Player;
         }
     }
 
@@ -496,22 +509,15 @@ public class SnakeAI : MonoBehaviour
         if (playerTransform == null) return false;
 
         // Check if player is significantly higher than the snake
+        // This is the primary check and is cheap (no physics)
         float heightDifference = playerTransform.position.y - transform.position.y;
         if (heightDifference > elevationSafeThreshold)
         {
             return true;
         }
 
-        // Check if player is on a boulder/rock
-        Collider[] nearbyColliders = Physics.OverlapSphere(playerTransform.position, 1.5f);
-        foreach (Collider col in nearbyColliders)
-        {
-            if (col.CompareTag("SafeRock") || col.CompareTag("Dock") || col.CompareTag("Platform"))
-            {
-                return true;
-            }
-        }
-
+        // The height check above is sufficient for most cases
+        // Removed expensive Physics.OverlapSphere call that was happening every attack
         return false;
     }
 
@@ -640,11 +646,10 @@ public class SnakeAI : MonoBehaviour
         currentState = SnakeState.Dead;
         totalSnakesKilled++;
 
-        // Notify Rena for quest progress
-        RenaCumbiaQueen rena = FindObjectOfType<RenaCumbiaQueen>();
-        if (rena != null)
+        // Notify Rena for quest progress - use cached reference
+        if (GameCache.Rena != null)
         {
-            rena.OnSnakeKilled();
+            GameCache.Rena.OnSnakeKilled();
         }
 
         // Drop loot

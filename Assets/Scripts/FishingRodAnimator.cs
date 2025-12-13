@@ -1,8 +1,11 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class FishingRodAnimator : MonoBehaviour
 {
+    public static FishingRodAnimator Instance { get; private set; }
+
     private Transform rodPivot;
     private Transform rodTip;
     private Transform mainRod;
@@ -11,6 +14,9 @@ public class FishingRodAnimator : MonoBehaviour
     private GameObject bobber;
     private LineRenderer fishingLine;
     private GameObject lineObject;
+
+    // Active ripples tracking
+    private List<GameObject> activeRipples = new List<GameObject>();
 
     // Rod cosmetic visuals
     private int currentRodVisual = -1;
@@ -55,6 +61,8 @@ public class FishingRodAnimator : MonoBehaviour
 
     void Start()
     {
+        Instance = this;
+
         // Cleanup any stray bobbers from previous sessions
         CleanupStrayBobbers();
 
@@ -105,7 +113,8 @@ public class FishingRodAnimator : MonoBehaviour
         foreach (GameObject obj in allObjects)
         {
             if (obj.name == "Bobber" || obj.name == "BobberTop" || obj.name == "BobberBottom" ||
-                obj.name == "SplashRing" || obj.name == "WaterDroplet" || obj.name == "FootRipple")
+                obj.name == "SplashRing" || obj.name == "WaterDroplet" || obj.name == "FootRipple" ||
+                obj.name == "WaterRipple")
             {
                 Debug.Log($"Cleaning up stray object: {obj.name}");
                 Destroy(obj);
@@ -337,6 +346,16 @@ public class FishingRodAnimator : MonoBehaviour
 
     void UpdateRodCosmetics()
     {
+        // Check for level-based rod upgrades
+        int levelRod = GetRodForLevel();
+        if (levelRod > currentRodVisual)
+        {
+            currentRodVisual = levelRod;
+            ApplyRodCosmetics(levelRod);
+            ShowRodUpgradeNotification(levelRod);
+            return;
+        }
+
         if (UIManager.Instance == null) return;
 
         int selectedRod = UIManager.Instance.GetSelectedRodIndex();
@@ -344,6 +363,58 @@ public class FishingRodAnimator : MonoBehaviour
 
         currentRodVisual = selectedRod;
         ApplyRodCosmetics(selectedRod);
+    }
+
+    // Returns rod index based on player level
+    // Bronze rod (1) at level 10, Silver (2) at 40, Golden (3) at 100, Legendary (4) at 175, Epic (5) at 250
+    int GetRodForLevel()
+    {
+        if (LevelingSystem.Instance == null) return 0;
+
+        int level = LevelingSystem.Instance.GetLevel();
+
+        if (level >= 250) return 5; // Epic rod
+        if (level >= 175) return 4; // Legendary rod
+        if (level >= 100) return 3; // Golden rod
+        if (level >= 40) return 2;  // Silver rod
+        if (level >= 10) return 1;  // Bronze rod
+        return 0; // Basic rod
+    }
+
+    private int lastNotifiedRod = -1;
+
+    void ShowRodUpgradeNotification(int rodIndex)
+    {
+        // Don't show notification for Basic rod (index 0) - that's not an upgrade
+        if (rodIndex <= 0) return;
+
+        // Load persisted notification state to avoid showing upgrades player already earned
+        if (lastNotifiedRod == -1)
+        {
+            lastNotifiedRod = PlayerPrefs.GetInt("LastNotifiedRod", 0);
+        }
+
+        if (rodIndex <= lastNotifiedRod) return;
+        lastNotifiedRod = rodIndex;
+
+        // Persist to PlayerPrefs so we don't show again on reload
+        PlayerPrefs.SetInt("LastNotifiedRod", lastNotifiedRod);
+        PlayerPrefs.Save();
+
+        string[] rodNames = { "Basic", "Bronze", "Silver", "Golden", "Legendary", "Epic" };
+        Color[] rodColors = {
+            Color.gray,
+            new Color(0.8f, 0.5f, 0.2f),     // Bronze
+            new Color(0.75f, 0.75f, 0.8f),   // Silver
+            new Color(1f, 0.85f, 0.2f),      // Golden
+            new Color(0.8f, 0.4f, 1f),       // Legendary purple
+            new Color(1f, 0.5f, 0.3f)        // Epic orange
+        };
+
+        if (rodIndex > 0 && rodIndex < rodNames.Length && UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification($"ROD UPGRADE: {rodNames[rodIndex]} Fishing Rod!", rodColors[rodIndex]);
+        }
     }
 
     // Get rod tier for bonus calculations (higher tier = better chance at rare fish)
@@ -1112,6 +1183,16 @@ public class FishingRodAnimator : MonoBehaviour
             bobber = null;
         }
 
+        // Clean up all active water ripples
+        foreach (GameObject ripple in activeRipples)
+        {
+            if (ripple != null)
+            {
+                Object.Destroy(ripple);
+            }
+        }
+        activeRipples.Clear();
+
         // Hide fishing line
         fishingLine.enabled = false;
         isLineOut = false;
@@ -1268,6 +1349,9 @@ public class FishingRodAnimator : MonoBehaviour
         ring.transform.localScale = new Vector3(0.1f, 0.005f, 0.1f);
         Object.Destroy(ring.GetComponent<Collider>());
 
+        // Track this ripple so it can be cleaned up when fishing ends
+        activeRipples.Add(ring);
+
         Material rippleMat = new Material(Shader.Find("Standard"));
         rippleMat.SetFloat("_Mode", 3);
         rippleMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -1302,7 +1386,12 @@ public class FishingRodAnimator : MonoBehaviour
             yield return null;
         }
 
-        if (ring != null) Object.Destroy(ring);
+        // Remove from tracking list and destroy
+        if (ring != null)
+        {
+            activeRipples.Remove(ring);
+            Object.Destroy(ring);
+        }
     }
 
     IEnumerator AnimateCentralSplash(GameObject splash)
@@ -1406,6 +1495,16 @@ public class FishingRodAnimator : MonoBehaviour
             Object.Destroy(bobber);
             bobber = null;
         }
+
+        // Clean up all active water ripples
+        foreach (GameObject ripple in activeRipples)
+        {
+            if (ripple != null)
+            {
+                Object.Destroy(ripple);
+            }
+        }
+        activeRipples.Clear();
 
         // Hide fishing line
         if (fishingLine != null)

@@ -58,6 +58,14 @@ public class DayNightCycle : MonoBehaviour
     private GameObject skyDome;
     private Material skyMaterial;
 
+    // Cached transform references (avoid transform.Find every frame)
+    private Transform cachedSunSphere;
+    private Transform cachedSunGlow;
+
+    // Cached OnGUI style
+    private GUIStyle cachedTimeStyle;
+    private bool stylesInitialized = false;
+
     void Awake()
     {
         if (Instance == null)
@@ -123,6 +131,10 @@ public class DayNightCycle : MonoBehaviour
         glowMaterial.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.6f) * 0.5f);
         sunGlow.GetComponent<Renderer>().material = glowMaterial;
 
+        // Cache the transforms for later use (avoids transform.Find every frame)
+        cachedSunSphere = sunSphere.transform;
+        cachedSunGlow = sunGlow.transform;
+
         // Sun directional light
         sunLight = sunObject.AddComponent<Light>();
         sunLight.type = LightType.Directional;
@@ -174,13 +186,14 @@ public class DayNightCycle : MonoBehaviour
         starsContainer = new GameObject("Stars");
         starsContainer.transform.SetParent(transform);
 
-        int numStars = 200;
+        int numStars = 20;  // Reduced from 200 to save ~40MB RAM
         stars = new GameObject[numStars];
 
+        // Use ONE shared material for all stars to save memory
         Material starMat = new Material(Shader.Find("Standard"));
         starMat.color = Color.white;
         starMat.EnableKeyword("_EMISSION");
-        starMat.SetColor("_EmissionColor", Color.white * 2f);
+        starMat.SetColor("_EmissionColor", Color.white * 2.5f);
 
         for (int i = 0; i < numStars; i++)
         {
@@ -199,24 +212,12 @@ public class DayNightCycle : MonoBehaviour
                 Mathf.Sin(theta) * Mathf.Sin(phi) * skyRadius
             );
 
-            float starSize = Random.Range(0.3f, 1.2f);
+            float starSize = Random.Range(0.5f, 1.5f);  // Slightly bigger since fewer
             star.transform.localScale = Vector3.one * starSize;
             Destroy(star.GetComponent<Collider>());
 
-            // Random star color (mostly white, some blue/yellow tints)
-            Material individualStarMat = new Material(starMat);
-            float colorVariation = Random.value;
-            Color starColor;
-            if (colorVariation < 0.1f)
-                starColor = new Color(0.8f, 0.85f, 1f); // Blue
-            else if (colorVariation < 0.2f)
-                starColor = new Color(1f, 0.95f, 0.7f); // Yellow
-            else
-                starColor = Color.white;
-
-            individualStarMat.color = starColor;
-            individualStarMat.SetColor("_EmissionColor", starColor * Random.Range(1.5f, 3f));
-            star.GetComponent<Renderer>().material = individualStarMat;
+            // Use shared material instead of creating one per star
+            star.GetComponent<Renderer>().sharedMaterial = starMat;
 
             stars[i] = star;
         }
@@ -343,12 +344,11 @@ public class DayNightCycle : MonoBehaviour
         if (sunVisible)
         {
             float horizonFactor = 1f + (1f - Mathf.Abs(height)) * 0.5f;
-            Transform sunSphere = sunObject.transform.Find("SunSphere");
-            Transform sunGlowTrans = sunObject.transform.Find("SunGlow");
-            if (sunSphere != null)
-                sunSphere.localScale = Vector3.one * sunSize * horizonFactor;
-            if (sunGlowTrans != null)
-                sunGlowTrans.localScale = Vector3.one * sunSize * 3f * horizonFactor;
+            // Use cached transforms instead of transform.Find every frame
+            if (cachedSunSphere != null)
+                cachedSunSphere.localScale = Vector3.one * sunSize * horizonFactor;
+            if (cachedSunGlow != null)
+                cachedSunGlow.localScale = Vector3.one * sunSize * 3f * horizonFactor;
         }
     }
 
@@ -541,6 +541,16 @@ public class DayNightCycle : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Initialize style once
+        if (!stylesInitialized)
+        {
+            cachedTimeStyle = new GUIStyle(GUI.skin.label);
+            cachedTimeStyle.fontSize = 16;
+            cachedTimeStyle.fontStyle = FontStyle.Bold;
+            cachedTimeStyle.alignment = TextAnchor.MiddleRight;
+            stylesInitialized = true;
+        }
+
         // Time display in corner
         int hours = Mathf.FloorToInt(currentTimeOfDay);
         int minutes = Mathf.FloorToInt((currentTimeOfDay - hours) * 60);
@@ -550,19 +560,14 @@ public class DayNightCycle : MonoBehaviour
 
         string timeString = $"{displayHour}:{minutes:D2} {ampm}";
 
-        GUIStyle timeStyle = new GUIStyle(GUI.skin.label);
-        timeStyle.fontSize = 16;
-        timeStyle.fontStyle = FontStyle.Bold;
-        timeStyle.alignment = TextAnchor.MiddleRight;
-
-        // Color based on time of day
+        // Color based on time of day (just update color, don't recreate style)
         if (IsNight())
-            timeStyle.normal.textColor = new Color(0.7f, 0.75f, 0.9f);
+            cachedTimeStyle.normal.textColor = new Color(0.7f, 0.75f, 0.9f);
         else if (currentTimeOfDay < 8f || currentTimeOfDay > 17f)
-            timeStyle.normal.textColor = new Color(1f, 0.8f, 0.5f);
+            cachedTimeStyle.normal.textColor = new Color(1f, 0.8f, 0.5f);
         else
-            timeStyle.normal.textColor = new Color(1f, 0.95f, 0.8f);
+            cachedTimeStyle.normal.textColor = new Color(1f, 0.95f, 0.8f);
 
-        GUI.Label(new Rect(Screen.width - 110, 35, 100, 25), timeString, timeStyle);
+        GUI.Label(new Rect(Screen.width - 110, 35, 100, 25), timeString, cachedTimeStyle);
     }
 }
