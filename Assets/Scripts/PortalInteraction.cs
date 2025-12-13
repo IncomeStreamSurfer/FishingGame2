@@ -8,6 +8,10 @@ public class PortalInteraction : MonoBehaviour
     public RealmType destinationRealm = RealmType.TropicalIsland;
     public Vector3 spawnOffset = new Vector3(0, 2f, 5f); // Where player spawns in destination
 
+    // Beta lock - prevents access regardless of level, shows "COMING SOON"
+    public bool betaLocked = false;
+    public string betaMessage = "COMING SOON IN FULL RELEASE!";
+
     private bool isUnlocked = false;
     private bool playerNearby = false;
     private Transform playerTransform;
@@ -55,6 +59,13 @@ public class PortalInteraction : MonoBehaviour
 
     void CheckUnlockStatus()
     {
+        // Beta locked portals can never be unlocked
+        if (betaLocked)
+        {
+            isUnlocked = false;
+            return;
+        }
+
         // Auto-unlock portals with level 0 requirement (return portals)
         if (requiredLevel <= 0 && !isUnlocked)
         {
@@ -100,6 +111,17 @@ public class PortalInteraction : MonoBehaviour
 
     void TryEnterPortal()
     {
+        // Beta locked portals cannot be entered at all
+        if (betaLocked)
+        {
+            Debug.Log($"{portalName} is BETA LOCKED - {betaMessage}");
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification(betaMessage, new Color(1f, 0.8f, 0.3f));
+            }
+            return;
+        }
+
         if (isUnlocked)
         {
             Debug.Log($"Entering {portalName}...");
@@ -137,6 +159,30 @@ public class PortalInteraction : MonoBehaviour
         style.fontSize = 18;
         style.fontStyle = FontStyle.Bold;
         style.alignment = TextAnchor.MiddleCenter;
+
+        // Beta locked portals show special message
+        if (betaLocked)
+        {
+            // Portal name in orange
+            style.normal.textColor = new Color(1f, 0.7f, 0.3f);
+            GUI.Label(new Rect(Screen.width / 2 - 150, 80, 300, 30), portalName, style);
+
+            // Coming soon message
+            style.fontSize = 16;
+            style.normal.textColor = new Color(1f, 0.85f, 0.4f);
+            GUI.Label(new Rect(Screen.width / 2 - 150, 110, 300, 25), "COMING SOON!", style);
+
+            // Beta message
+            style.fontSize = 12;
+            style.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+            GUI.Label(new Rect(Screen.width / 2 - 150, 135, 300, 25), betaMessage, style);
+
+            // Beta badge
+            style.fontSize = 11;
+            style.normal.textColor = new Color(0.3f, 0.7f, 1f);
+            GUI.Label(new Rect(Screen.width / 2 - 150, 160, 300, 20), "[BETA VERSION - Tropical Island Only]", style);
+            return;
+        }
 
         // Portal name
         style.normal.textColor = isUnlocked ? Color.green : Color.red;

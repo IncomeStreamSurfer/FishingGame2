@@ -2921,13 +2921,16 @@ public class AutoSetup
             RealmType.IceRealm
         };
 
+        // BETA: Lock Ice and Jungle portals until full release
+        bool[] betaLocked = { true, true }; // Both portals locked for beta
+
         for (int i = 0; i < 2; i++)
         {
-            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i], destinations[i]);
+            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i], destinations[i], betaLocked[i]);
         }
     }
 
-    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor, RealmType destination = RealmType.TropicalIsland)
+    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor, RealmType destination = RealmType.TropicalIsland, bool isBetaLocked = false)
     {
         GameObject portal = new GameObject(name);
         portal.transform.SetParent(parent);
@@ -2940,6 +2943,13 @@ public class AutoSetup
         portalInteraction.requiredLevel = requiredLevel;
         portalInteraction.destinationRealm = destination;
         portalInteraction.spawnOffset = new Vector3(0, 2f, 5f); // Spawn near return portal
+
+        // BETA LOCK - prevents access during beta testing
+        portalInteraction.betaLocked = isBetaLocked;
+        if (isBetaLocked)
+        {
+            portalInteraction.betaMessage = "Available in full release!";
+        }
 
         // Portal materials
         Material stoneMat = new Material(Shader.Find("Standard"));
