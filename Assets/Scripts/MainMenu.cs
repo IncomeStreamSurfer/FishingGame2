@@ -38,6 +38,13 @@ public class MainMenu : MonoBehaviour
     // Water animation for background
     private float waterTime = 0f;
 
+    // Title screen effects
+    private float lightningTimer = 0f;
+    private float lightningFlash = 0f;
+    private float skullPulse = 0f;
+    private float[] fishPositions = new float[5];
+    private float bloodDrip = 0f;
+
     // Cached GUIStyles for performance
     private static GUIStyle cachedVersionStyle;
     private static GUIStyle cachedTitleStyle;
@@ -77,19 +84,30 @@ public class MainMenu : MonoBehaviour
 
     void CreateCachedTextures()
     {
-        CacheTexture("overlay", new Color(0f, 0f, 0f, 0.85f));
-        CacheTexture("panelBg", new Color(0.08f, 0.12f, 0.18f, 0.95f));
-        CacheTexture("panelBorder", new Color(0.2f, 0.4f, 0.6f, 1f));
-        CacheTexture("buttonNormal", new Color(0.15f, 0.25f, 0.4f, 0.95f));
-        CacheTexture("buttonHover", new Color(0.2f, 0.35f, 0.55f, 1f));
-        CacheTexture("buttonPressed", new Color(0.1f, 0.2f, 0.3f, 1f));
-        CacheTexture("titleGlow", new Color(0.3f, 0.6f, 0.9f, 0.3f));
-        CacheTexture("waterDark", new Color(0.05f, 0.15f, 0.25f, 1f));
-        CacheTexture("waterLight", new Color(0.1f, 0.25f, 0.4f, 1f));
-        CacheTexture("sliderBg", new Color(0.1f, 0.1f, 0.15f, 1f));
-        CacheTexture("sliderFill", new Color(0.3f, 0.5f, 0.8f, 1f));
-        CacheTexture("saveSlotBg", new Color(0.1f, 0.15f, 0.22f, 0.95f));
+        CacheTexture("overlay", new Color(0f, 0f, 0f, 0.75f));
+        CacheTexture("panelBg", new Color(0.05f, 0.08f, 0.12f, 0.95f));
+        CacheTexture("panelBorder", new Color(0.6f, 0.2f, 0.2f, 1f));
+        CacheTexture("buttonNormal", new Color(0.2f, 0.08f, 0.08f, 0.95f));
+        CacheTexture("buttonHover", new Color(0.4f, 0.15f, 0.15f, 1f));
+        CacheTexture("buttonPressed", new Color(0.15f, 0.05f, 0.05f, 1f));
+        CacheTexture("titleGlow", new Color(0.8f, 0.2f, 0.1f, 0.4f));
+        CacheTexture("waterDark", new Color(0.02f, 0.05f, 0.12f, 1f));
+        CacheTexture("waterLight", new Color(0.05f, 0.1f, 0.2f, 1f));
+        CacheTexture("waterBlood", new Color(0.15f, 0.02f, 0.02f, 0.5f));
+        CacheTexture("sliderBg", new Color(0.1f, 0.05f, 0.05f, 1f));
+        CacheTexture("sliderFill", new Color(0.7f, 0.2f, 0.2f, 1f));
+        CacheTexture("saveSlotBg", new Color(0.1f, 0.08f, 0.08f, 0.95f));
         CacheTexture("white", Color.white);
+        CacheTexture("red", new Color(0.8f, 0.1f, 0.1f, 1f));
+        CacheTexture("darkRed", new Color(0.4f, 0.05f, 0.05f, 1f));
+        CacheTexture("lightning", new Color(1f, 1f, 1f, 0.9f));
+        CacheTexture("skull", new Color(0.9f, 0.85f, 0.75f, 1f));
+
+        // Initialize fish positions for swimming animation
+        for (int i = 0; i < fishPositions.Length; i++)
+        {
+            fishPositions[i] = Random.Range(0f, Screen.width);
+        }
     }
 
     void CacheTexture(string name, Color color)
@@ -139,6 +157,27 @@ public class MainMenu : MonoBehaviour
 
         titleBob += Time.deltaTime;
         waterTime += Time.deltaTime;
+        skullPulse += Time.deltaTime;
+        bloodDrip += Time.deltaTime * 0.5f;
+
+        // Lightning effect - random flashes
+        lightningTimer -= Time.deltaTime;
+        if (lightningTimer <= 0f)
+        {
+            lightningTimer = Random.Range(3f, 8f);
+            lightningFlash = 1f;
+        }
+        lightningFlash = Mathf.Max(0f, lightningFlash - Time.deltaTime * 4f);
+
+        // Animate fish swimming across screen
+        for (int i = 0; i < fishPositions.Length; i++)
+        {
+            fishPositions[i] -= Time.deltaTime * (30f + i * 15f);
+            if (fishPositions[i] < -100f)
+            {
+                fishPositions[i] = Screen.width + Random.Range(50f, 200f);
+            }
+        }
 
         // Fade in
         fadeInTime += Time.deltaTime;
@@ -213,52 +252,181 @@ public class MainMenu : MonoBehaviour
         }
 
         // Version and credits - update color dynamically
-        cachedVersionStyle.normal.textColor = new Color(0.5f, 0.6f, 0.7f, menuAlpha);
-        GUI.Label(new Rect(Screen.width - 210, Screen.height - 30, 200, 25), "v1.0 - Made with Claude", cachedVersionStyle);
+        cachedVersionStyle.normal.textColor = new Color(0.4f, 0.35f, 0.35f, menuAlpha);
+        GUI.Label(new Rect(Screen.width - 210, Screen.height - 30, 200, 25), "BETA v0.1", cachedVersionStyle);
 
         GUI.color = Color.white;
     }
 
     void DrawWaterBackground()
     {
-        // Animated wave pattern
-        int numWaves = 20;
+        // Dark stormy ocean background
+        GUI.color = new Color(0.02f, 0.04f, 0.08f, 1f);
+        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("white"));
+
+        // Animated wave pattern - more dramatic
+        int numWaves = 25;
         float waveHeight = Screen.height / (float)numWaves;
 
         for (int i = 0; i < numWaves; i++)
         {
-            float waveOffset = Mathf.Sin(waterTime * 0.5f + i * 0.3f) * 20f;
-            float alpha = 0.3f + Mathf.Sin(waterTime * 0.3f + i * 0.2f) * 0.1f;
+            float waveOffset = Mathf.Sin(waterTime * 0.8f + i * 0.4f) * 30f;
+            float waveOffset2 = Mathf.Cos(waterTime * 0.6f + i * 0.25f) * 15f;
+            float alpha = 0.4f + Mathf.Sin(waterTime * 0.4f + i * 0.15f) * 0.2f;
 
-            Texture2D tex = (i % 2 == 0) ? GetTexture("waterDark") : GetTexture("waterLight");
+            Texture2D tex = (i % 3 == 0) ? GetTexture("waterBlood") :
+                           (i % 2 == 0) ? GetTexture("waterDark") : GetTexture("waterLight");
             GUI.color = new Color(1, 1, 1, alpha);
-            GUI.DrawTexture(new Rect(waveOffset, i * waveHeight, Screen.width + 40, waveHeight + 2), tex);
+            GUI.DrawTexture(new Rect(waveOffset + waveOffset2, i * waveHeight, Screen.width + 60, waveHeight + 3), tex);
         }
+
+        // Swimming fish silhouettes in the background
+        GUI.color = new Color(0.03f, 0.06f, 0.1f, 0.6f);
+        for (int i = 0; i < fishPositions.Length; i++)
+        {
+            float y = Screen.height * 0.5f + Mathf.Sin(waterTime + i * 2f) * 100f + i * 60f;
+            float size = 40f + i * 10f;
+            // Simple fish shape (elongated oval)
+            GUI.DrawTexture(new Rect(fishPositions[i], y, size * 2f, size), GetTexture("white"));
+        }
+
+        // Blood drips from top
+        GUI.color = new Color(0.5f, 0.05f, 0.05f, 0.3f);
+        for (int i = 0; i < 8; i++)
+        {
+            float x = Screen.width * (i + 0.5f) / 8f + Mathf.Sin(i * 1.5f) * 30f;
+            float dripY = (bloodDrip * 200f + i * 50f) % (Screen.height + 100f) - 50f;
+            float dripHeight = 80f + Mathf.Sin(i * 2f) * 40f;
+            GUI.DrawTexture(new Rect(x, dripY, 4f, dripHeight), GetTexture("red"));
+        }
+
+        // Lightning flash overlay
+        if (lightningFlash > 0f)
+        {
+            GUI.color = new Color(1f, 1f, 1f, lightningFlash * 0.3f);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("white"));
+        }
+
         GUI.color = Color.white;
     }
 
     void DrawTitle()
     {
         float bobOffset = Mathf.Sin(titleBob * 1.5f) * 8f;
+        float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 5f;
+        float pulseScale = 1f + Mathf.Sin(skullPulse * 2f) * 0.02f;
 
-        // Glow behind title
-        GUI.color = new Color(1, 1, 1, 0.3f * menuAlpha);
-        GUI.DrawTexture(new Rect(Screen.width / 2 - 250, 50 + bobOffset - 10, 500, 100), GetTexture("titleGlow"));
+        // Large ominous glow behind title
+        GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.25f * menuAlpha);
+        GUI.DrawTexture(new Rect(Screen.width / 2 - 350, 30 + bobOffset, 700, 180), GetTexture("white"));
 
-        // Title text - update color dynamically
-        cachedTitleStyle.normal.textColor = new Color(0.9f, 0.95f, 1f, menuAlpha);
+        // Secondary glow
+        GUI.color = new Color(1f, 0.3f, 0.1f, 0.15f * menuAlpha);
+        GUI.DrawTexture(new Rect(Screen.width / 2 - 300, 50 + bobOffset, 600, 140), GetTexture("white"));
 
-        // Shadow
-        GUI.color = new Color(0, 0, 0, 0.5f * menuAlpha);
-        GUI.Label(new Rect(4, 64 + bobOffset, Screen.width, 80), "FISHING GAME", cachedTitleStyle);
+        // Draw crossed fishing rods behind title (X shape)
+        GUI.color = new Color(0.3f, 0.25f, 0.2f, 0.8f * menuAlpha);
+        DrawRotatedRect(new Rect(Screen.width / 2 - 180, 40 + bobOffset, 360, 8), 15f);
+        DrawRotatedRect(new Rect(Screen.width / 2 - 180, 40 + bobOffset, 360, 8), -15f);
 
-        // Main title
+        // "FISH" text
+        GUIStyle fishStyle = new GUIStyle();
+        fishStyle.fontSize = 90;
+        fishStyle.fontStyle = FontStyle.Bold;
+        fishStyle.alignment = TextAnchor.MiddleCenter;
+
+        // Blood drip shadow
+        GUI.color = new Color(0.3f, 0f, 0f, 0.6f * menuAlpha);
+        fishStyle.normal.textColor = new Color(0.3f, 0f, 0f, menuAlpha);
+        GUI.Label(new Rect(shakeX + 4, 44 + bobOffset, Screen.width, 100), "FISH", fishStyle);
+
+        // Main "FISH" text - blood red
         GUI.color = new Color(1, 1, 1, menuAlpha);
-        GUI.Label(new Rect(0, 60 + bobOffset, Screen.width, 80), "FISHING GAME", cachedTitleStyle);
+        fishStyle.normal.textColor = new Color(0.85f, 0.15f, 0.1f, menuAlpha);
+        GUI.Label(new Rect(shakeX, 40 + bobOffset, Screen.width, 100), "FISH", fishStyle);
 
-        // Subtitle - Quote from Wetsuit Pete - update color dynamically
-        cachedSubStyle.normal.textColor = new Color(0.6f, 0.8f, 1f, menuAlpha);
-        GUI.Label(new Rect(0, 140 + bobOffset, Screen.width, 30), "\"eat fish, don't drown\" - wetsuit pete", cachedSubStyle);
+        // "OR" text - smaller, white/gray
+        GUIStyle orStyle = new GUIStyle();
+        orStyle.fontSize = 36;
+        orStyle.fontStyle = FontStyle.BoldAndItalic;
+        orStyle.alignment = TextAnchor.MiddleCenter;
+        orStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f, menuAlpha);
+        GUI.Label(new Rect(shakeX, 115 + bobOffset, Screen.width, 50), "OR", orStyle);
+
+        // "DIE" text - even more dramatic
+        GUIStyle dieStyle = new GUIStyle();
+        dieStyle.fontSize = 100;
+        dieStyle.fontStyle = FontStyle.Bold;
+        dieStyle.alignment = TextAnchor.MiddleCenter;
+
+        // Heavy shadow for DIE
+        GUI.color = new Color(0, 0, 0, 0.7f * menuAlpha);
+        dieStyle.normal.textColor = new Color(0, 0, 0, menuAlpha);
+        GUI.Label(new Rect(shakeX + 5, 140 + bobOffset, Screen.width, 110), "DIE", dieStyle);
+
+        // Main "DIE" text - darker blood red, pulsing
+        float diePulse = 0.7f + Mathf.Sin(skullPulse * 3f) * 0.15f;
+        GUI.color = new Color(1, 1, 1, menuAlpha);
+        dieStyle.normal.textColor = new Color(0.7f * diePulse, 0.05f, 0.05f, menuAlpha);
+        GUI.Label(new Rect(shakeX, 135 + bobOffset, Screen.width, 110), "DIE", dieStyle);
+
+        // Draw skull and crossbones between the words (simple version)
+        DrawSkull(Screen.width / 2 - 15, 125 + bobOffset, 30f * pulseScale, menuAlpha);
+
+        // Tagline
+        GUIStyle tagStyle = new GUIStyle();
+        tagStyle.fontSize = 18;
+        tagStyle.fontStyle = FontStyle.Italic;
+        tagStyle.alignment = TextAnchor.MiddleCenter;
+        tagStyle.normal.textColor = new Color(0.5f, 0.55f, 0.6f, menuAlpha);
+        GUI.Label(new Rect(0, 235 + bobOffset, Screen.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
+
+        // Beta version badge
+        GUIStyle betaStyle = new GUIStyle();
+        betaStyle.fontSize = 14;
+        betaStyle.fontStyle = FontStyle.Bold;
+        betaStyle.alignment = TextAnchor.MiddleCenter;
+        betaStyle.normal.textColor = new Color(1f, 0.8f, 0.2f, menuAlpha * 0.9f);
+        GUI.Label(new Rect(0, 265 + bobOffset, Screen.width, 25), "[ BETA - Tropical Island ]", betaStyle);
+    }
+
+    void DrawRotatedRect(Rect rect, float angle)
+    {
+        // Simple rotation approximation using multiple offset rects
+        Matrix4x4 matrixBackup = GUI.matrix;
+        GUIUtility.RotateAroundPivot(angle, new Vector2(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        GUI.DrawTexture(rect, GetTexture("white"));
+        GUI.matrix = matrixBackup;
+    }
+
+    void DrawSkull(float x, float y, float size, float alpha)
+    {
+        // Simple skull shape using primitives
+        GUI.color = new Color(0.9f, 0.85f, 0.75f, alpha * 0.9f);
+
+        // Skull head (circle approximation with oval)
+        GUI.DrawTexture(new Rect(x - size * 0.4f, y - size * 0.5f, size * 0.8f, size * 0.7f), GetTexture("white"));
+
+        // Eye sockets (dark)
+        GUI.color = new Color(0.1f, 0.05f, 0.05f, alpha);
+        GUI.DrawTexture(new Rect(x - size * 0.25f, y - size * 0.2f, size * 0.18f, size * 0.2f), GetTexture("white"));
+        GUI.DrawTexture(new Rect(x + size * 0.07f, y - size * 0.2f, size * 0.18f, size * 0.2f), GetTexture("white"));
+
+        // Nose hole
+        GUI.DrawTexture(new Rect(x - size * 0.06f, y + size * 0.05f, size * 0.12f, size * 0.12f), GetTexture("white"));
+
+        // Jaw/teeth area
+        GUI.color = new Color(0.85f, 0.8f, 0.7f, alpha * 0.9f);
+        GUI.DrawTexture(new Rect(x - size * 0.3f, y + size * 0.15f, size * 0.6f, size * 0.2f), GetTexture("white"));
+
+        // Teeth lines
+        GUI.color = new Color(0.1f, 0.05f, 0.05f, alpha * 0.7f);
+        for (int i = 0; i < 4; i++)
+        {
+            GUI.DrawTexture(new Rect(x - size * 0.2f + i * size * 0.12f, y + size * 0.18f, 2, size * 0.12f), GetTexture("white"));
+        }
+
+        GUI.color = Color.white;
     }
 
     void DrawMainMenu()
