@@ -591,6 +591,7 @@ public class PlayerController : MonoBehaviour
     bool IsAnyUIOpen()
     {
         // Check all UI panels that could be open
+        if (UIManager.Instance != null && UIManager.Instance.IsInventoryOpen()) return true;
         if (CharacterPanel.Instance != null && CharacterPanel.Instance.IsOpen()) return true;
         if (FishDiary.Instance != null && FishDiary.Instance.IsOpen()) return true;
         if (FishInventoryPanel.Instance != null && FishInventoryPanel.Instance.IsOpen()) return true;

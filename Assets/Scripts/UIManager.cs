@@ -450,6 +450,11 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public bool IsInventoryOpen()
+    {
+        return inventoryOpen;
+    }
+
     void OnGUI()
     {
         // CRITICAL HUD - NO FRAME SKIPPING to prevent flickering

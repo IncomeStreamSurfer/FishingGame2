@@ -7,7 +7,7 @@ public enum FishBuffType
     SnappersDelight,    // Red Snapper - No health loss for 5 min
     MarlinsLuck,        // Blue Marlin - Rare fish chance +50% for 5 min
     TroutsFortune,      // Rainbow Trout - +50% gold from fish for 5 min
-    SunshoreSurge,      // Sunshore Od - +50% XP for 5 min
+    SunshoreSurge,      // Sunshore Cod - +50% XP for 5 min
     SnubnoseSpeed,      // Icelandic Snubnose - +25% movement speed for 5 min
     SeahorsesBounty     // Seahorse - Double fish catches for 5 min
 }
@@ -119,13 +119,13 @@ public class FishBuffSystem : MonoBehaviour
             new Color(1f, 0.85f, 0.2f) // Yellow/Gold bowl
         ));
 
-        // Sunshore Od - XP bonus
+        // Sunshore Cod - XP bonus
         allBuffs.Add(new FishBuff(
             FishBuffType.SunshoreSurge,
             "Sunshore Surge",
             "+50% XP from all sources for 5 minutes!",
             "sunshore_od",
-            "Sunshore Od",
+            "Sunshore Cod",
             300f,
             new Color(1f, 0.6f, 0.2f) // Orange bowl
         ));

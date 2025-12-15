@@ -370,8 +370,8 @@ public class ChefNPC : MonoBehaviour
         float distance = Vector3.Distance(transform.position, playerTransform.position);
         playerNearby = distance <= interactionRange;
 
-        // F key to interact
-        if (playerNearby && Input.GetKeyDown(KeyCode.F) && MainMenu.GameStarted)
+        // E key to interact
+        if (playerNearby && Input.GetKeyDown(KeyCode.E) && MainMenu.GameStarted)
         {
             if (!showingDialogue)
             {
@@ -466,7 +466,7 @@ public class ChefNPC : MonoBehaviour
 
         promptStyle.fontSize = 14;
         promptStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
-        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 95, 200, 25), "[F] Talk", promptStyle);
+        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 95, 200, 25), "[E] Talk", promptStyle);
     }
 
     void DrawDialogue()
@@ -759,6 +759,30 @@ public class ChefNPC : MonoBehaviour
             currentQuestFishId = null;
             currentQuestFishName = null;
         }
+    }
+
+    // Static method to check if player is near the chef (within 5 units)
+    public static bool IsPlayerNearChef()
+    {
+        if (Instance == null) return false;
+        if (!GameCache.IsPlayerValid()) return false;
+
+        float distance = Vector3.Distance(Instance.transform.position, GameCache.Player.position);
+        return distance <= 5f;
+    }
+
+    // Static method to check if first quest is completed
+    public static bool HasCompletedFirstQuest()
+    {
+        if (FishBuffSystem.Instance == null) return false;
+
+        // Check if any quest in completedQuests is true
+        foreach (var kvp in FishBuffSystem.Instance.completedQuests)
+        {
+            if (kvp.Value) return true;
+        }
+
+        return false;
     }
 
     void OnDestroy()

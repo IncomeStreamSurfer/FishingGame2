@@ -257,7 +257,7 @@ public class FishingSystem : MonoBehaviour
             healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
         });
         fishDatabase.Add(new FishData {
-            id = "sunshore_od", fishName = "Sunshore Od", rarity = Rarity.Rare,
+            id = "sunshore_od", fishName = "Sunshore Cod", rarity = Rarity.Rare,
             coinValue = 0, weight = 0, fishColor = new Color(1f, 0.8f, 0.3f),
             isSpecialFish = true, sellToNPC = 100, xpValue = 100,
             healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow

@@ -46,6 +46,7 @@ public class FishInventoryPanel : MonoBehaviour
     private static GUIStyle cachedTotalStyle;
     private static GUIStyle cachedSellBtnStyle;
     private static GUIStyle cachedCookBtnStyle;
+    private static GUIStyle cachedMakeBuffBtnStyle;
     private static GUIStyle cachedHintStyle;
     private static GUIStyle cachedTabStyle;
     private static GUIStyle cachedTabActiveStyle;
@@ -344,6 +345,12 @@ public class FishInventoryPanel : MonoBehaviour
         cachedCookBtnStyle.alignment = TextAnchor.MiddleCenter;
         cachedCookBtnStyle.normal.textColor = Color.white;
 
+        cachedMakeBuffBtnStyle = new GUIStyle();
+        cachedMakeBuffBtnStyle.fontSize = 8;
+        cachedMakeBuffBtnStyle.fontStyle = FontStyle.Bold;
+        cachedMakeBuffBtnStyle.alignment = TextAnchor.MiddleCenter;
+        cachedMakeBuffBtnStyle.normal.textColor = Color.white;
+
         cachedTabStyle = new GUIStyle();
         cachedTabStyle.fontSize = 11;
         cachedTabStyle.fontStyle = FontStyle.Bold;
@@ -417,6 +424,17 @@ public class FishInventoryPanel : MonoBehaviour
         window.DrawResizeHandle();
     }
 
+    // Check if fish can be made into a buff
+    bool IsBuffFish(string fishId)
+    {
+        string[] buffFishIds = { "red_snapper", "blue_marlin", "rainbow_trout", "sunshore_od", "icelandic_snubnose", "seahorse" };
+        foreach (string id in buffFishIds)
+        {
+            if (fishId == id) return true;
+        }
+        return false;
+    }
+
     void DrawInventoryTab(float panelX, float panelY, float panelWidth, float panelHeight)
     {
         // Get fish sorted by value
@@ -429,6 +447,10 @@ public class FishInventoryPanel : MonoBehaviour
 
         // Check if near BBQ for cooking
         bool nearBBQ = BBQStation.IsPlayerNearBBQ();
+
+        // Check if near Chef for making buffs
+        bool nearChef = ChefNPC.IsPlayerNearChef();
+        bool hasCompletedQuest = ChefNPC.HasCompletedFirstQuest();
 
         // Hint messages when actions are unavailable
         if (!sellModeEnabled && !nearBBQ && fishList.Count > 0)
@@ -537,6 +559,19 @@ public class FishInventoryPanel : MonoBehaviour
                         SellFish(fish.id, fish.coinValue, fish.isSpecialFish);
                     }
                 }
+                // MAKE BUFF button when near Chef, quest completed, and fish is a buff fish
+                else if (nearChef && hasCompletedQuest && !sellModeEnabled && fish.isSpecialFish && IsBuffFish(fish.id))
+                {
+                    Rect buffBtnRect = new Rect(itemRect.x + 150, itemRect.y + 14, 50, 18);
+                    Color btnColor = new Color(0.6f, 0.3f, 0.8f); // Purple color for buff
+                    GUI.DrawTexture(buffBtnRect, GetOrCreateColorTexture(btnColor));
+                    GUI.Label(buffBtnRect, "MAKE BUFF", cachedMakeBuffBtnStyle);
+
+                    if (GUI.Button(buffBtnRect, "", GUIStyle.none))
+                    {
+                        MakeBuffFromFish(fish.id);
+                    }
+                }
                 // COOK button when near BBQ and not in sell mode
                 else if (nearBBQ && !sellModeEnabled && !fish.isSpecialFish)
                 {
@@ -564,6 +599,49 @@ public class FishInventoryPanel : MonoBehaviour
             float scrollBarY = listY + (scrollPos / maxScroll) * (listHeight - scrollBarHeight);
             GUI.DrawTexture(new Rect(panelX + panelWidth - 8, scrollBarY, 4, scrollBarHeight), GetOrCreateColorTexture(new Color(0.5f, 0.45f, 0.35f)));
         }
+    }
+
+    void MakeBuffFromFish(string fishId)
+    {
+        if (FishingSystem.Instance == null || FishBuffSystem.Instance == null) return;
+
+        // Find the fish in special inventory
+        var specialInv = FishingSystem.Instance.specialFishInventory;
+        int fishIndex = specialInv.FindIndex(f => f.id == fishId);
+        if (fishIndex < 0)
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Fish not found!", new Color(1f, 0.4f, 0.2f));
+            }
+            return;
+        }
+
+        // Get the buff associated with this fish
+        FishBuff buffData = FishBuffSystem.Instance.GetBuffByFishId(fishId);
+        if (buffData == null)
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Invalid buff fish!", new Color(1f, 0.4f, 0.2f));
+            }
+            return;
+        }
+
+        // Remove fish from special inventory
+        FishData fish = specialInv[fishIndex];
+        specialInv.RemoveAt(fishIndex);
+
+        // Add buff to inventory
+        FishBuffSystem.Instance.AddBuffToInventory(buffData.type, 1);
+
+        // Show notification
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification($"Created {buffData.buffName}!", buffData.bowlColor);
+        }
+
+        Debug.Log($"Made buff {buffData.buffName} from fish {fishId}");
     }
 
     void CookFish(string fishId)
