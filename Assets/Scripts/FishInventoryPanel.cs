@@ -526,7 +526,7 @@ public class FishInventoryPanel : MonoBehaviour
                 // SELL button when in sell mode
                 if (sellModeEnabled && fish.coinValue > 0)
                 {
-                    Rect sellBtnRect = new Rect(itemRect.x + itemRect.width - 62, itemRect.y + 14, 32, 18);
+                    Rect sellBtnRect = new Rect(itemRect.x + 160, itemRect.y + 14, 32, 18);
                     // Special fish get golden sell button
                     Color btnColor = fish.isSpecialFish ? new Color(0.7f, 0.5f, 0.2f) : new Color(0.2f, 0.6f, 0.3f);
                     GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(btnColor));
@@ -540,7 +540,7 @@ public class FishInventoryPanel : MonoBehaviour
                 // COOK button when near BBQ and not in sell mode
                 else if (nearBBQ && !sellModeEnabled && !fish.isSpecialFish)
                 {
-                    Rect cookBtnRect = new Rect(itemRect.x + itemRect.width - 62, itemRect.y + 14, 36, 18);
+                    Rect cookBtnRect = new Rect(itemRect.x + 160, itemRect.y + 14, 36, 18);
                     Color btnColor = new Color(0.8f, 0.4f, 0.1f);
                     GUI.DrawTexture(cookBtnRect, GetOrCreateColorTexture(btnColor));
                     GUI.Label(cookBtnRect, "COOK", cachedCookBtnStyle);
