@@ -165,8 +165,19 @@ public class AutoSetup
         GameObject foodInventory = new GameObject("FoodInventory");
         foodInventory.AddComponent<FoodInventory>();
 
+        // Fish Buff System
+        GameObject fishBuffSystem = new GameObject("FishBuffSystem");
+        fishBuffSystem.AddComponent<FishBuffSystem>();
+
+        // Fish Buff Sprites
+        GameObject fishBuffSprites = new GameObject("FishBuffSprites");
+        fishBuffSprites.AddComponent<FishBuffSprites>();
+
         // BBQ Station at end of dock
         CreateBBQ();
+
+        // Chef NPC (random location on beach)
+        CreateChefNPC();
 
         // Quest NPC on the dock
         CreateQuestNPC();
@@ -2487,6 +2498,19 @@ public class AutoSetup
 
         // Add the DropRatesSign component to the board
         board.AddComponent<DropRatesSign>();
+    }
+
+    static void CreateChefNPC()
+    {
+        // Chef Gusteau - cooks fish into buffs
+        // Random location on the beach (away from dock and other NPCs)
+        float randomX = UnityEngine.Random.Range(25f, 45f);
+        float randomZ = UnityEngine.Random.Range(15f, 35f);
+
+        GameObject chef = new GameObject("ChefNPC");
+        chef.transform.position = new Vector3(randomX, 1.6f, randomZ);
+        chef.transform.rotation = Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0);
+        chef.AddComponent<ChefNPC>();
     }
 
     static void CreateGoldieBanks()

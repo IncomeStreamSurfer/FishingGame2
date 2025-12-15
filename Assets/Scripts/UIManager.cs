@@ -1016,7 +1016,7 @@ public class UIManager : MonoBehaviour
         }
 
         // Tabs - smaller
-        string[] tabs = { "Equipment", "Quests", "Shop", "Wardrobe", "Melee" };
+        string[] tabs = { "Equipment", "Quests", "Buffs", "Wardrobe", "Melee" };
         for (int i = 0; i < tabs.Length; i++)
         {
             GUIStyle style = (i == currentTab) ? tabActiveStyle : tabStyle;
@@ -1033,7 +1033,7 @@ public class UIManager : MonoBehaviour
         {
             case 0: DrawEquipmentTab(contentRect); break;
             case 1: DrawQuestsTab(contentRect); break;
-            case 2: DrawShopTab(contentRect); break;
+            case 2: DrawFishBuffsTab(contentRect); break;
             case 3: DrawWardrobeTab(contentRect); break;
             case 4: DrawMeleeWeaponsTab(contentRect); break;
         }
@@ -1201,99 +1201,178 @@ public class UIManager : MonoBehaviour
             "Visit the Quest NPC near the dock to receive new quests!\nComplete quests to earn XP and coins.", hintStyle);
     }
 
-    // Shop scroll position
-    private float shopScrollPosition = 0f;
+    // Fish Buffs scroll position
+    private float buffScrollPosition = 0f;
 
-    void DrawShopTab(Rect rect)
+    void DrawFishBuffsTab(Rect rect)
     {
-        GUI.Label(new Rect(rect.x, rect.y, 160, 18), "FISHING SHOP", headerStyle);
+        GUI.Label(new Rect(rect.x, rect.y, 160, 18), "FISH BUFFS", headerStyle);
 
-        int coins = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
+        if (FishBuffSystem.Instance == null)
+        {
+            GUIStyle errorStyle = new GUIStyle();
+            errorStyle.normal.textColor = new Color(0.7f, 0.5f, 0.4f);
+            errorStyle.fontSize = 11;
+            errorStyle.alignment = TextAnchor.MiddleCenter;
+            errorStyle.wordWrap = true;
+            GUI.Label(new Rect(rect.x, rect.y + 60, rect.width, 60),
+                "Fish Buff System not available.\nTalk to Chef Gusteau to unlock buffs!", errorStyle);
+            return;
+        }
 
-        GUIStyle coinStyle = new GUIStyle();
-        coinStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-        coinStyle.fontSize = 11;
-        coinStyle.fontStyle = FontStyle.Bold;
+        // Active buffs section
+        GUIStyle activeStyle = new GUIStyle();
+        activeStyle.normal.textColor = new Color(0.3f, 1f, 0.5f);
+        activeStyle.fontSize = 10;
+        activeStyle.fontStyle = FontStyle.Bold;
 
-        GUI.Label(new Rect(rect.x + rect.width - 120, rect.y, 120, 18), $"Gold: {FormatNumber(coins)}", coinStyle);
+        float activeY = rect.y + 20;
+        if (FishBuffSystem.Instance.activeBuffs.Count > 0)
+        {
+            GUI.Label(new Rect(rect.x, activeY, 100, 14), "ACTIVE:", activeStyle);
+            activeY += 14;
 
-        // Scrollable area for items
-        float itemHeight = 32;
-        float visibleHeight = rect.height - 30;
-        float totalHeight = shopItems.Length * (itemHeight + 3);
+            foreach (var active in FishBuffSystem.Instance.activeBuffs)
+            {
+                int mins = Mathf.FloorToInt(active.remainingTime / 60f);
+                int secs = Mathf.FloorToInt(active.remainingTime % 60f);
+                GUI.Label(new Rect(rect.x + 4, activeY, rect.width - 8, 12),
+                    $"{active.buffName} - {mins}:{secs:D2}", activeStyle);
+                activeY += 13;
+            }
+            activeY += 5;
+        }
+        else
+        {
+            GUIStyle noActiveStyle = new GUIStyle();
+            noActiveStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+            noActiveStyle.fontSize = 9;
+            GUI.Label(new Rect(rect.x, activeY, rect.width, 14), "No active buffs", noActiveStyle);
+            activeY += 18;
+        }
+
+        // Inventory section
+        GUIStyle invHeader = new GUIStyle();
+        invHeader.normal.textColor = new Color(1f, 0.9f, 0.6f);
+        invHeader.fontSize = 10;
+        invHeader.fontStyle = FontStyle.Bold;
+        GUI.Label(new Rect(rect.x, activeY, 100, 14), "INVENTORY:", invHeader);
+        activeY += 16;
+
+        // Scrollable buff list
+        float itemHeight = 38;
+        float visibleHeight = rect.height - (activeY - rect.y) - 5;
+        float totalHeight = FishBuffSystem.Instance.allBuffs.Count * (itemHeight + 3);
         float maxScroll = Mathf.Max(0, totalHeight - visibleHeight);
 
-        // Handle mouse wheel scrolling when mouse is over the shop area
-        Rect scrollArea = new Rect(rect.x, rect.y + 22, rect.width, visibleHeight);
+        Rect scrollArea = new Rect(rect.x, activeY, rect.width, visibleHeight);
         if (scrollArea.Contains(Event.current.mousePosition))
         {
             if (Event.current.type == EventType.ScrollWheel)
             {
-                shopScrollPosition += Event.current.delta.y * 20f;
-                shopScrollPosition = Mathf.Clamp(shopScrollPosition, 0, maxScroll);
+                buffScrollPosition += Event.current.delta.y * 20f;
+                buffScrollPosition = Mathf.Clamp(buffScrollPosition, 0, maxScroll);
                 Event.current.Use();
             }
         }
 
-        // Begin clip area
         GUI.BeginGroup(scrollArea);
 
-        float itemY = -shopScrollPosition;
-        foreach (var item in shopItems)
+        float itemY = -buffScrollPosition;
+        foreach (var buff in FishBuffSystem.Instance.allBuffs)
         {
-            // Only draw visible items
             if (itemY + itemHeight > 0 && itemY < visibleHeight)
             {
-                DrawShopItem(new Rect(0, itemY, rect.width - 10, itemHeight), item, coins);
+                DrawBuffItem(new Rect(0, itemY, rect.width - 10, itemHeight), buff);
             }
             itemY += itemHeight + 3;
         }
 
         GUI.EndGroup();
 
-        // Draw scroll indicator if needed
+        // Scroll indicator
         if (maxScroll > 0)
         {
             float scrollBarHeight = visibleHeight * (visibleHeight / totalHeight);
-            float scrollBarY = (shopScrollPosition / maxScroll) * (visibleHeight - scrollBarHeight);
-            GUI.DrawTexture(new Rect(rect.x + rect.width - 6, rect.y + 22 + scrollBarY, 4, scrollBarHeight),
+            float scrollBarY = (buffScrollPosition / maxScroll) * (visibleHeight - scrollBarHeight);
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 6, activeY + scrollBarY, 4, scrollBarHeight),
                 MakeTexture(2, 2, new Color(0.5f, 0.4f, 0.3f, 0.7f)));
         }
     }
 
-    void DrawShopItem(Rect rect, ShopItem item, int playerCoins)
+    void DrawBuffItem(Rect rect, FishBuff buff)
     {
-        bool canAfford = playerCoins >= item.price;
+        int count = FishBuffSystem.Instance.GetBuffCount(buff.type);
+        bool hasAny = count > 0;
+        bool isActive = FishBuffSystem.Instance.IsBuffActive(buff.type);
 
-        GUI.DrawTexture(rect, MakeTexture(2, 2, new Color(0.12f, 0.1f, 0.08f, 0.9f)));
+        // Background
+        Color bgColor = isActive ? new Color(0.15f, 0.25f, 0.15f, 0.9f) :
+                        hasAny ? new Color(0.12f, 0.1f, 0.08f, 0.9f) :
+                        new Color(0.08f, 0.07f, 0.06f, 0.7f);
+        GUI.DrawTexture(rect, MakeTexture(2, 2, bgColor));
 
+        // Bowl sprite
+        if (FishBuffSprites.Instance != null)
+        {
+            Texture2D bowlTex = FishBuffSprites.Instance.GetBuffSprite(buff.type);
+            if (bowlTex != null)
+            {
+                GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 3, 32, 32), bowlTex);
+            }
+        }
+        else
+        {
+            // Fallback colored square
+            GUI.DrawTexture(new Rect(rect.x + 4, rect.y + 3, 32, 32), MakeTexture(2, 2, buff.bowlColor));
+        }
+
+        // Buff name
         GUIStyle nameStyle = new GUIStyle();
-        nameStyle.normal.textColor = canAfford ? new Color(0.9f, 0.9f, 0.8f) : new Color(0.5f, 0.5f, 0.5f);
+        nameStyle.normal.textColor = hasAny ? new Color(1f, 0.9f, 0.6f) : new Color(0.5f, 0.5f, 0.5f);
         nameStyle.fontSize = 10;
         nameStyle.fontStyle = FontStyle.Bold;
+        GUI.Label(new Rect(rect.x + 40, rect.y + 2, 160, 14), buff.buffName, nameStyle);
 
-        GUI.Label(new Rect(rect.x + 6, rect.y + 2, 160, 14), item.name, nameStyle);
-
+        // Description
         GUIStyle descStyle = new GUIStyle();
         descStyle.normal.textColor = new Color(0.6f, 0.6f, 0.5f);
         descStyle.fontSize = 8;
+        GUI.Label(new Rect(rect.x + 40, rect.y + 15, 180, 12), buff.description, descStyle);
 
-        GUI.Label(new Rect(rect.x + 6, rect.y + 16, 200, 14), item.description, descStyle);
+        // Count
+        GUIStyle countStyle = new GUIStyle();
+        countStyle.normal.textColor = hasAny ? new Color(0.9f, 0.9f, 0.9f) : new Color(0.4f, 0.4f, 0.4f);
+        countStyle.fontSize = 10;
+        countStyle.fontStyle = FontStyle.Bold;
+        countStyle.alignment = TextAnchor.MiddleRight;
+        GUI.Label(new Rect(rect.x + rect.width - 70, rect.y + 2, 30, 14), $"x{count}", countStyle);
 
-        GUIStyle priceStyle = new GUIStyle();
-        priceStyle.normal.textColor = canAfford ? new Color(1f, 0.85f, 0.2f) : new Color(0.8f, 0.3f, 0.3f);
-        priceStyle.fontSize = 10;
-        priceStyle.fontStyle = FontStyle.Bold;
-        priceStyle.alignment = TextAnchor.MiddleRight;
-
-        GUI.Label(new Rect(rect.x + rect.width - 120, rect.y + 2, 50, 28), $"{item.price}g", priceStyle);
-
-        if (canAfford)
+        // Use button
+        if (hasAny && !isActive)
         {
-            if (GUI.Button(new Rect(rect.x + rect.width - 60, rect.y + 4, 52, 22), "BUY", buttonStyle))
+            if (GUI.Button(new Rect(rect.x + rect.width - 38, rect.y + 8, 34, 22), "USE", buttonStyle))
             {
-                BuyItem(item);
+                FishBuffSystem.Instance.ActivateBuff(buff.type);
             }
+        }
+        else if (isActive)
+        {
+            GUIStyle activeLabel = new GUIStyle();
+            activeLabel.normal.textColor = new Color(0.3f, 1f, 0.5f);
+            activeLabel.fontSize = 8;
+            activeLabel.fontStyle = FontStyle.Bold;
+            activeLabel.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(new Rect(rect.x + rect.width - 45, rect.y + 10, 42, 18), "ACTIVE", activeLabel);
+        }
+        else
+        {
+            // Locked/empty indicator
+            GUIStyle lockedStyle = new GUIStyle();
+            lockedStyle.normal.textColor = new Color(0.4f, 0.35f, 0.3f);
+            lockedStyle.fontSize = 7;
+            lockedStyle.alignment = TextAnchor.MiddleRight;
+            GUI.Label(new Rect(rect.x + 40, rect.y + 26, 180, 10), $"Catch {buff.requiredFishName}", lockedStyle);
         }
     }
 

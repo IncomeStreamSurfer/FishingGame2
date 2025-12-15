@@ -386,6 +386,12 @@ public class PlayerController : MonoBehaviour
         bool isRunning = Input.GetKey(KeyCode.LeftShift);
         float currentSpeed = isRunning ? runSpeed : moveSpeed;
 
+        // Snubnose Speed buff - +25% movement speed
+        if (FishBuffSystem.Instance != null)
+        {
+            currentSpeed *= FishBuffSystem.Instance.GetSpeedMultiplier();
+        }
+
         // WoW-style mouse movement: Both mouse buttons held = move forward in camera direction
         bool leftMouseHeld = Input.GetMouseButton(0);
         bool rightMouseHeld = Input.GetMouseButton(1);

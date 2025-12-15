@@ -648,6 +648,25 @@ public class FishingSystem : MonoBehaviour
             }
         }
 
+        // ========== SEAHORSE'S BOUNTY - DOUBLE CATCH ==========
+        if (FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasDoubleCatch())
+        {
+            // Guaranteed double catch when buff is active
+            GameManager.Instance.AddFish(fish);
+
+            if (FoodInventory.Instance != null)
+            {
+                FoodInventory.Instance.AddRawFish(fish);
+            }
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"DOUBLE CATCH! +1 {fish.fishName}!", new Color(0.3f, 0.9f, 0.5f));
+            }
+
+            Debug.Log($"SEAHORSE BUFF! Double {fish.fishName}!");
+        }
+
         // Give XP based on fish rarity
         if (LevelingSystem.Instance != null)
         {
@@ -1950,10 +1969,17 @@ public class FishingSystem : MonoBehaviour
     {
         float rodBonus = GetRodTierBonus();
 
+        // Marlin's Luck buff - +50% rare fish chance
+        float buffBonus = 0f;
+        if (FishBuffSystem.Instance != null)
+        {
+            buffBonus = FishBuffSystem.Instance.GetRareFishBonus();
+        }
+
         // ========== CHECK FOR SPECIAL FISH FIRST ==========
 
-        // LEGENDARY: 0.02% base chance (+ rod bonus)
-        float legendaryChance = 0.02f * (1f + rodBonus);
+        // LEGENDARY: 0.02% base chance (+ rod bonus + buff bonus)
+        float legendaryChance = 0.02f * (1f + rodBonus + buffBonus);
         if (Random.Range(0f, 100f) < legendaryChance)
         {
             FishData legendary = fishDatabase.Find(f => f.id == "golden_starfish");
@@ -1964,8 +1990,8 @@ public class FishingSystem : MonoBehaviour
             }
         }
 
-        // EPIC: 0.5% base chance (+ rod bonus)
-        float epicChance = 0.5f * (1f + rodBonus);
+        // EPIC: 0.5% base chance (+ rod bonus + buff bonus)
+        float epicChance = 0.5f * (1f + rodBonus + buffBonus);
         if (Random.Range(0f, 100f) < epicChance)
         {
             string[] epicIds = { "sting_ray", "rainbow_fish", "hammerhead_special", "whale_baby", "seahorse" };
@@ -1978,8 +2004,8 @@ public class FishingSystem : MonoBehaviour
             }
         }
 
-        // RARE SPECIAL: 5% base chance (+ rod bonus)
-        float rareSpecialChance = 5f * (1f + rodBonus * 0.5f);
+        // RARE SPECIAL: 5% base chance (+ rod bonus + buff bonus)
+        float rareSpecialChance = 5f * (1f + rodBonus * 0.5f + buffBonus);
         if (Random.Range(0f, 100f) < rareSpecialChance)
         {
             string[] rareIds = { "red_snapper", "blue_marlin", "rainbow_trout", "sunshore_od", "icelandic_snubnose" };

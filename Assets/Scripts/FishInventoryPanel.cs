@@ -726,6 +726,12 @@ public class FishInventoryPanel : MonoBehaviour
     {
         if (GameManager.Instance == null) return;
 
+        // Trout's Fortune buff - +50% gold
+        if (FishBuffSystem.Instance != null)
+        {
+            coinValue = (int)(coinValue * FishBuffSystem.Instance.GetGoldMultiplier());
+        }
+
         if (isSpecial)
         {
             // Sell from special fish inventory

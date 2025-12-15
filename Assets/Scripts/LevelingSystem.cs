@@ -112,6 +112,12 @@ public class LevelingSystem : MonoBehaviour
         // 500% XP boost (5x multiplier)
         long boostedAmount = amount * 5;
 
+        // Sunshore Surge buff - additional +50% XP
+        if (FishBuffSystem.Instance != null)
+        {
+            boostedAmount = (long)(boostedAmount * FishBuffSystem.Instance.GetXPMultiplier());
+        }
+
         long oldXP = currentXP;
         currentXP = Math.Min(currentXP + boostedAmount, MAX_XP);
 

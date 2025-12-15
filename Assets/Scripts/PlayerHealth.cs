@@ -299,6 +299,12 @@ public class PlayerHealth : MonoBehaviour
     {
         if (isDead) return;
 
+        // Snapper's Delight buff - no health loss
+        if (FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasHealthProtection())
+        {
+            return; // Protected!
+        }
+
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
 
