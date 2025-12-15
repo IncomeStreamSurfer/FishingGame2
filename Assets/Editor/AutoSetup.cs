@@ -179,6 +179,9 @@ public class AutoSetup
         // Chef NPC (random location on beach)
         CreateChefNPC();
 
+        // Fish Connoisseur NPC (random location on beach)
+        CreateFishConnoisseurNPC();
+
         // Quest NPC on the dock
         CreateQuestNPC();
 
@@ -2511,6 +2514,19 @@ public class AutoSetup
         chef.transform.position = new Vector3(randomX, 1.6f, randomZ);
         chef.transform.rotation = Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0);
         chef.AddComponent<ChefNPC>();
+    }
+
+    static void CreateFishConnoisseurNPC()
+    {
+        // Pierre le Connoisseur - French fish collector who pays big for legendary fish
+        // Random location on the beach (different area from Chef)
+        float randomX = UnityEngine.Random.Range(50f, 70f);
+        float randomZ = UnityEngine.Random.Range(20f, 40f);
+
+        GameObject connoisseur = new GameObject("FishConnoisseurNPC");
+        connoisseur.transform.position = new Vector3(randomX, 1.6f, randomZ);
+        connoisseur.transform.rotation = Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0);
+        connoisseur.AddComponent<FishConnoisseurNPC>();
     }
 
     static void CreateGoldieBanks()
