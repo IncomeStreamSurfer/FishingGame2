@@ -66,6 +66,23 @@ public class PlayerController : MonoBehaviour
         for (int i = 0; i < 4; i++) pixels[i] = new Color(0.6f, 0, 0, 0.7f);
         deathOverlayTexture.SetPixels(pixels);
         deathOverlayTexture.Apply();
+
+        // Ensure IslandSoundManager exists
+        EnsureIslandSoundManager();
+    }
+
+    void EnsureIslandSoundManager()
+    {
+        if (IslandSoundManager.Instance == null)
+        {
+            Debug.Log("[PlayerController] Creating IslandSoundManager");
+            GameObject go = new GameObject("IslandSoundManager");
+            go.AddComponent<IslandSoundManager>();
+        }
+        else
+        {
+            Debug.Log("[PlayerController] IslandSoundManager already exists");
+        }
     }
 
     void Update()

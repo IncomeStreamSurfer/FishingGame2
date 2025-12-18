@@ -117,32 +117,41 @@ public class IslandSoundManager : MonoBehaviour
 
     void PlayTestBeep()
     {
+        Debug.Log("[IslandSoundManager] PlayTestBeep called");
+
         // Generate a simple beep to test if audio is working at all
         int sampleRate = 44100;
-        float duration = 0.3f;
+        float duration = 0.5f;
         int sampleCount = (int)(sampleRate * duration);
         float[] samples = new float[sampleCount];
 
-        float frequency = 440f; // A4 note
+        float frequency = 880f; // A5 note - higher pitch, easier to hear
         for (int i = 0; i < sampleCount; i++)
         {
             float t = (float)i / sampleRate;
             float envelope = Mathf.Sin(t / duration * Mathf.PI); // Smooth envelope
-            samples[i] = Mathf.Sin(t * frequency * Mathf.PI * 2f) * envelope * 0.5f;
+            samples[i] = Mathf.Sin(t * frequency * Mathf.PI * 2f) * envelope * 0.8f;
         }
 
         AudioClip testBeep = AudioClip.Create("TestBeep", sampleCount, 1, sampleRate, false);
-        testBeep.SetData(samples, 0);
+        bool success = testBeep.SetData(samples, 0);
+        Debug.Log("[IslandSoundManager] TestBeep clip created - SetData success: " + success + ", length: " + testBeep.length);
 
+        // Method 1: Regular AudioSource
         AudioSource testSource = gameObject.AddComponent<AudioSource>();
         testSource.clip = testBeep;
         testSource.volume = 1.0f;
+        testSource.spatialBlend = 0f; // 2D sound
         testSource.Play();
+        Debug.Log("[IslandSoundManager] TestSource.isPlaying: " + testSource.isPlaying);
 
-        Debug.Log("[IslandSoundManager] TEST BEEP PLAYED - if you don't hear this, audio system has a problem!");
+        // Method 2: Also try PlayClipAtPoint as backup
+        AudioSource.PlayClipAtPoint(testBeep, Camera.main != null ? Camera.main.transform.position : Vector3.zero, 1.0f);
+
+        Debug.Log("[IslandSoundManager] TEST BEEP PLAYED via both methods - if you don't hear this, procedural audio may not work!");
 
         // Destroy the test source after it finishes
-        Destroy(testSource, duration + 0.1f);
+        Destroy(testSource, duration + 0.5f);
     }
 
     void CreateAudioSources()

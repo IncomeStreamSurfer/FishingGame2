@@ -1,0 +1,188 @@
+╔══════════════════════════════════════════════════════════════╗
+║          THUNDERSTORM TESTING - QUICK COMMAND CARD           ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────┐
+│ OPEN CONSOLE                                                 │
+├──────────────────────────────────────────────────────────────┤
+│  ~   or   F1   or   F12                                      │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ STORM COMMANDS                                               │
+├─────────────────┬────────────────────────────────────────────┤
+│ storm           │ Start thunderstorm NOW                     │
+│ endstorm        │ Stop storm NOW                             │
+└─────────────────┴────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ TIME COMMANDS                                                │
+├─────────────────┬────────────────────────────────────────────┤
+│ time 0          │ Midnight (test night storm)                │
+│ time 6          │ 6 AM (sunrise)                             │
+│ time 12         │ Noon (test day storm)                      │
+│ time 18         │ 6 PM (sunset)                              │
+│ day             │ Quick noon                                 │
+│ night           │ Quick midnight                             │
+│ sunrise         │ Quick 6 AM                                 │
+│ sunset          │ Quick 6 PM                                 │
+└─────────────────┴────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ UTILITY                                                      │
+├─────────────────┬────────────────────────────────────────────┤
+│ heal            │ Restore health after lightning strike      │
+│ clear           │ Clear console output                       │
+│ help            │ Show all commands                          │
+└─────────────────┴────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ DOCK TELEPORTS (for lightning testing)                      │
+├─────────────────┬────────────────────────────────────────────┤
+│ tp -12 3 30     │ Main tropical dock                         │
+│ tp 500 3 45     │ Ice realm dock                             │
+│ tp 988 3 30     │ Jungle realm dock                          │
+│ tp 25 2 50      │ Bridge to Goldie's island                  │
+└─────────────────┴────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════╗
+║                   QUICK TEST WORKFLOWS                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+▶ BASIC STORM TEST
+  > storm
+  > endstorm
+
+▶ DAY STORM TEST
+  > time 12
+  > storm
+  > endstorm
+
+▶ NIGHT STORM TEST
+  > time 0
+  > storm
+  > endstorm
+
+▶ LIGHTNING STRIKE TEST
+  > storm
+  > tp -12 3 30
+  [Wait for lightning warning on dock]
+  [Move to land OR stay to get struck]
+  > heal
+  > endstorm
+
+▶ SUNRISE/SUNSET STORM TEST
+  > sunrise
+  > storm
+  [Watch effects]
+  > endstorm
+
+  > sunset
+  > storm
+  [Watch effects]
+  > endstorm
+
+╔══════════════════════════════════════════════════════════════╗
+║                     COMPLETE TEST SESSION                    ║
+╚══════════════════════════════════════════════════════════════╝
+
+> clear
+> time 12
+> storm
+> tp -12 3 30
+[Watch for lightning warning]
+[Test cancel by moving to land]
+> endstorm
+
+> time 0
+> storm
+[Stay on dock to get struck]
+> heal
+> endstorm
+
+> sunrise
+> storm
+[Watch sunrise storm effects]
+> endstorm
+
+> sunset
+> storm
+[Watch sunset storm effects]
+> endstorm
+
+╔══════════════════════════════════════════════════════════════╗
+║                        WHAT TO VERIFY                        ║
+╚══════════════════════════════════════════════════════════════╝
+
+VISUAL EFFECTS
+ □ Sky darkens during storm
+ □ Sun dims to 30%
+ □ Random white flashes (visual lightning)
+ □ Full white flash when struck
+
+AUDIO EFFECTS
+ □ Deep rolling thunder (continuous)
+ □ Heavy rain sounds (continuous)
+ □ Sharp lightning crack when struck
+ □ Distant thunder after visual flashes
+
+UI ELEMENTS
+ □ "THUNDERSTORM (XXs)" at top of screen
+ □ "Storm approaching..." notification
+ □ "Storm passing..." notification
+ □ Lightning warning box appears
+ □ "ZAP! You're fried..." death message
+
+GAMEPLAY MECHANICS
+ □ Lightning only strikes on dock/bridge
+ □ 2-second warning before strike
+ □ Warning cancels if you reach land
+ □ Strike = instant death
+ □ Normal respawn after death
+
+╔══════════════════════════════════════════════════════════════╗
+║               TROUBLESHOOTING QUICK FIXES                    ║
+╚══════════════════════════════════════════════════════════════╝
+
+CONSOLE WON'T OPEN
+→ Try all three keys: ~, F1, F12
+→ Check ConsoleCommands exists in Hierarchy
+→ Make sure you're in Play mode
+
+STORM WON'T START
+→ Error: "ThunderstormSystem not found"
+→ Fix: Check scene has ThunderstormSystem GameObject
+
+TIME WON'T CHANGE
+→ Error: "DayNightCycle not found"
+→ Fix: Check scene has DayNightCycle system
+
+COMMAND NOT RECOGNIZED
+→ Type: help
+→ Check spelling of command
+→ Use Up arrow to recall last command
+
+╔══════════════════════════════════════════════════════════════╗
+║                    DOCUMENTATION FILES                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+Quick Start       → STORM_TESTING_QUICK_GUIDE.md
+Complete Guide    → THUNDERSTORM_SYSTEM_GUIDE.md
+Console Reference → CONSOLE_CHEAT_SHEET.md
+Console Setup     → CONSOLE_SETUP_QUICK_START.md
+Full Commands     → CONSOLE_COMMANDS.md
+This Summary      → CONSOLE_STORM_TESTING_SUMMARY.md
+
+╔══════════════════════════════════════════════════════════════╗
+║                  READY TO TEST? START HERE!                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. Press Play in Unity
+2. Press ~ or F1 or F12
+3. Type: storm
+4. Watch the storm!
+5. Type: endstorm
+
+That's it! You're testing storms with console commands!
+
+For detailed testing, see STORM_TESTING_QUICK_GUIDE.md
