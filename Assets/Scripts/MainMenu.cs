@@ -81,6 +81,9 @@ public class MainMenu : MonoBehaviour
         // Disable all game systems until game starts
         DisableGameSystems();
 
+        // Ensure AudioListener exists for title screen
+        EnsureAudioListener();
+
         // Setup title screen music
         SetupTitleMusic();
 
@@ -88,9 +91,30 @@ public class MainMenu : MonoBehaviour
         Invoke("Initialize", 0.2f);
     }
 
+    void EnsureAudioListener()
+    {
+        AudioListener listener = FindObjectOfType<AudioListener>();
+        if (listener == null)
+        {
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                mainCam.gameObject.AddComponent<AudioListener>();
+                Debug.Log("MainMenu: Added AudioListener to Main Camera");
+            }
+            else
+            {
+                // Add to MainMenu object as fallback
+                gameObject.AddComponent<AudioListener>();
+                Debug.Log("MainMenu: Added AudioListener to MainMenu (no camera found)");
+            }
+        }
+    }
+
     void SetupTitleMusic()
     {
         // Load title music from Resources
+        Debug.Log("MainMenu: Attempting to load TitleMusic...");
         titleMusicClip = Resources.Load<AudioClip>("TitleMusic");
 
         if (titleMusicClip != null)
@@ -100,14 +124,14 @@ public class MainMenu : MonoBehaviour
             titleMusicSource.loop = true;
             titleMusicSource.volume = musicVolume;
             titleMusicSource.playOnAwake = false;
-            titleMusicSource.priority = 0; // Highest priority
+            titleMusicSource.priority = 128; // Normal priority (not highest - was causing issues)
             titleMusicSource.spatialBlend = 0f; // 2D sound
             titleMusicSource.Play();
-            Debug.Log($"MainMenu: Title music playing - {titleMusicClip.name} | Length: {titleMusicClip.length}s | Loop: {titleMusicSource.loop} | Playing: {titleMusicSource.isPlaying}");
+            Debug.Log($"MainMenu: Title music loaded and playing - {titleMusicClip.name} | Length: {titleMusicClip.length}s | Volume: {titleMusicSource.volume} | Playing: {titleMusicSource.isPlaying}");
         }
         else
         {
-            Debug.LogWarning("MainMenu: Could not load TitleMusic from Resources folder");
+            Debug.LogError("MainMenu: FAILED to load TitleMusic from Resources folder! Make sure TitleMusic.mp3 is in Assets/Resources/");
         }
     }
 
@@ -199,12 +223,7 @@ public class MainMenu : MonoBehaviour
     {
         if (GameStarted) return;
 
-        // Monitor title music playback - restart if stopped unexpectedly
-        if (titleMusicSource != null && titleMusicClip != null && !titleMusicSource.isPlaying)
-        {
-            Debug.LogWarning("MainMenu: Title music stopped unexpectedly, restarting...");
-            titleMusicSource.Play();
-        }
+        // Title music monitoring removed - was causing audio interference
 
         titleBob += Time.deltaTime;
         waterTime += Time.deltaTime;
