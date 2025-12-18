@@ -80,19 +80,82 @@ public class IslandSoundManager : MonoBehaviour
     void Start()
     {
         Debug.Log("[IslandSoundManager] Start() called - initializing sound system");
+        EnsureAudioListener();
         CreateAudioSources();
         GenerateAllAudioClips();
         StartAmbientSounds();
+
+        // Play a test beep to verify audio is working
+        PlayTestBeep();
+
         Debug.Log("[IslandSoundManager] Sound system initialized successfully");
+    }
+
+    void EnsureAudioListener()
+    {
+        AudioListener listener = FindObjectOfType<AudioListener>();
+        if (listener == null)
+        {
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                mainCam.gameObject.AddComponent<AudioListener>();
+                Debug.Log("[IslandSoundManager] Added AudioListener to Main Camera");
+            }
+            else
+            {
+                // Add to ourselves as fallback
+                gameObject.AddComponent<AudioListener>();
+                Debug.Log("[IslandSoundManager] Added AudioListener to IslandSoundManager (no main camera found)");
+            }
+        }
+        else
+        {
+            Debug.Log("[IslandSoundManager] AudioListener found on: " + listener.gameObject.name);
+        }
+    }
+
+    void PlayTestBeep()
+    {
+        // Generate a simple beep to test if audio is working at all
+        int sampleRate = 44100;
+        float duration = 0.3f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        float frequency = 440f; // A4 note
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float envelope = Mathf.Sin(t / duration * Mathf.PI); // Smooth envelope
+            samples[i] = Mathf.Sin(t * frequency * Mathf.PI * 2f) * envelope * 0.5f;
+        }
+
+        AudioClip testBeep = AudioClip.Create("TestBeep", sampleCount, 1, sampleRate, false);
+        testBeep.SetData(samples, 0);
+
+        AudioSource testSource = gameObject.AddComponent<AudioSource>();
+        testSource.clip = testBeep;
+        testSource.volume = 1.0f;
+        testSource.Play();
+
+        Debug.Log("[IslandSoundManager] TEST BEEP PLAYED - if you don't hear this, audio system has a problem!");
+
+        // Destroy the test source after it finishes
+        Destroy(testSource, duration + 0.1f);
     }
 
     void CreateAudioSources()
     {
+        Debug.Log("[IslandSoundManager] CreateAudioSources called");
+
         // Ambient ocean waves (looping)
         waveSource = gameObject.AddComponent<AudioSource>();
         waveSource.loop = true;
-        waveSource.spatialBlend = 0f;
+        waveSource.spatialBlend = 0f; // 2D sound
         waveSource.priority = 128;
+        waveSource.playOnAwake = false;
+        Debug.Log("[IslandSoundManager] Created waveSource");
 
         // Bird sounds (one-shot)
         birdSource = gameObject.AddComponent<AudioSource>();
@@ -166,16 +229,24 @@ public class IslandSoundManager : MonoBehaviour
 
     void StartAmbientSounds()
     {
-        if (waveClip != null)
+        Debug.Log("[IslandSoundManager] StartAmbientSounds called");
+        Debug.Log("[IslandSoundManager] waveClip: " + (waveClip != null ? "EXISTS, length=" + waveClip.length + "s, samples=" + waveClip.samples : "NULL"));
+        Debug.Log("[IslandSoundManager] waveSource: " + (waveSource != null ? "EXISTS" : "NULL"));
+
+        if (waveClip != null && waveSource != null)
         {
             waveSource.clip = waveClip;
-            waveSource.volume = ambientVolume * masterVolume * 0.8f; // Louder ocean waves
+            waveSource.volume = ambientVolume * masterVolume; // Full volume for testing
+            waveSource.playOnAwake = false;
             waveSource.Play();
-            Debug.Log("[IslandSoundManager] Started ocean wave sounds - volume: " + waveSource.volume);
+
+            Debug.Log("[IslandSoundManager] Wave source playing: " + waveSource.isPlaying);
+            Debug.Log("[IslandSoundManager] Wave volume: " + waveSource.volume);
+            Debug.Log("[IslandSoundManager] Wave clip assigned: " + (waveSource.clip != null));
         }
         else
         {
-            Debug.LogWarning("[IslandSoundManager] Wave clip is null!");
+            Debug.LogError("[IslandSoundManager] Cannot start ambient sounds - waveClip or waveSource is null!");
         }
     }
 
