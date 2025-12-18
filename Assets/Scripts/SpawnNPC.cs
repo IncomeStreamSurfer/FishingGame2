@@ -258,6 +258,11 @@ public class SpawnNPC : MonoBehaviour
                 dialogOpen = true;
                 dialogTimer = dialogDuration;
                 PlayHumm(); // Play humm when starting to talk
+                // Also play centralized NPC voice
+                if (IslandSoundManager.Instance != null)
+                {
+                    IslandSoundManager.Instance.PlayNPCVoice("hmm");
+                }
             }
         }
 

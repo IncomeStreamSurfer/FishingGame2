@@ -30,6 +30,10 @@ public class PlayerHealth : MonoBehaviour
     private bool showLowHealthWarning = false;
     private float warningPulse = 0f;
 
+    // Starving debuff indicator (25% health or below)
+    private bool isStarving = false;
+    private float starvingPulse = 0f;
+
     // Drowning system
     private bool isDrowning = false;
     private float drowningDamageTimer = 0f;
@@ -142,6 +146,13 @@ public class PlayerHealth : MonoBehaviour
         if (showLowHealthWarning)
         {
             warningPulse += Time.deltaTime * 5f;
+        }
+
+        // Check for starving state (25% health or below)
+        isStarving = currentHealth <= (maxHealth * 0.25f) && currentHealth > 0f;
+        if (isStarving)
+        {
+            starvingPulse += Time.deltaTime * 3f; // Slower pulse than critical health warning
         }
 
         // Tutorial tip for level 1-2 players
@@ -312,10 +323,15 @@ public class PlayerHealth : MonoBehaviour
 
     public void TakeDamage(float damage, string deathMessage)
     {
+        TakeDamage(damage, deathMessage, false);
+    }
+
+    public void TakeDamage(float damage, string deathMessage, bool bypassProtection)
+    {
         if (isDead) return;
 
-        // Snapper's Delight buff - no health loss
-        if (FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasHealthProtection())
+        // Snapper's Delight buff - no health loss (unless bypassed by poison)
+        if (!bypassProtection && FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasHealthProtection())
         {
             return; // Protected!
         }
@@ -454,6 +470,12 @@ public class PlayerHealth : MonoBehaviour
             DrawDeathScreen();
         }
 
+        // Starving debuff indicator (shown above low health warning)
+        if (isStarving && !isDead)
+        {
+            DrawStarvingDebuff();
+        }
+
         // Low health warning
         if (showLowHealthWarning)
         {
@@ -465,6 +487,54 @@ public class PlayerHealth : MonoBehaviour
         {
             DrawTutorialTip();
         }
+    }
+
+    void DrawStarvingDebuff()
+    {
+        // Position on the right side, below active buffs area
+        // Active buffs start at Y=75, each buff is ~42px tall
+        // We'll position this below the HP/ECG area but in the same column
+        float panelX = Screen.width - 180;
+        float panelY = 115; // Below HP bar (10) + HP height (22) + ECG height (32) + gaps (51)
+        float panelWidth = 170;
+        float panelHeight = 38;
+
+        // Check if there are active buffs - if so, position below them
+        if (FishBuffSystem.Instance != null && FishBuffSystem.Instance.activeBuffs.Count > 0)
+        {
+            int buffCount = FishBuffSystem.Instance.activeBuffs.Count;
+            panelY = 75 + (buffCount * 42); // Start after all active buffs
+        }
+
+        // Pulsing red background - pulse on and off to indicate emergency
+        float pulse = Mathf.Abs(Mathf.Sin(starvingPulse)); // 0 to 1 pulse
+        Color bgColor = new Color(0.8f, 0.1f, 0.1f, 0.7f + pulse * 0.25f);
+
+        // Background with border
+        GUI.color = new Color(0.5f, 0.1f, 0.1f, 0.9f);
+        GUI.DrawTexture(new Rect(panelX - 2, panelY - 2, panelWidth + 4, panelHeight + 4), GetTexture("white"));
+        GUI.color = bgColor;
+        GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("white"));
+        GUI.color = Color.white;
+
+        // "STARVING" text - pulsing
+        GUIStyle starvingStyle = new GUIStyle();
+        starvingStyle.fontSize = 16;
+        starvingStyle.fontStyle = FontStyle.Bold;
+        starvingStyle.alignment = TextAnchor.MiddleCenter;
+        starvingStyle.normal.textColor = new Color(1f, 1f, 1f, 0.9f + pulse * 0.1f);
+
+        GUI.Label(new Rect(panelX, panelY + 4, panelWidth, 20), "STARVING", starvingStyle);
+
+        // Subtitle with health percentage
+        GUIStyle subtitleStyle = new GUIStyle();
+        subtitleStyle.fontSize = 10;
+        subtitleStyle.fontStyle = FontStyle.Normal;
+        subtitleStyle.alignment = TextAnchor.MiddleCenter;
+        subtitleStyle.normal.textColor = new Color(1f, 0.8f, 0.8f, 0.9f);
+
+        int healthPercent = Mathf.RoundToInt((currentHealth / maxHealth) * 100f);
+        GUI.Label(new Rect(panelX, panelY + 20, panelWidth, 14), $"EAT FOOD NOW! ({healthPercent}% HP)", subtitleStyle);
     }
 
     void DrawLowHealthWarning()

@@ -1000,32 +1000,32 @@ public class WaterEffect : MonoBehaviour
             // Blend water with sky horizon color for realistic reflection
             Color skyReflection = Color.Lerp(skyTint, skyHorizon, 0.7f); // Mostly horizon
 
-            // ENHANCED: Special water colors during sunrise/sunset for that beautiful glow
+            // Subtle water tint during sunrise/sunset - very slight warmth
             if (hour >= 5f && hour < 8.5f)
             {
-                // Sunrise - pink/orange water reflection matching sky
+                // Sunrise - very subtle warm tint
                 float t = (hour - 5f) / 3.5f;
                 float peakIntensity = Mathf.Sin(t * Mathf.PI); // Peak at middle of sunrise
                 Color sunriseWater = new Color(
-                    skyHorizon.r * 0.8f + 0.2f,
-                    skyHorizon.g * 0.7f + 0.15f,
-                    skyHorizon.b * 0.5f + 0.1f,
+                    shallowWaterColor.r + 0.08f,  // Slight warmth
+                    shallowWaterColor.g + 0.04f,
+                    shallowWaterColor.b,          // Keep blue
                     shallowWaterColor.a
                 );
-                currentWater = Color.Lerp(currentWater, sunriseWater, peakIntensity * 0.65f);
+                currentWater = Color.Lerp(currentWater, sunriseWater, peakIntensity * 0.25f); // Much more subtle
             }
             else if (hour >= 16.5f && hour < 20f)
             {
-                // Sunset - orange/red water reflection matching sky
+                // Sunset - very subtle warm tint, not red
                 float t = (hour - 16.5f) / 3.5f;
                 float peakIntensity = Mathf.Sin(t * Mathf.PI); // Peak at middle of sunset
                 Color sunsetWater = new Color(
-                    skyHorizon.r * 0.85f + 0.15f,
-                    skyHorizon.g * 0.6f + 0.1f,
-                    skyHorizon.b * 0.4f + 0.05f,
+                    shallowWaterColor.r + 0.1f,   // Slight warmth
+                    shallowWaterColor.g + 0.05f,
+                    shallowWaterColor.b - 0.02f,  // Tiny bit less blue
                     shallowWaterColor.a
                 );
-                currentWater = Color.Lerp(currentWater, sunsetWater, peakIntensity * 0.7f);
+                currentWater = Color.Lerp(currentWater, sunsetWater, peakIntensity * 0.3f); // Much more subtle
             }
             else if (hour < 5f || hour >= 20f)
             {

@@ -189,6 +189,25 @@ public class FishingSystem : MonoBehaviour
 
     public void PlayRareFishChime(Rarity rarity)
     {
+        // Play celebration sound via IslandSoundManager (covers all rarities)
+        if (IslandSoundManager.Instance != null)
+        {
+            int rarityLevel = 0;
+            switch (rarity)
+            {
+                case Rarity.Uncommon: rarityLevel = 1; break;
+                case Rarity.Rare: rarityLevel = 2; break;
+                case Rarity.Epic: rarityLevel = 3; break;
+                case Rarity.Legendary: rarityLevel = 4; break;
+                case Rarity.Mythic: rarityLevel = 5; break;
+            }
+            if (rarityLevel > 0)
+            {
+                IslandSoundManager.Instance.PlayCelebration(rarityLevel);
+            }
+        }
+
+        // Also play existing procedural chime for Epic+ (layered sound)
         if (rareFishAudioSource == null) return;
 
         if (rarity == Rarity.Legendary || rarity == Rarity.Mythic)
@@ -203,7 +222,7 @@ public class FishingSystem : MonoBehaviour
         }
         else
         {
-            return; // No chime for lower rarities
+            return; // No procedural chime for lower rarities (but IslandSoundManager handles them)
         }
 
         rareFishAudioSource.Play();
@@ -1156,10 +1175,16 @@ public class FishingSystem : MonoBehaviour
         int coinCount = GetCoinCountForRarity(fish.rarity);
         SpawnGoldCoins(spawnPos, coinCount);
 
+        // Play celebration sounds for Uncommon and Rare fish too (via IslandSoundManager)
+        if (fish.rarity == Rarity.Uncommon || fish.rarity == Rarity.Rare)
+        {
+            PlayRareFishChime(fish.rarity);
+        }
+
         // Check if epic or legendary - show special glowing golden fish
         if (fish.rarity == Rarity.Epic || fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
         {
-            // Play the chime sound
+            // Play the chime sound (also handled via IslandSoundManager now)
             PlayRareFishChime(fish.rarity);
 
             // Create glowing golden fish model

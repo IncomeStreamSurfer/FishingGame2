@@ -46,7 +46,7 @@ public class SkyDiagnostics : MonoBehaviour
         if (SkyboxManager.Instance != null)
         {
             Debug.Log($"SkyboxManager exists: useProceduralSkybox={SkyboxManager.Instance.useProceduralSkybox}");
-            Debug.Log($"  Stars: {SkyboxManager.Instance.enableStars}, Moon: {SkyboxManager.Instance.enableMoon}");
+            Debug.Log($"  Stars: {SkyboxManager.Instance.enableStars}");
         }
         else
         {

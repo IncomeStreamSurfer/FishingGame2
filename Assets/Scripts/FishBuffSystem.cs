@@ -9,7 +9,8 @@ public enum FishBuffType
     TroutsFortune,      // Rainbow Trout - +50% gold from fish for 5 min
     SunshoreSurge,      // Sunshore Cod - +50% XP for 5 min
     SnubnoseSpeed,      // Icelandic Snubnose - +25% movement speed for 5 min
-    SeahorsesBounty     // Seahorse - Double fish catches for 5 min
+    SeahorsesBounty,    // Seahorse - Double fish catches for 5 min
+    Poisoned            // Debuff - 1 damage per second for 10 seconds
 }
 
 [System.Serializable]
@@ -165,19 +166,48 @@ public class FishBuffSystem : MonoBehaviour
     private GUIStyle buffLabelStyle;
     private bool guiInitialized = false;
 
+    // Poison damage tracking
+    private float poisonDamageTimer = 0f;
+
     void Update()
     {
         // Update active buff timers
         for (int i = activeBuffs.Count - 1; i >= 0; i--)
         {
             activeBuffs[i].remainingTime -= Time.deltaTime;
+
+            // Apply poison damage (1 HP per second)
+            if (activeBuffs[i].type == FishBuffType.Poisoned)
+            {
+                poisonDamageTimer += Time.deltaTime;
+                if (poisonDamageTimer >= 1f)
+                {
+                    poisonDamageTimer = 0f;
+                    if (PlayerHealth.Instance != null)
+                    {
+                        // Bypass health protection - poison cannot be prevented!
+                        PlayerHealth.Instance.TakeDamage(1f, "", true);
+                    }
+                }
+            }
+
             if (activeBuffs[i].remainingTime <= 0)
             {
                 Debug.Log($"Buff expired: {activeBuffs[i].buffName}");
                 if (UIManager.Instance != null)
                 {
-                    UIManager.Instance.ShowLootNotification($"{activeBuffs[i].buffName} has worn off!", new Color(0.7f, 0.7f, 0.7f));
+                    string message = activeBuffs[i].type == FishBuffType.Poisoned
+                        ? "Poison has worn off!"
+                        : $"{activeBuffs[i].buffName} has worn off!";
+                    UIManager.Instance.ShowLootNotification(message, new Color(0.7f, 0.7f, 0.7f));
                 }
+
+                // Reset poison timer when poison expires
+                if (activeBuffs[i].type == FishBuffType.Poisoned)
+                {
+                    poisonDamageTimer = 0f;
+                }
+
                 activeBuffs.RemoveAt(i);
             }
         }
@@ -212,36 +242,70 @@ public class FishBuffSystem : MonoBehaviour
         for (int i = 0; i < activeBuffs.Count; i++)
         {
             ActiveBuff buff = activeBuffs[i];
-            FishBuff data = GetBuffData(buff.type);
-            if (data == null) continue;
 
             float y = panelY + i * (buffHeight + 4);
 
-            // Background
-            GUI.DrawTexture(new Rect(panelX, y, buffWidth, buffHeight), buffBgTex);
+            // Special handling for poison debuff
+            if (buff.type == FishBuffType.Poisoned)
+            {
+                // Background
+                GUI.DrawTexture(new Rect(panelX, y, buffWidth, buffHeight), buffBgTex);
 
-            // Timer bar
-            float pct = buff.remainingTime / data.duration;
-            GUI.color = data.bowlColor;
-            GUI.DrawTexture(new Rect(panelX + 2, y + buffHeight - 6, (buffWidth - 4) * pct, 4), buffBarTex);
-            GUI.color = Color.white;
+                // Timer bar (green for poison)
+                float pct = buff.remainingTime / 10f; // 10 second duration
+                Color poisonColor = new Color(0.3f, 1f, 0.3f); // Bright green
+                GUI.color = poisonColor;
+                GUI.DrawTexture(new Rect(panelX + 2, y + buffHeight - 6, (buffWidth - 4) * pct, 4), buffBarTex);
+                GUI.color = Color.white;
 
-            // Buff name
-            buffLabelStyle.fontSize = 11;
-            buffLabelStyle.fontStyle = FontStyle.Bold;
-            buffLabelStyle.normal.textColor = data.bowlColor;
-            buffLabelStyle.alignment = TextAnchor.UpperLeft;
-            GUI.Label(new Rect(panelX + 6, y + 3, buffWidth - 12, 16), buff.buffName, buffLabelStyle);
+                // Buff name
+                buffLabelStyle.fontSize = 11;
+                buffLabelStyle.fontStyle = FontStyle.Bold;
+                buffLabelStyle.normal.textColor = poisonColor;
+                buffLabelStyle.alignment = TextAnchor.UpperLeft;
+                GUI.Label(new Rect(panelX + 6, y + 3, buffWidth - 12, 16), "POISONED", buffLabelStyle);
 
-            // Time remaining
-            int mins = (int)(buff.remainingTime / 60);
-            int secs = (int)(buff.remainingTime % 60);
-            string timeStr = mins > 0 ? $"{mins}m {secs}s" : $"{secs}s";
+                // Time remaining
+                int secs = Mathf.CeilToInt(buff.remainingTime);
+                string timeStr = $"{secs}s";
 
-            buffLabelStyle.fontSize = 10;
-            buffLabelStyle.fontStyle = FontStyle.Normal;
-            buffLabelStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
-            GUI.Label(new Rect(panelX + 6, y + 18, buffWidth - 12, 14), timeStr, buffLabelStyle);
+                buffLabelStyle.fontSize = 10;
+                buffLabelStyle.fontStyle = FontStyle.Normal;
+                buffLabelStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+                GUI.Label(new Rect(panelX + 6, y + 18, buffWidth - 12, 14), timeStr, buffLabelStyle);
+            }
+            else
+            {
+                // Normal buff display
+                FishBuff data = GetBuffData(buff.type);
+                if (data == null) continue;
+
+                // Background
+                GUI.DrawTexture(new Rect(panelX, y, buffWidth, buffHeight), buffBgTex);
+
+                // Timer bar
+                float pct = buff.remainingTime / data.duration;
+                GUI.color = data.bowlColor;
+                GUI.DrawTexture(new Rect(panelX + 2, y + buffHeight - 6, (buffWidth - 4) * pct, 4), buffBarTex);
+                GUI.color = Color.white;
+
+                // Buff name
+                buffLabelStyle.fontSize = 11;
+                buffLabelStyle.fontStyle = FontStyle.Bold;
+                buffLabelStyle.normal.textColor = data.bowlColor;
+                buffLabelStyle.alignment = TextAnchor.UpperLeft;
+                GUI.Label(new Rect(panelX + 6, y + 3, buffWidth - 12, 16), buff.buffName, buffLabelStyle);
+
+                // Time remaining
+                int mins = (int)(buff.remainingTime / 60);
+                int secs = (int)(buff.remainingTime % 60);
+                string timeStr = mins > 0 ? $"{mins}m {secs}s" : $"{secs}s";
+
+                buffLabelStyle.fontSize = 10;
+                buffLabelStyle.fontStyle = FontStyle.Normal;
+                buffLabelStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+                GUI.Label(new Rect(panelX + 6, y + 18, buffWidth - 12, 14), timeStr, buffLabelStyle);
+            }
         }
     }
 
@@ -453,6 +517,27 @@ public class FishBuffSystem : MonoBehaviour
         return IsBuffActive(FishBuffType.SeahorsesBounty);
     }
 
+    // Apply poison debuff (5% chance when eating fish)
+    public void ApplyPoison()
+    {
+        // Check if already poisoned
+        if (IsBuffActive(FishBuffType.Poisoned))
+        {
+            Debug.Log("Already poisoned! Cannot stack poison.");
+            return;
+        }
+
+        // Add poison debuff (10 seconds, 1 damage per second)
+        activeBuffs.Add(new ActiveBuff(FishBuffType.Poisoned, 10f, "POISONED"));
+        poisonDamageTimer = 0f;
+
+        Debug.Log("Player has been POISONED! Will take 1 damage per second for 10 seconds.");
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("You've been POISONED!", new Color(0.3f, 1f, 0.3f));
+        }
+    }
+
     // Clear all active buffs (called on player death)
     public void ClearAllActiveBuffs()
     {
@@ -460,6 +545,7 @@ public class FishBuffSystem : MonoBehaviour
         {
             Debug.Log($"Clearing {activeBuffs.Count} active buffs due to death!");
             activeBuffs.Clear();
+            poisonDamageTimer = 0f; // Reset poison timer
 
             if (UIManager.Instance != null)
             {

@@ -129,7 +129,7 @@ public class FishingRodAnimator : MonoBehaviour
 
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.spatialBlend = 0.7f;  // More 3D spatial audio (0 = 2D, 1 = 3D)
-        audioSource.volume = 0.5f;  // Increased from 0.3 to 0.5
+        audioSource.volume = 1.0f;  // Set to 1.0 for PlayOneShot (volume controlled per-clip)
         audioSource.playOnAwake = false;
         audioSource.minDistance = 1f;
         audioSource.maxDistance = 20f;
@@ -202,11 +202,13 @@ public class FishingRodAnimator : MonoBehaviour
         }
 
         castClip.SetData(samples, 0);
-        audioSource.clip = castClip;
+
+        // Use PlayOneShot to allow sounds to overlap
+        float originalPitch = audioSource.pitch;
         audioSource.pitch = 0.9f + power * 0.2f;
-        audioSource.volume = 0.5f;  // Increased from 0.25 to 0.5
-        Debug.Log("PLAYING CAST SOUND - Volume: " + audioSource.volume + ", Pitch: " + audioSource.pitch);
-        audioSource.Play();
+        audioSource.PlayOneShot(castClip, 0.5f);  // Increased from 0.25 to 0.5
+        Debug.Log("PLAYING CAST SOUND - Volume: 0.5, Pitch: " + audioSource.pitch);
+        audioSource.pitch = originalPitch;
 
         yield return new WaitForSeconds(duration);
     }
@@ -214,6 +216,14 @@ public class FishingRodAnimator : MonoBehaviour
     void PlaySplashSound(float power)
     {
         Debug.Log("PlaySplashSound called with power: " + power);
+
+        // Use centralized sound manager for bobber splash
+        if (IslandSoundManager.Instance != null)
+        {
+            IslandSoundManager.Instance.PlayBobberSplash();
+        }
+
+        // Also play the existing procedural sound for layered effect
         if (audioSource == null)
         {
             Debug.LogError("AudioSource is NULL in PlaySplashSound!");
@@ -252,11 +262,13 @@ public class FishingRodAnimator : MonoBehaviour
         }
 
         splashClip.SetData(samples, 0);
-        audioSource.clip = splashClip;
+
+        // Use PlayOneShot to allow sounds to overlap
+        float originalPitch = audioSource.pitch;
         audioSource.pitch = 0.9f + Random.Range(-0.1f, 0.1f);
-        audioSource.volume = 0.6f;  // Increased from 0.35 to 0.6
-        Debug.Log("PLAYING SPLASH SOUND - Volume: " + audioSource.volume);
-        audioSource.Play();
+        audioSource.PlayOneShot(splashClip, 0.6f);  // Increased from 0.35 to 0.6
+        Debug.Log("PLAYING SPLASH SOUND - Volume: 0.6");
+        audioSource.pitch = originalPitch;
 
         yield return new WaitForSeconds(duration);
     }
@@ -310,11 +322,13 @@ public class FishingRodAnimator : MonoBehaviour
         }
 
         biteClip.SetData(samples, 0);
-        audioSource.clip = biteClip;
+
+        // Use PlayOneShot to allow sounds to overlap
+        float originalPitch = audioSource.pitch;
         audioSource.pitch = 0.95f + Random.Range(-0.1f, 0.15f);
-        audioSource.volume = 0.5f;  // Increased from 0.22 to 0.5
-        Debug.Log("PLAYING BITE SOUND - Volume: " + audioSource.volume);
-        audioSource.Play();
+        audioSource.PlayOneShot(biteClip, 0.5f);  // Increased from 0.22 to 0.5
+        Debug.Log("PLAYING BITE SOUND - Volume: 0.5");
+        audioSource.pitch = originalPitch;
 
         yield return new WaitForSeconds(duration);
     }
@@ -372,11 +386,13 @@ public class FishingRodAnimator : MonoBehaviour
         }
 
         reelClip.SetData(samples, 0);
-        audioSource.clip = reelClip;
+
+        // Use PlayOneShot to allow sounds to overlap
+        float originalPitch = audioSource.pitch;
         audioSource.pitch = 1.0f + Random.Range(-0.05f, 0.05f);
-        audioSource.volume = 0.5f;  // Increased from 0.28 to 0.5
-        Debug.Log("PLAYING REEL SOUND - Volume: " + audioSource.volume);
-        audioSource.Play();
+        audioSource.PlayOneShot(reelClip, 0.5f);  // Increased from 0.28 to 0.5
+        Debug.Log("PLAYING REEL SOUND - Volume: 0.5");
+        audioSource.pitch = originalPitch;
 
         yield return new WaitForSeconds(duration);
     }
@@ -443,11 +459,13 @@ public class FishingRodAnimator : MonoBehaviour
         }
 
         catchClip.SetData(samples, 0);
-        audioSource.clip = catchClip;
+
+        // Use PlayOneShot to allow sounds to overlap
+        float originalPitch = audioSource.pitch;
         audioSource.pitch = isRare ? 1.1f : 1.0f;
-        audioSource.volume = 0.6f;  // Increased from 0.4 to 0.6
-        Debug.Log("PLAYING CATCH SPLASH SOUND - Volume: " + audioSource.volume + ", Pitch: " + audioSource.pitch);
-        audioSource.Play();
+        audioSource.PlayOneShot(catchClip, 0.6f);  // Increased from 0.4 to 0.6
+        Debug.Log("PLAYING CATCH SPLASH SOUND - Volume: 0.6, Pitch: " + audioSource.pitch);
+        audioSource.pitch = originalPitch;
 
         yield return new WaitForSeconds(duration);
     }

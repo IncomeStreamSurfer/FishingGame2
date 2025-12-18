@@ -409,6 +409,13 @@ public class ChefNPC : MonoBehaviour
     void OpenDialogue()
     {
         showingDialogue = true;
+
+        // Play NPC voice greeting
+        if (IslandSoundManager.Instance != null)
+        {
+            IslandSoundManager.Instance.PlayNPCVoice("ooh");
+        }
+
         if (!questStarted)
             dialogueState = 0;
         else if (currentQuestFishId != null)

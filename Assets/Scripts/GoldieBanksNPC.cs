@@ -431,6 +431,12 @@ public class GoldieBanksNPC : MonoBehaviour
                 dialogOpen = true;
                 isWalking = false;
 
+                // Play NPC voice greeting
+                if (IslandSoundManager.Instance != null)
+                {
+                    IslandSoundManager.Instance.PlayNPCVoice("hey");
+                }
+
                 // Face the player
                 if (GameCache.IsPlayerValid())
                 {

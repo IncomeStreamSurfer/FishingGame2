@@ -394,9 +394,9 @@ public class MainMenu : MonoBehaviour
         float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 5f;
         float pulseScale = 1f + Mathf.Sin(skullPulse * 2f) * 0.02f;
 
-        // Use safe area for positioning
+        // Use safe area for positioning - moved title lower for better visibility
         float centerX = safeArea.x + safeArea.width / 2;
-        float titleY = safeArea.y + safeArea.height * 0.05f; // Start 5% down the safe area
+        float titleY = safeArea.y + safeArea.height * 0.12f; // Start 12% down the safe area
 
         // Large ominous glow behind title
         GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.25f * menuAlpha);
@@ -417,22 +417,31 @@ public class MainMenu : MonoBehaviour
         fishStyle.fontStyle = FontStyle.Bold;
         fishStyle.alignment = TextAnchor.MiddleCenter;
 
-        // Blood drip shadow
-        GUI.color = new Color(0.3f, 0f, 0f, 0.6f * menuAlpha);
-        fishStyle.normal.textColor = new Color(0.3f, 0f, 0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 4, titleY + 44 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
+        // Black outline shadow for better visibility
+        GUI.color = new Color(0f, 0f, 0f, 0.9f * menuAlpha);
+        fishStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
+        GUI.Label(new Rect(safeArea.x + shakeX + 3, titleY + 43 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX - 3, titleY + 43 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 46 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 37 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
 
-        // Main "FISH" text - blood red
+        // Main "FISH" text - bright blood red for better visibility
         GUI.color = new Color(1, 1, 1, menuAlpha);
-        fishStyle.normal.textColor = new Color(0.85f, 0.15f, 0.1f, menuAlpha);
+        fishStyle.normal.textColor = new Color(1.0f, 0.2f, 0.15f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX, titleY + 40 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
 
-        // "OR" text - smaller, white/gray
+        // "OR" text - smaller, bright white for visibility
         GUIStyle orStyle = new GUIStyle();
         orStyle.fontSize = 36;
         orStyle.fontStyle = FontStyle.BoldAndItalic;
         orStyle.alignment = TextAnchor.MiddleCenter;
-        orStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f, menuAlpha);
+
+        // Black outline for OR
+        orStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
+        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 117 + bobOffset, safeArea.width, 50), "OR", orStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX - 2, titleY + 117 + bobOffset, safeArea.width, 50), "OR", orStyle);
+
+        orStyle.normal.textColor = new Color(1.0f, 1.0f, 1.0f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX, titleY + 115 + bobOffset, safeArea.width, 50), "OR", orStyle);
 
         // "DIE" text - even more dramatic
@@ -441,34 +450,37 @@ public class MainMenu : MonoBehaviour
         dieStyle.fontStyle = FontStyle.Bold;
         dieStyle.alignment = TextAnchor.MiddleCenter;
 
-        // Heavy shadow for DIE
-        GUI.color = new Color(0, 0, 0, 0.7f * menuAlpha);
+        // Heavy black outline for DIE
+        GUI.color = new Color(0, 0, 0, 0.9f * menuAlpha);
         dieStyle.normal.textColor = new Color(0, 0, 0, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 5, titleY + 140 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX + 4, titleY + 139 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX - 4, titleY + 139 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 143 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 131 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
 
-        // Main "DIE" text - darker blood red, pulsing
-        float diePulse = 0.7f + Mathf.Sin(skullPulse * 3f) * 0.15f;
+        // Main "DIE" text - brighter blood red, pulsing
+        float diePulse = 0.85f + Mathf.Sin(skullPulse * 3f) * 0.15f;
         GUI.color = new Color(1, 1, 1, menuAlpha);
-        dieStyle.normal.textColor = new Color(0.7f * diePulse, 0.05f, 0.05f, menuAlpha);
+        dieStyle.normal.textColor = new Color(0.9f * diePulse, 0.1f, 0.1f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX, titleY + 135 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
 
         // Draw skull and crossbones between the words (simple version)
         DrawSkull(centerX - 15, titleY + 125 + bobOffset, 30f * pulseScale, menuAlpha);
 
-        // Tagline
+        // Tagline - brighter for visibility
         GUIStyle tagStyle = new GUIStyle();
         tagStyle.fontSize = 18;
         tagStyle.fontStyle = FontStyle.Italic;
         tagStyle.alignment = TextAnchor.MiddleCenter;
-        tagStyle.normal.textColor = new Color(0.5f, 0.55f, 0.6f, menuAlpha);
+        tagStyle.normal.textColor = new Color(0.8f, 0.85f, 0.9f, menuAlpha);
         GUI.Label(new Rect(safeArea.x, titleY + 235 + bobOffset, safeArea.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
 
-        // Beta version badge
+        // Beta version badge - brighter
         GUIStyle betaStyle = new GUIStyle();
         betaStyle.fontSize = 14;
         betaStyle.fontStyle = FontStyle.Bold;
         betaStyle.alignment = TextAnchor.MiddleCenter;
-        betaStyle.normal.textColor = new Color(1f, 0.8f, 0.2f, menuAlpha * 0.9f);
+        betaStyle.normal.textColor = new Color(1f, 0.9f, 0.3f, menuAlpha);
         GUI.Label(new Rect(safeArea.x, titleY + 265 + bobOffset, safeArea.width, 25), "[ BETA - Tropical Island ]", betaStyle);
     }
 
@@ -514,30 +526,44 @@ public class MainMenu : MonoBehaviour
     void DrawMainMenu()
     {
         float buttonWidth = 180;
-        float buttonHeight = 32;
-        float buttonSpacing = 8;
-        // Position buttons in lower half of screen, within safe area
-        // Title ends around y=280, so start buttons well below that
-        float startY = safeArea.y + safeArea.height * 0.52f; // Start at 52% down the safe area
-        float centerX = safeArea.x + (safeArea.width - buttonWidth) / 2;
+        float buttonHeight = 36;
+        float buttonSpacing = 12;
+        float columnGap = 60; // Gap between left and right columns
 
-        string[] buttons = { "START NEW GAME", "LOAD GAME", "SAVED GAMES", "SETTINGS", "QUIT" };
+        // Position buttons below the BETA text (which ends around 12% + 290 pixels)
+        float startY = safeArea.y + safeArea.height * 0.12f + 310f; // Below BETA badge
+        float centerX = safeArea.x + safeArea.width / 2;
 
-        for (int i = 0; i < buttons.Length; i++)
+        // Left column X position (buttons on the left)
+        float leftX = centerX - buttonWidth - columnGap / 2;
+        // Right column X position (buttons on the right)
+        float rightX = centerX + columnGap / 2;
+
+        // Left column: START NEW GAME, LOAD GAME
+        if (DrawMenuButton(new Rect(leftX, startY, buttonWidth, buttonHeight), "START NEW GAME"))
         {
-            Rect btnRect = new Rect(centerX, startY + i * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight);
+            StartNewGame();
+        }
+        if (DrawMenuButton(new Rect(leftX, startY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight), "LOAD GAME"))
+        {
+            currentState = MenuState.LoadGame;
+        }
 
-            if (DrawMenuButton(btnRect, buttons[i]))
-            {
-                switch (i)
-                {
-                    case 0: StartNewGame(); break;
-                    case 1: currentState = MenuState.LoadGame; break;
-                    case 2: currentState = MenuState.SavedGames; break;
-                    case 3: currentState = MenuState.Settings; break;
-                    case 4: QuitGame(); break;
-                }
-            }
+        // Right column: SAVED GAMES, SETTINGS (symmetrical)
+        if (DrawMenuButton(new Rect(rightX, startY, buttonWidth, buttonHeight), "SAVED GAMES"))
+        {
+            currentState = MenuState.SavedGames;
+        }
+        if (DrawMenuButton(new Rect(rightX, startY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight), "SETTINGS"))
+        {
+            currentState = MenuState.Settings;
+        }
+
+        // Bottom center: QUIT
+        float quitY = startY + (buttonHeight + buttonSpacing) * 2 + 20; // Extra spacing before quit
+        if (DrawMenuButton(new Rect(centerX - buttonWidth / 2, quitY, buttonWidth, buttonHeight), "QUIT"))
+        {
+            QuitGame();
         }
     }
 

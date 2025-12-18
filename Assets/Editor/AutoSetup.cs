@@ -138,6 +138,10 @@ public class AutoSetup
         GameObject weather = new GameObject("WeatherSystem");
         weather.AddComponent<WeatherSystem>();
 
+        // Island Sound Manager (ambient sounds, SFX, voices)
+        GameObject soundManager = new GameObject("IslandSoundManager");
+        soundManager.AddComponent<IslandSoundManager>();
+
         // Thunderstorm System (dangerous storms with lightning)
         GameObject thunderstorm = new GameObject("ThunderstormSystem");
         thunderstorm.AddComponent<ThunderstormSystem>();
@@ -177,6 +181,10 @@ public class AutoSetup
         // Fish Buff Sprites
         GameObject fishBuffSprites = new GameObject("FishBuffSprites");
         fishBuffSprites.AddComponent<FishBuffSprites>();
+
+        // Wet Debuff System - tracks when player is in water
+        GameObject wetDebuffSystem = new GameObject("WetDebuffSystem");
+        wetDebuffSystem.AddComponent<WetDebuffSystem>();
 
         // Fishing Pool System - spawns special fishing pools in water
         GameObject fishingPoolSystem = new GameObject("FishingPoolSystem");
@@ -669,78 +677,38 @@ public class AutoSetup
         Material grassMat = new Material(Shader.Find("Standard"));
         grassMat.color = new Color(0.25f, 0.5f, 0.2f);
 
-        // Generate random island positions around the main island
-        // Islands spawn in a ring around the main island at varying distances
-        List<Vector3> islandPositions = new List<Vector3>();
-        int numIslands = Random.Range(12, 18); // Random number of islands (12-17)
-        float minDistanceFromCenter = 50f; // Minimum distance from main island center
-        float maxDistanceFromCenter = 100f; // Maximum distance from main island center
-        float minIslandSpacing = 25f; // Minimum distance between islands
-
-        // Keep trying to place islands until we have enough
-        int attempts = 0;
-        int maxAttempts = 200; // Prevent infinite loops
-
-        while (islandPositions.Count < numIslands && attempts < maxAttempts)
+        // Fixed island positions around the main island
+        // NO islands in front of dock (positive Z near X=0)
+        Vector3[] islandPositions = new Vector3[]
         {
-            attempts++;
+            new Vector3(-55f, 1f, 35f),   // Far left side
+            new Vector3(-55f, 1f, -20f),  // Left back
+            new Vector3(-40f, 1f, -50f),  // Left far back
+            new Vector3(55f, 1f, 35f),    // Far right side
+            new Vector3(55f, 1f, -15f),   // Right back
+            new Vector3(40f, 1f, -55f),   // Right far back
+            new Vector3(-70f, 1f, 10f),   // Far left
+            new Vector3(70f, 1f, 5f),     // Far right
+            new Vector3(0f, 1f, -65f),    // Behind island
+            new Vector3(-25f, 1f, -70f),  // Behind left
+            new Vector3(25f, 1f, -70f),   // Behind right
+            new Vector3(-75f, 1f, -40f),  // Far left back
+            new Vector3(75f, 1f, -35f),   // Far right back
+            new Vector3(-80f, 1f, 45f),   // Very far left (not blocking dock)
+        };
 
-            // Generate random angle around the main island (0-360 degrees)
-            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float[] islandSizes = new float[] { 6f, 5f, 7f, 5f, 6f, 4f, 7f, 5f, 6f, 4f, 5f, 6f, 5f, 7f };
 
-            // Generate random distance from center
-            float distance = Random.Range(minDistanceFromCenter, maxDistanceFromCenter);
-
-            // Calculate position using polar coordinates
-            float x = Mathf.Cos(angle) * distance;
-            float z = Mathf.Sin(angle) * distance;
-            float y = Random.Range(0.95f, 1.05f); // Slight height variation
-
-            Vector3 candidatePos = new Vector3(x, y, z);
-
-            // Check if this position is far enough from existing islands
-            bool validPosition = true;
-            foreach (Vector3 existingPos in islandPositions)
-            {
-                float distanceToExisting = Vector3.Distance(
-                    new Vector3(candidatePos.x, 0, candidatePos.z),
-                    new Vector3(existingPos.x, 0, existingPos.z)
-                );
-
-                if (distanceToExisting < minIslandSpacing)
-                {
-                    validPosition = false;
-                    break;
-                }
-            }
-
-            // Check if position is far enough from dock area (around z=10 to z=25, x=-5 to x=5)
-            float dockDistance = Vector3.Distance(
-                new Vector3(candidatePos.x, 0, candidatePos.z),
-                new Vector3(0, 0, 15f) // Approximate dock center
-            );
-            if (dockDistance < 30f)
-            {
-                validPosition = false;
-            }
-
-            // If position is valid, add it to the list
-            if (validPosition)
-            {
-                islandPositions.Add(candidatePos);
-            }
-        }
-
-        // Create islands at the generated positions
-        foreach (var pos in islandPositions)
+        // Create islands at fixed positions
+        for (int i = 0; i < islandPositions.Length; i++)
         {
-            float size = Random.Range(4f, 8f);
+            float size = islandSizes[i % islandSizes.Length];
 
             // Sand base - raised above water
             GameObject island = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             island.name = "SmallIsland";
             island.transform.SetParent(parent);
-            island.transform.localPosition = pos;
+            island.transform.localPosition = islandPositions[i];
             island.transform.localScale = new Vector3(size, 0.5f, size); // Taller base
             island.GetComponent<Renderer>().sharedMaterial = sandMat;
 
@@ -1358,6 +1326,9 @@ public class AutoSetup
         water.transform.localScale = new Vector3(80, 1, 80); // MASSIVE water plane to cover distant islands
         water.AddComponent<WaterEffect>();
 
+        // REMOVE COLLIDER so player can walk through/fall into water
+        Object.DestroyImmediate(water.GetComponent<Collider>());
+
         // Water bed (sandy bottom visible through clear water)
         GameObject waterBed = GameObject.CreatePrimitive(PrimitiveType.Plane);
         waterBed.name = "WaterBed";
@@ -1366,6 +1337,9 @@ public class AutoSetup
         Material bedMat = new Material(Shader.Find("Standard"));
         bedMat.color = new Color(0.65f, 0.58f, 0.45f); // Sandy bottom color
         waterBed.GetComponent<Renderer>().sharedMaterial = bedMat;
+
+        // Remove water bed collider too
+        Object.DestroyImmediate(waterBed.GetComponent<Collider>());
     }
 
     static void CreateDock()
@@ -1525,8 +1499,43 @@ public class AutoSetup
         // === STANDING TORCH at the end of the dock ===
         GameObject torch = new GameObject("DockTorch");
         torch.transform.SetParent(dockParent.transform);
-        torch.transform.localPosition = new Vector3(0, dockHeight + 0.15f, dockEndZ - 1.5f); // End of dock, on surface
+        torch.transform.localPosition = new Vector3(-1.5f, dockHeight + 0.15f, dockEndZ - 1.5f); // End of dock, moved left
         torch.AddComponent<DockTorch>(); // Component creates its own model and handles lighting
+
+        // === TALL SIGNPOST planted in water next to dock ===
+        GameObject dockSign = new GameObject("DockSignpost");
+        dockSign.transform.SetParent(dockParent.transform);
+        dockSign.transform.localPosition = new Vector3(dockWidth / 2 + 1.5f, 0, 20f); // Right side of dock, in the water
+        dockSign.transform.localRotation = Quaternion.Euler(0, -15f, 0); // Angled slightly toward dock
+
+        // Tall wooden post that goes deep into water
+        Material signPostMat = new Material(Shader.Find("Standard"));
+        signPostMat.color = new Color(0.35f, 0.25f, 0.15f); // Dark weathered wood
+
+        GameObject signPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        signPost.name = "TallPost";
+        signPost.transform.SetParent(dockSign.transform);
+        signPost.transform.localPosition = new Vector3(0, 1.0f, 0); // Post center - extends from -2.5 to 4.5
+        signPost.transform.localScale = new Vector3(0.2f, 3.5f, 0.2f); // 7 meters tall (3.5 * 2)
+        signPost.GetComponent<Renderer>().sharedMaterial = signPostMat;
+        Object.DestroyImmediate(signPost.GetComponent<Collider>());
+
+        // Sign board at top
+        Material signBoardMat = new Material(Shader.Find("Standard"));
+        signBoardMat.color = new Color(0.9f, 0.85f, 0.7f); // Weathered white/tan
+
+        GameObject signBoard = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        signBoard.name = "SignBoard";
+        signBoard.transform.SetParent(dockSign.transform);
+        signBoard.transform.localPosition = new Vector3(0, 4.2f, 0); // Near top of post
+        signBoard.transform.localScale = new Vector3(1.2f, 0.7f, 0.08f);
+        signBoard.GetComponent<Renderer>().sharedMaterial = signBoardMat;
+        Object.DestroyImmediate(signBoard.GetComponent<Collider>());
+
+        // Add readable sign text
+        ReadableSign dockReadable = signBoard.AddComponent<ReadableSign>();
+        dockReadable.signTitle = "DOCK RULES";
+        dockReadable.signMessage = "No diving! Watch for jellyfish. Fish responsibly.";
     }
 
     static void CreateRamp()
@@ -2470,11 +2479,11 @@ public class AutoSetup
         dockRadio.transform.rotation = Quaternion.Euler(0, -30, 0);     // Angled toward player
         dockRadio.AddComponent<DockRadio>();
 
-        // Stats Board Sign at the end of the dock on the right side
-        CreateStatsSign();
+        // Stats Board Sign removed - user requested deletion
+        // CreateStatsSign();
 
-        // Drop Rates Sign on the beach
-        CreateDropRatesSign();
+        // Drop Rates Sign removed - user requested deletion
+        // CreateDropRatesSign();
 
         // Shoulder Parrot system (spawns when purchased from shop)
         GameObject parrotSystem = new GameObject("ShoulderParrot");
@@ -2485,8 +2494,8 @@ public class AutoSetup
     {
         // Stats Board Sign on the beach - wooden sign showing player stats
         GameObject sign = new GameObject("StatsBoardSign");
-        sign.transform.position = new Vector3(-25f, 1.5f, 10f);  // Left side beach, away from docks
-        sign.transform.rotation = Quaternion.Euler(0, 90, 0);  // Face toward center of island
+        sign.transform.position = new Vector3(22f, 1.5f, 10f);  // Right side beach, near beach towel
+        sign.transform.rotation = Quaternion.Euler(0, 270, 0);  // Face toward center of island
 
         // Sign board (wooden plank)
         GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);

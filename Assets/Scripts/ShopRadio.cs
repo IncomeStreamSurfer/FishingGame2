@@ -26,9 +26,9 @@ public class ShopRadio : MonoBehaviour
     private float interactionDistance = 4f;  // Must be within 4 units to use radio
     private int guiFrameSkip = 0;
 
-    // Multiple songs
+    // Multiple songs - loaded from realm-specific folders
     private List<AudioClip> songs = new List<AudioClip>();
-    private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" };
+    private List<string> loadedSongNames = new List<string>();
     private int currentSongIndex = 0;
 
     void Awake()
@@ -65,24 +65,41 @@ public class ShopRadio : MonoBehaviour
 
     void SetupAudio()
     {
-        // Load all songs from Resources
-        foreach (string songName in songNames)
+        // Load all songs from realm-specific folder (same as DockRadio)
+        string folderName = GetMusicFolderForRealm(GameCache.GetCurrentRealm());
+        Debug.Log("ShopRadio: Loading music from " + folderName);
+
+        AudioClip[] clips = Resources.LoadAll<AudioClip>(folderName);
+
+        if (clips != null && clips.Length > 0)
         {
-            AudioClip clip = Resources.Load<AudioClip>(songName);
-            if (clip != null)
+            foreach (AudioClip clip in clips)
             {
                 songs.Add(clip);
-                Debug.Log("ShopRadio: Loaded song - " + songName);
+                loadedSongNames.Add(clip.name);
+                Debug.Log("ShopRadio: Loaded song - " + clip.name);
             }
-            else
+        }
+
+        // Fallback to root Resources if folder empty
+        if (songs.Count == 0)
+        {
+            Debug.LogWarning("ShopRadio: No songs in " + folderName + "! Trying fallback...");
+            string[] fallbackNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" };
+            foreach (string songName in fallbackNames)
             {
-                Debug.LogWarning("ShopRadio: Could not load - " + songName);
+                AudioClip clip = Resources.Load<AudioClip>(songName);
+                if (clip != null)
+                {
+                    songs.Add(clip);
+                    loadedSongNames.Add(clip.name);
+                }
             }
         }
 
         if (songs.Count == 0)
         {
-            Debug.LogError("ShopRadio: No songs found! Make sure audio files are in Assets/Resources/");
+            Debug.LogError("ShopRadio: No songs found!");
             return;
         }
 
@@ -234,7 +251,7 @@ public class ShopRadio : MonoBehaviour
                 audioSource.clip = songs[currentSongIndex];
                 audioSource.volume = maxVolume;
                 audioSource.Play();
-                Debug.Log("ShopRadio: ON - Playing " + songNames[currentSongIndex]);
+                Debug.Log("ShopRadio: ON - Playing " + loadedSongNames[currentSongIndex]);
             }
         }
         else
@@ -250,7 +267,24 @@ public class ShopRadio : MonoBehaviour
         audioSource.clip = songs[currentSongIndex];
         audioSource.volume = maxVolume;
         audioSource.Play();
-        Debug.Log("ShopRadio: Now playing - " + songNames[currentSongIndex]);
+        Debug.Log("ShopRadio: Now playing - " + loadedSongNames[currentSongIndex]);
+    }
+
+    string GetMusicFolderForRealm(RealmType realm)
+    {
+        switch (realm)
+        {
+            case RealmType.TropicalIsland:
+                return "dubscape";
+            case RealmType.JungleRealm:
+                return "CUMBIASCAPE";
+            case RealmType.IceRealm:
+                return "HARDSCAPE";
+            case RealmType.VolcanicRealm:
+                return "dubscape";  // Default to dubscape for volcanic
+            default:
+                return "dubscape";
+        }
     }
 
     void UpdateLED()

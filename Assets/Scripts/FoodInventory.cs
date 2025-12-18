@@ -362,10 +362,23 @@ public class FoodInventory : MonoBehaviour
             PlayerHealth.Instance.Heal(fish.healthValue);
         }
 
-        // Show notification
-        if (UIManager.Instance != null)
+        // 5% chance to get poisoned when eating fish
+        float poisonChance = UnityEngine.Random.Range(0f, 1f);
+        if (poisonChance < 0.05f)
         {
-            UIManager.Instance.ShowLootNotification($"Ate {fish.fishName}! +{fish.healthValue} HP", new Color(0.4f, 1f, 0.4f));
+            // Apply poison debuff (10 seconds, 1 damage per second)
+            if (FishBuffSystem.Instance != null)
+            {
+                FishBuffSystem.Instance.ApplyPoison();
+            }
+        }
+        else
+        {
+            // Show normal notification only if not poisoned
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Ate {fish.fishName}! +{fish.healthValue} HP", new Color(0.4f, 1f, 0.4f));
+            }
         }
 
         Debug.Log($"Consumed {fish.fishName} for +{fish.healthValue} HP");

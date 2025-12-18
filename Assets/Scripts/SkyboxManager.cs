@@ -36,8 +36,8 @@ public class SkyboxManager : MonoBehaviour
 
     [Header("Procedural Sky Colors - Beautiful & Atmospheric")]
     // Day colors - vibrant blue sky
-    public Color dayTopColor = new Color(0.20f, 0.50f, 0.95f);      // Bright azure sky
-    public Color dayHorizonColor = new Color(0.60f, 0.75f, 0.92f);  // Soft blue horizon
+    public Color dayTopColor = new Color(0.25f, 0.70f, 1.0f);      // BRIGHT vibrant azure sky
+    public Color dayHorizonColor = new Color(0.50f, 0.85f, 1.0f);  // Brilliant bright blue horizon
     // Sunrise colors - pink and orange
     public Color sunriseTopColor = new Color(0.40f, 0.25f, 0.65f);  // Purple-pink sky
     public Color sunriseHorizonColor = new Color(0.98f, 0.55f, 0.35f); // Orange-pink glow
@@ -67,23 +67,37 @@ public class SkyboxManager : MonoBehaviour
     [Header("Star System")]
     [Tooltip("Enable procedural star system at night")]
     public bool enableStars = true;
-    [Range(50, 800)]
-    public int starCount = 100;          // Reduced from 400 for better performance
+    [Range(50, 2000)]
+    public int starCount = 1200;          // Many more stars for dense night sky
     public float starDistance = 95f;
     [Range(0f, 1f)]
     public float starTwinkleSpeed = 0.6f;
-    public float starFadeInHour = 18.5f; // Stars start appearing at 6:30 PM
-    public float starFadeOutHour = 6.5f; // Stars fade out at 6:30 AM
-    [Range(1f, 5f)]
-    public float starBrightness = 3f;    // Star emission multiplier
+    public float starFadeInHour = 21.5f; // Stars start appearing at 9:30 PM (darkness at 10pm)
+    public float starFadeOutHour = 4.5f; // Stars fade out at 4:30 AM (light at 4am)
+    [Range(1f, 10f)]
+    public float starBrightness = 8f;    // Much brighter stars for visibility
 
-    [Header("Moon System")]
-    [Tooltip("Enable moon that appears at night")]
-    public bool enableMoon = true;
-    public float moonSize = 1.2f;  // MUCH smaller moon (was 3f)
-    public float moonDistance = 80f;
-    public Color moonColor = new Color(1f, 1f, 1f);  // Bright white for moonlight
-    public float moonGlowIntensity = 4f;  // Increased for brighter moonlight
+    [Header("Constellation System")]
+    [Tooltip("Enable constellation patterns in the night sky")]
+    public bool enableConstellations = true;
+    [Range(3, 15)]
+    public int constellationCount = 8;
+    public float constellationStarBrightness = 10f;  // Very bright constellation stars
+
+    [Header("Milky Way Galaxy")]
+    [Tooltip("Enable milky way galaxy band across the sky")]
+    public bool enableMilkyWay = true;
+    [Range(100, 1000)]
+    public int milkyWayStarCount = 500;
+    public float milkyWayBrightness = 4f;
+
+    [Header("Shooting Stars")]
+    [Tooltip("Enable occasional shooting stars")]
+    public bool enableShootingStars = true;
+    [Range(0.5f, 5f)]
+    public float shootingStarFrequency = 2f;  // Average seconds between shooting stars
+    public float shootingStarSpeed = 50f;
+    public float shootingStarLength = 3f;
 
     [Header("Integration")]
     [Tooltip("Link to DayNightCycle for automatic time-based skybox changes")]
@@ -106,11 +120,30 @@ public class SkyboxManager : MonoBehaviour
     private List<GameObject> stars = new List<GameObject>();
     private List<Material> starMaterials = new List<Material>();
     private List<float> starTwinkleOffsets = new List<float>();
+    private List<bool> isConstellationStar = new List<bool>();
+    private List<bool> isMilkyWayStar = new List<bool>();
 
-    // Moon
-    private GameObject moon;
-    private Material moonMaterial;
-    private Light moonLight;
+    // Constellation system
+    private class Constellation
+    {
+        public List<GameObject> stars;
+        public List<LineRenderer> connections;
+    }
+    private List<Constellation> constellations = new List<Constellation>();
+
+    // Shooting star system
+    private class ShootingStar
+    {
+        public GameObject obj;
+        public LineRenderer trail;
+        public Vector3 startPos;
+        public Vector3 direction;
+        public float speed;
+        public float lifetime;
+        public float age;
+    }
+    private List<ShootingStar> shootingStars = new List<ShootingStar>();
+    private float nextShootingStarTime = 0f;
 
     void Awake()
     {
@@ -177,14 +210,14 @@ public class SkyboxManager : MonoBehaviour
             CreateStarSystem();
         }
 
-        // Create moon
-        if (enableMoon)
+        // Schedule first shooting star
+        if (enableShootingStars)
         {
-            CreateMoon();
+            nextShootingStarTime = Time.time + Random.Range(shootingStarFrequency * 0.5f, shootingStarFrequency * 1.5f);
         }
 
         isInitialized = true;
-        Debug.Log("SkyboxManager initialized - Skybox system active");
+        Debug.Log("SkyboxManager initialized - Enhanced night sky with constellations, milky way, and shooting stars");
     }
 
     void CreateCloudSystem()
@@ -251,55 +284,110 @@ public class SkyboxManager : MonoBehaviour
 
     void CreateStarSystem()
     {
-        for (int i = 0; i < starCount; i++)
+        // First, create regular stars
+        int regularStarCount = starCount;
+
+        // Reserve some stars for constellations
+        if (enableConstellations)
         {
-            // Create star as a small sphere
-            GameObject star = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            star.name = "Star_" + i;
-            star.transform.SetParent(transform);
+            regularStarCount -= (constellationCount * 6); // Reserve ~6 stars per constellation
+        }
 
-            // Random position on a sphere around the sky
-            Vector3 randomDir = Random.onUnitSphere;
-            // Keep stars above the horizon
-            if (randomDir.y < 0.05f) randomDir.y = 0.05f + Random.Range(0f, 0.1f);
-            randomDir.Normalize();
+        for (int i = 0; i < regularStarCount; i++)
+        {
+            CreateStar(false, false);
+        }
 
-            star.transform.position = randomDir * starDistance;
+        // Create constellation stars and patterns
+        if (enableConstellations)
+        {
+            CreateConstellations();
+        }
 
-            // Varied star sizes - some big bright stars, many small ones
+        // Create milky way galaxy band
+        if (enableMilkyWay)
+        {
+            CreateMilkyWay();
+        }
+
+        Debug.Log($"Created {stars.Count} total stars ({regularStarCount} regular + constellations + milky way)");
+    }
+
+    GameObject CreateStar(bool isConstellation, bool isMilkyWay)
+    {
+        // Create star as a small sphere
+        GameObject star = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        star.name = isConstellation ? "ConstellationStar" : (isMilkyWay ? "MilkyWayStar" : "Star");
+        star.transform.SetParent(transform);
+
+        // Random position on a sphere around the sky
+        Vector3 randomDir = Random.onUnitSphere;
+        // Keep stars above the horizon
+        if (randomDir.y < 0.05f) randomDir.y = 0.05f + Random.Range(0f, 0.1f);
+        randomDir.Normalize();
+
+        star.transform.position = randomDir * starDistance;
+
+        // Varied star sizes
+        float size;
+        if (isConstellation)
+        {
+            // Constellation stars are larger and brighter
+            size = Random.Range(0.4f, 0.6f);
+        }
+        else if (isMilkyWay)
+        {
+            // Milky way stars are smaller and fainter
+            size = Random.Range(0.05f, 0.15f);
+        }
+        else
+        {
+            // Regular stars - varied sizes (MUCH LARGER for visibility)
             float sizeRoll = Random.Range(0f, 1f);
-            float size;
-            if (sizeRoll < 0.05f)
+            if (sizeRoll < 0.1f)
             {
-                // 5% are large bright stars
-                size = Random.Range(0.35f, 0.5f);
+                // 10% are large bright stars
+                size = Random.Range(0.6f, 1.0f);
             }
-            else if (sizeRoll < 0.2f)
+            else if (sizeRoll < 0.35f)
             {
-                // 15% are medium stars
-                size = Random.Range(0.2f, 0.35f);
+                // 25% are medium stars
+                size = Random.Range(0.35f, 0.6f);
             }
             else
             {
-                // 80% are small stars
-                size = Random.Range(0.1f, 0.2f);
+                // 65% are small stars
+                size = Random.Range(0.2f, 0.4f);
             }
-            star.transform.localScale = Vector3.one * size;
+        }
+        star.transform.localScale = Vector3.one * size;
 
-            // Remove collider
-            Destroy(star.GetComponent<Collider>());
+        // Remove collider
+        Destroy(star.GetComponent<Collider>());
 
-            // Star material - emissive with varied colors
-            Material starMat = new Material(Shader.Find("Standard"));
-            starMat.SetFloat("_Mode", 3);
-            starMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-            starMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
-            starMat.SetInt("_ZWrite", 0);
-            starMat.EnableKeyword("_EMISSION");
-            starMat.renderQueue = 2200; // Render AFTER skybox and black dome overlay so stars appear on top
+        // Star material - emissive with varied colors
+        Material starMat = new Material(Shader.Find("Standard"));
+        starMat.SetFloat("_Mode", 3);
+        starMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        starMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        starMat.SetInt("_ZWrite", 0);
+        starMat.EnableKeyword("_EMISSION");
+        starMat.renderQueue = 2200; // Render AFTER skybox and black dome overlay so stars appear on top
 
-            // Star color - varied whites, yellows, and occasional blue/red stars
-            Color baseColor;
+        // Star color - varied whites, yellows, and occasional blue/red stars
+        Color baseColor;
+        if (isConstellation)
+        {
+            // Constellation stars are bright white/blue
+            baseColor = new Color(0.9f, 0.95f, 1f);
+        }
+        else if (isMilkyWay)
+        {
+            // Milky way stars are mostly white with variation
+            baseColor = new Color(0.9f, 0.9f, 1f);
+        }
+        else
+        {
             float colorRoll = Random.Range(0f, 1f);
             if (colorRoll < 0.6f)
             {
@@ -321,11 +409,190 @@ public class SkyboxManager : MonoBehaviour
                 // Rare red giants
                 baseColor = new Color(1f, 0.7f, 0.6f);
             }
+        }
 
-            starMat.color = baseColor;
-            // Brighter emission based on size
-            float emissionMultiplier = (size > 0.3f) ? starBrightness * 1.5f : starBrightness;
-            starMat.SetColor("_EmissionColor", baseColor * emissionMultiplier);
+        starMat.color = baseColor;
+
+        // Brighter emission based on type and size
+        float emissionMultiplier;
+        if (isConstellation)
+        {
+            emissionMultiplier = constellationStarBrightness;
+        }
+        else if (isMilkyWay)
+        {
+            emissionMultiplier = milkyWayBrightness;
+        }
+        else
+        {
+            emissionMultiplier = (size > 0.3f) ? starBrightness * 1.5f : starBrightness;
+        }
+
+        starMat.SetColor("_EmissionColor", baseColor * emissionMultiplier);
+        starMat.SetFloat("_Metallic", 0f);
+        starMat.SetFloat("_Glossiness", 0f);
+
+        star.GetComponent<Renderer>().material = starMat;
+
+        stars.Add(star);
+        starMaterials.Add(starMat);
+        starTwinkleOffsets.Add(Random.Range(0f, 100f));
+        isConstellationStar.Add(isConstellation);
+        isMilkyWayStar.Add(isMilkyWay);
+
+        return star;
+    }
+
+    void CreateConstellations()
+    {
+        for (int c = 0; c < constellationCount; c++)
+        {
+            Constellation constellation = new Constellation();
+            constellation.stars = new List<GameObject>();
+            constellation.connections = new List<LineRenderer>();
+
+            // Random constellation position in sky
+            Vector3 centerDir = Random.onUnitSphere;
+            if (centerDir.y < 0.2f) centerDir.y = 0.2f + Random.Range(0f, 0.3f);
+            centerDir.Normalize();
+
+            // Create 4-7 stars for this constellation
+            int starsInConstellation = Random.Range(4, 8);
+
+            for (int i = 0; i < starsInConstellation; i++)
+            {
+                // Position stars near the center direction
+                Vector3 offset = Random.insideUnitSphere * 0.15f;
+                Vector3 starDir = (centerDir + offset).normalized;
+
+                // Create constellation star at specific position
+                GameObject star = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                star.name = $"Constellation_{c}_Star_{i}";
+                star.transform.SetParent(transform);
+                star.transform.position = starDir * starDistance;
+
+                float size = Random.Range(0.7f, 1.2f);  // Larger constellation stars
+                star.transform.localScale = Vector3.one * size;
+                Destroy(star.GetComponent<Collider>());
+
+                // Bright white/blue color for constellation stars
+                Material starMat = new Material(Shader.Find("Standard"));
+                starMat.SetFloat("_Mode", 3);
+                starMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                starMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                starMat.SetInt("_ZWrite", 0);
+                starMat.EnableKeyword("_EMISSION");
+                starMat.renderQueue = 2200;
+
+                Color constellationColor = new Color(0.9f, 0.95f, 1f);
+                starMat.color = constellationColor;
+                starMat.SetColor("_EmissionColor", constellationColor * constellationStarBrightness);
+                starMat.SetFloat("_Metallic", 0f);
+                starMat.SetFloat("_Glossiness", 0f);
+
+                star.GetComponent<Renderer>().material = starMat;
+
+                stars.Add(star);
+                starMaterials.Add(starMat);
+                starTwinkleOffsets.Add(Random.Range(0f, 100f));
+                isConstellationStar.Add(true);
+                isMilkyWayStar.Add(false);
+
+                constellation.stars.Add(star);
+            }
+
+            // Create lines connecting constellation stars
+            for (int i = 0; i < constellation.stars.Count - 1; i++)
+            {
+                // Connect to next star, and occasionally to another random star
+                int nextIndex = i + 1;
+
+                CreateConstellationLine(constellation, i, nextIndex);
+
+                // 30% chance to create an additional connection to create interesting patterns
+                if (Random.value < 0.3f && i < constellation.stars.Count - 2)
+                {
+                    int randomIndex = Random.Range(i + 2, constellation.stars.Count);
+                    CreateConstellationLine(constellation, i, randomIndex);
+                }
+            }
+
+            constellations.Add(constellation);
+        }
+
+        Debug.Log($"Created {constellationCount} constellations");
+    }
+
+    void CreateConstellationLine(Constellation constellation, int starIndex1, int starIndex2)
+    {
+        GameObject lineObj = new GameObject($"ConstellationLine_{starIndex1}_{starIndex2}");
+        lineObj.transform.SetParent(transform);
+
+        LineRenderer line = lineObj.AddComponent<LineRenderer>();
+        line.material = new Material(Shader.Find("Sprites/Default"));
+        line.startColor = new Color(0.7f, 0.8f, 1f, 0.4f);
+        line.endColor = new Color(0.7f, 0.8f, 1f, 0.4f);
+        line.startWidth = 0.03f;
+        line.endWidth = 0.03f;
+        line.positionCount = 2;
+        line.useWorldSpace = true;
+        line.sortingOrder = 2210;
+
+        // Enable emission for glowing effect
+        line.material.EnableKeyword("_EMISSION");
+        line.material.SetColor("_EmissionColor", new Color(0.5f, 0.6f, 0.8f) * 1.5f);
+
+        line.SetPosition(0, constellation.stars[starIndex1].transform.position);
+        line.SetPosition(1, constellation.stars[starIndex2].transform.position);
+
+        constellation.connections.Add(line);
+    }
+
+    void CreateMilkyWay()
+    {
+        // Create a band of stars across the sky representing the milky way
+        // The milky way will arc across the sky
+
+        for (int i = 0; i < milkyWayStarCount; i++)
+        {
+            // Create stars along a curved band
+            float t = (float)i / milkyWayStarCount;
+
+            // Define the milky way arc path (diagonal across sky)
+            float angle = t * 180f; // Arc across 180 degrees
+            float lat = Mathf.Sin(angle * Mathf.Deg2Rad) * 40f; // Up and down
+            float lon = t * 360f - 180f; // Rotate around
+
+            // Add some randomness to create thickness to the band
+            lat += Random.Range(-8f, 8f);
+            lon += Random.Range(-5f, 5f);
+
+            // Convert to 3D position
+            Vector3 dir = Quaternion.Euler(lat, lon, 0) * Vector3.forward;
+            if (dir.y < 0.05f) dir.y = 0.05f;
+            dir.Normalize();
+
+            // Create milky way star at this position
+            GameObject star = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            star.name = $"MilkyWay_Star_{i}";
+            star.transform.SetParent(transform);
+            star.transform.position = dir * starDistance;
+
+            float size = Random.Range(0.1f, 0.25f);  // Larger milky way stars
+            star.transform.localScale = Vector3.one * size;
+            Destroy(star.GetComponent<Collider>());
+
+            Material starMat = new Material(Shader.Find("Standard"));
+            starMat.SetFloat("_Mode", 3);
+            starMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            starMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            starMat.SetInt("_ZWrite", 0);
+            starMat.EnableKeyword("_EMISSION");
+            starMat.renderQueue = 2200;
+
+            Color milkyWayColor = new Color(0.9f, 0.9f, 1f);
+            starMat.color = milkyWayColor;
+            starMat.SetColor("_EmissionColor", milkyWayColor * milkyWayBrightness);
             starMat.SetFloat("_Metallic", 0f);
             starMat.SetFloat("_Glossiness", 0f);
 
@@ -334,54 +601,126 @@ public class SkyboxManager : MonoBehaviour
             stars.Add(star);
             starMaterials.Add(starMat);
             starTwinkleOffsets.Add(Random.Range(0f, 100f));
+            isConstellationStar.Add(false);
+            isMilkyWayStar.Add(true);
         }
 
-        Debug.Log($"Created {starCount} procedural stars");
+        Debug.Log($"Created milky way with {milkyWayStarCount} stars");
     }
 
-    void CreateMoon()
+    void CreateShootingStar()
     {
-        // Create moon as a sphere
-        moon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        moon.name = "Moon";
-        moon.transform.SetParent(transform);
+        ShootingStar shootingStar = new ShootingStar();
 
-        moon.transform.localScale = Vector3.one * moonSize;
+        // Random start position in upper sky
+        Vector3 startDir = Random.onUnitSphere;
+        startDir.y = Mathf.Abs(startDir.y) + 0.3f; // High in sky
+        startDir.Normalize();
+        shootingStar.startPos = startDir * starDistance;
 
-        // Remove collider
-        Destroy(moon.GetComponent<Collider>());
+        // Random direction (generally downward and across)
+        Vector3 direction = new Vector3(
+            Random.Range(-1f, 1f),
+            Random.Range(-0.8f, -0.3f), // Downward
+            Random.Range(-1f, 1f)
+        ).normalized;
+        shootingStar.direction = direction;
+        shootingStar.speed = shootingStarSpeed + Random.Range(-10f, 20f);
+        shootingStar.lifetime = Random.Range(0.8f, 1.5f);
+        shootingStar.age = 0f;
 
-        // Moon material - emissive with glow
-        moonMaterial = new Material(Shader.Find("Standard"));
-        moonMaterial.SetFloat("_Mode", 3);
-        moonMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-        moonMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
-        moonMaterial.SetInt("_ZWrite", 0);
-        moonMaterial.EnableKeyword("_EMISSION");
-        moonMaterial.renderQueue = 2250; // Render AFTER skybox and black dome overlay so moon appears on top
+        // Create shooting star object (small sphere)
+        GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        obj.name = "ShootingStar";
+        obj.transform.SetParent(transform);
+        obj.transform.position = shootingStar.startPos;
+        obj.transform.localScale = Vector3.one * 0.25f;
+        Destroy(obj.GetComponent<Collider>());
 
-        moonMaterial.color = moonColor;
-        moonMaterial.SetColor("_EmissionColor", moonColor * moonGlowIntensity);
-        moonMaterial.SetFloat("_Metallic", 0f);
-        moonMaterial.SetFloat("_Glossiness", 0.3f);
+        // Bright white material
+        Material mat = new Material(Shader.Find("Standard"));
+        mat.SetFloat("_Mode", 3);
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        mat.SetInt("_ZWrite", 0);
+        mat.EnableKeyword("_EMISSION");
+        mat.renderQueue = 2210;
 
-        moon.GetComponent<Renderer>().material = moonMaterial;
+        Color shootingStarColor = new Color(1f, 1f, 1f);
+        mat.color = shootingStarColor;
+        mat.SetColor("_EmissionColor", shootingStarColor * 8f);
+        obj.GetComponent<Renderer>().material = mat;
 
-        // Add a DIRECTIONAL light to the moon for realistic moonlight that shines DOWN
-        moonLight = moon.AddComponent<Light>();
-        moonLight.type = LightType.Directional;  // Changed from Point to Directional
-        moonLight.color = moonColor;
-        moonLight.intensity = 0.3f;  // Directional lights need lower intensity
-        moonLight.shadows = LightShadows.Soft;  // Soft shadows for moonlight
+        shootingStar.obj = obj;
 
-        // Configure high-quality soft shadows for moonlight
-        moonLight.shadowStrength = 0.8f;
-        moonLight.shadowResolution = UnityEngine.Rendering.LightShadowResolution.VeryHigh;
-        moonLight.shadowBias = 0.05f;
-        moonLight.shadowNormalBias = 0.4f;
-        moonLight.shadowNearPlane = 0.2f;
+        // Create trail
+        GameObject trailObj = new GameObject("ShootingStarTrail");
+        trailObj.transform.SetParent(obj.transform);
+        LineRenderer trail = trailObj.AddComponent<LineRenderer>();
+        trail.material = new Material(Shader.Find("Sprites/Default"));
+        trail.startColor = new Color(1f, 1f, 1f, 0.8f);
+        trail.endColor = new Color(1f, 1f, 1f, 0f);
+        trail.startWidth = 0.15f;
+        trail.endWidth = 0.02f;
+        trail.positionCount = 10;
+        trail.useWorldSpace = true;
 
-        Debug.Log("Created moon with directional light");
+        trail.material.EnableKeyword("_EMISSION");
+        trail.material.SetColor("_EmissionColor", new Color(1f, 1f, 1f) * 3f);
+
+        shootingStar.trail = trail;
+
+        shootingStars.Add(shootingStar);
+    }
+
+    void UpdateShootingStars()
+    {
+        if (!enableShootingStars) return;
+
+        float hour = dayNightCycle.GetCurrentHour();
+
+        // Only create shooting stars at night
+        bool isNight = hour >= 20f || hour < 6f;
+
+        if (isNight && Time.time >= nextShootingStarTime)
+        {
+            CreateShootingStar();
+            nextShootingStarTime = Time.time + Random.Range(shootingStarFrequency * 0.5f, shootingStarFrequency * 2f);
+        }
+
+        // Update existing shooting stars
+        for (int i = shootingStars.Count - 1; i >= 0; i--)
+        {
+            ShootingStar ss = shootingStars[i];
+            ss.age += Time.deltaTime;
+
+            if (ss.age >= ss.lifetime)
+            {
+                // Remove shooting star
+                if (ss.obj != null) Destroy(ss.obj);
+                shootingStars.RemoveAt(i);
+                continue;
+            }
+
+            // Move shooting star
+            ss.obj.transform.position += ss.direction * ss.speed * Time.deltaTime;
+
+            // Update trail
+            if (ss.trail != null)
+            {
+                for (int j = ss.trail.positionCount - 1; j > 0; j--)
+                {
+                    ss.trail.SetPosition(j, ss.trail.GetPosition(j - 1));
+                }
+                ss.trail.SetPosition(0, ss.obj.transform.position);
+            }
+
+            // Fade out near end of lifetime
+            float fadeAmount = 1f - (ss.age / ss.lifetime);
+            Material mat = ss.obj.GetComponent<Renderer>().material;
+            Color col = new Color(1f, 1f, 1f);
+            mat.SetColor("_EmissionColor", col * (8f * fadeAmount));
+        }
     }
 
     void SetupProceduralSkybox()
@@ -445,7 +784,7 @@ public class SkyboxManager : MonoBehaviour
         UpdateSkyboxForTimeOfDay();
         UpdateClouds();
         UpdateStars();
-        UpdateMoon();
+        UpdateShootingStars();
 
         // Periodic debug logging (every 60 frames = ~1 second)
         // Debug logging disabled to prevent MissingReferenceException spam
@@ -580,16 +919,31 @@ public class SkyboxManager : MonoBehaviour
             if (stars[i] == null || starMaterials[i] == null) continue;
 
             // Twinkle effect - vary brightness with more variation
+            // Constellation stars twinkle less, milky way stars barely twinkle
+            float twinkleAmount = isMilkyWayStar[i] ? 0.15f : (isConstellationStar[i] ? 0.3f : 0.5f);
             float twinkle = Mathf.PerlinNoise(
                 Time.time * starTwinkleSpeed + starTwinkleOffsets[i],
                 starTwinkleOffsets[i]
             );
-            // Map twinkle from 0-1 to 0.5-1.0 for noticeable variation
-            float twinkleBrightness = Mathf.Lerp(0.5f, 1.0f, twinkle);
+            // Map twinkle based on star type
+            float twinkleBrightness = Mathf.Lerp(1f - twinkleAmount, 1.0f, twinkle);
 
             // Get original star color from its scale (larger stars are brighter)
             float starScale = stars[i].transform.localScale.x;
-            float sizeBrightness = (starScale > 0.3f) ? 1.5f : (starScale > 0.2f ? 1.2f : 1f);
+            float sizeBrightness;
+
+            if (isConstellationStar[i])
+            {
+                sizeBrightness = constellationStarBrightness / starBrightness;
+            }
+            else if (isMilkyWayStar[i])
+            {
+                sizeBrightness = milkyWayBrightness / starBrightness;
+            }
+            else
+            {
+                sizeBrightness = (starScale > 0.3f) ? 1.5f : (starScale > 0.2f ? 1.2f : 1f);
+            }
 
             // Apply visibility and twinkle
             float finalBrightness = starVisibility * twinkleBrightness * sizeBrightness * starBrightness;
@@ -603,58 +957,22 @@ public class SkyboxManager : MonoBehaviour
             // Enable/disable star based on visibility
             stars[i].SetActive(starVisibility > 0.01f);
         }
-    }
 
-    void UpdateMoon()
-    {
-        if (!enableMoon || moon == null) return;
-
-        float hour = dayNightCycle.GetCurrentHour();
-
-        // Moon is opposite to sun (180 degree phase shift)
-        // Moon movement is SLOW and tied to game time - moves gradually across night sky
-        // Sun rises at 6AM, peaks at 12PM, sets at 6PM
-        // Moon rises at 6PM, peaks at 12AM (midnight), sets at 6AM
-        // Movement speed matches the day/night cycle speed (smooth and realistic)
-
-        // Moon angle follows same math as sun but with 180 degree offset
-        // When currentTimeOfDay = 18 (6PM), moonAngle should be 0 (horizon)
-        // When currentTimeOfDay = 0 (midnight), moonAngle should be 90 (overhead)
-        // When currentTimeOfDay = 6 (6AM), moonAngle should be 180 (horizon)
-        float moonAngle = (hour - 6f) * 15f + 180f; // Add 180 degrees to be opposite of sun
-        float radAngle = moonAngle * Mathf.Deg2Rad;
-
-        // Calculate moon height (y position) and horizontal position (z position)
-        float height = Mathf.Sin(radAngle);  // Height above/below horizon (-1 to 1)
-        float horizontal = Mathf.Cos(radAngle);  // Horizontal position along Z-axis
-
-        // Position moon along same arc path as sun but opposite
-        // Moon travels along Z-axis (forward/back) just like the sun
-        Vector3 moonPos = new Vector3(0, height * moonDistance, horizontal * moonDistance);
-        moon.transform.position = moonPos;
-
-        // Moon light should point toward world center (shine DOWN onto scene)
-        moon.transform.LookAt(Vector3.zero);
-
-        // CRITICAL: Moon only visible when ABOVE horizon (y > 0, which means height > 0)
-        // This ensures moon rises FROM BEHIND horizon and sets BEHIND horizon
-        bool moonVisible = height > 0f;
-
-        // Calculate fade-in/fade-out near horizon for smooth transitions
-        float moonVisibility = Mathf.Clamp01((height + 0.05f) / 0.15f);  // Fade from -0.05 to +0.10
-
-        // Update moon brightness and glow based on visibility
-        Color currentMoonColor = moonColor * moonVisibility;
-        moonMaterial.SetColor("_EmissionColor", currentMoonColor * moonGlowIntensity);
-
-        // Update moon light - directional light shines from moon's position DOWN onto scene
-        if (moonLight != null)
+        // Update constellation lines
+        foreach (var constellation in constellations)
         {
-            moonLight.intensity = 0.3f * moonVisibility;  // Directional light intensity
+            foreach (var line in constellation.connections)
+            {
+                if (line != null)
+                {
+                    // Fade constellation lines with star visibility
+                    Color lineColor = new Color(0.7f, 0.8f, 1f, 0.4f * starVisibility);
+                    line.startColor = lineColor;
+                    line.endColor = lineColor;
+                    line.enabled = starVisibility > 0.01f;
+                }
+            }
         }
-
-        // Enable/disable moon based on visibility
-        moon.SetActive(moonVisible);
     }
 
     void UpdateSkyboxForTimeOfDay()
@@ -909,8 +1227,19 @@ public class SkyboxManager : MonoBehaviour
             if (star != null) Destroy(star);
         }
 
-        // Clean up moon
-        if (moonMaterial != null) Destroy(moonMaterial);
-        if (moon != null) Destroy(moon);
+        // Clean up constellations
+        foreach (var constellation in constellations)
+        {
+            foreach (var line in constellation.connections)
+            {
+                if (line != null) Destroy(line.gameObject);
+            }
+        }
+
+        // Clean up shooting stars
+        foreach (var ss in shootingStars)
+        {
+            if (ss.obj != null) Destroy(ss.obj);
+        }
     }
 }

@@ -115,6 +115,13 @@ public class NPCInteraction : MonoBehaviour
     public void OpenDialog()
     {
         isDialogOpen = true;
+
+        // Play NPC greeting voice sound
+        if (IslandSoundManager.Instance != null)
+        {
+            IslandSoundManager.Instance.PlayNPCVoice();
+        }
+
         if (UIManager.Instance != null)
         {
             UIManager.Instance.OpenNPCDialog(npcName);

@@ -706,6 +706,11 @@ public class ClothingShopNPC : MonoBehaviour
         shopOpen = true;
         // Play the old lady's greeting
         PlayHelloSound();
+        // Also play centralized NPC voice
+        if (IslandSoundManager.Instance != null)
+        {
+            IslandSoundManager.Instance.PlayNPCVoice("hello");
+        }
         // Enable fish selling
         if (FishInventoryPanel.Instance != null)
         {

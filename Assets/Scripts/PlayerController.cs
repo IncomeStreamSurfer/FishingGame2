@@ -42,6 +42,10 @@ public class PlayerController : MonoBehaviour
     private Texture2D deathOverlayTexture;
     private int guiFrameSkip = 0;
 
+    // Water splash tracking
+    private bool wasInWater = false;
+    private float waterLevel = 0.75f;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -70,6 +74,7 @@ public class PlayerController : MonoBehaviour
 
         HandleWoWMovement();
         CheckGrounded();
+        CheckWaterSplash();
 
         // Left mouse button to fish (only starts cast, rod animator handles the rest)
         // Don't cast if any UI window is open or if lying down
@@ -450,6 +455,27 @@ public class PlayerController : MonoBehaviour
     {
         // Raycast down to check if on ground
         isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.2f);
+    }
+
+    void CheckWaterSplash()
+    {
+        // Check if player is in water (below water level)
+        bool isInWater = transform.position.y < waterLevel;
+
+        // Play splash when first entering water
+        if (isInWater && !wasInWater)
+        {
+            // Calculate splash size based on fall velocity
+            float fallSpeed = Mathf.Abs(rb != null ? rb.linearVelocity.y : 0f);
+            float splashSize = Mathf.Clamp(fallSpeed / 10f, 0.3f, 1.0f);
+
+            if (IslandSoundManager.Instance != null)
+            {
+                IslandSoundManager.Instance.PlaySplash(transform.position, splashSize);
+            }
+        }
+
+        wasInWater = isInWater;
     }
 
     void Jump()
