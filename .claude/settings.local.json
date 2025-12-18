@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(*)",
       "Bash(cat:*)",
       "Bash(move \"C:\\Users\\incom\\FishingGame2\\0360. Evil Bob''s Island (Cover).mp3\" \"C:\\Users\\incom\\FishingGame2\\Assets\\Audio\"\")",
       "Bash(powershell -Command \"New-Item -ItemType Directory -Force -Path ''C:\\Users\\incom\\FishingGame2\\Assets\\Resources''\")",
@@ -34,7 +35,20 @@
       "Bash(del \"Assets\\Scripts\\GunSystem.cs.meta\")",
       "Bash(del \"Assets\\Scripts\\CyberpunkShopNPC.cs\")",
       "Bash(del \"Assets\\Scripts\\CyberpunkShopNPC.cs.meta\")",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git lfs install:*)",
+      "Bash(git lfs track:*)",
+      "Bash(git lfs migrate:*)",
+      "Bash(grep:*)",
+      "Bash(copy \"C:\\Users\\incom\\FishingGame2\\SONG FOR THE TITLE SCREEN ONLY\\TITLES MUSIC.mp3\" \"C:\\Users\\incom\\FishingGame2\\Assets\\Resources\\TitleMusic.mp3\")",
+      "Bash(copy \"C:\\Users\\incom\\FishingGame2\\titles.png\" \"C:\\Users\\incom\\FishingGame2\\Assets\\Resources\\titles.png\")",
+      "Bash(timeout /t:*)",
+      "Bash(ls:*)",
+      "Bash(powershell -Command \"[guid]::NewGuid\\(\\).ToString\\(''N''\\)\")",
+      "Bash(for:*)",
+      "Bash(do head -1 \"$f\")",
+      "Bash(echo:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

@@ -26,6 +26,11 @@ public class FishInventoryPanel : MonoBehaviour
     public string currentNPCName = "";
     private AudioSource audioSource;
 
+    // Buff info popup
+    private bool showBuffPopup = false;
+    private string selectedFishId = "";
+    private FishBuff selectedFishBuff = null;
+
     // Player stats tracking (stored in PlayerPrefs)
     private float biggestFishWeight = 0f;
     private int mostValuableCatch = 0;
@@ -50,6 +55,10 @@ public class FishInventoryPanel : MonoBehaviour
     private static GUIStyle cachedHintStyle;
     private static GUIStyle cachedTabStyle;
     private static GUIStyle cachedTabActiveStyle;
+    private static GUIStyle cachedPopupTitleStyle;
+    private static GUIStyle cachedPopupTextStyle;
+    private static GUIStyle cachedPopupDescStyle;
+    private static GUIStyle cachedPopupCloseStyle;
     private static bool stylesInitialized = false;
 
     void Awake()
@@ -185,6 +194,8 @@ public class FishInventoryPanel : MonoBehaviour
         CacheTexture("itemBg", new Color(0.12f, 0.1f, 0.08f, 0.95f));
         CacheTexture("itemHover", new Color(0.18f, 0.15f, 0.1f, 0.95f));
         CacheTexture("headerBg", new Color(0.15f, 0.12f, 0.08f, 0.95f));
+        CacheTexture("popupBg", new Color(0.1f, 0.08f, 0.06f, 0.98f));
+        CacheTexture("popupOverlay", new Color(0f, 0f, 0f, 0.6f));
     }
 
     void CacheTexture(string name, Color color)
@@ -232,9 +243,16 @@ public class FishInventoryPanel : MonoBehaviour
         }
 
         // Close with ESC
-        if (isOpen && Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
-            isOpen = false;
+            if (showBuffPopup)
+            {
+                showBuffPopup = false;
+            }
+            else if (isOpen)
+            {
+                isOpen = false;
+            }
         }
     }
 
@@ -369,6 +387,31 @@ public class FishInventoryPanel : MonoBehaviour
         cachedHintStyle.normal.textColor = new Color(0.8f, 0.6f, 0.4f);
         cachedHintStyle.wordWrap = true;
 
+        cachedPopupTitleStyle = new GUIStyle();
+        cachedPopupTitleStyle.fontSize = 16;
+        cachedPopupTitleStyle.fontStyle = FontStyle.Bold;
+        cachedPopupTitleStyle.alignment = TextAnchor.MiddleCenter;
+        cachedPopupTitleStyle.normal.textColor = new Color(1f, 0.85f, 0.4f);
+
+        cachedPopupTextStyle = new GUIStyle();
+        cachedPopupTextStyle.fontSize = 13;
+        cachedPopupTextStyle.fontStyle = FontStyle.Bold;
+        cachedPopupTextStyle.alignment = TextAnchor.UpperCenter;
+        cachedPopupTextStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
+        cachedPopupTextStyle.wordWrap = true;
+
+        cachedPopupDescStyle = new GUIStyle();
+        cachedPopupDescStyle.fontSize = 11;
+        cachedPopupDescStyle.alignment = TextAnchor.UpperCenter;
+        cachedPopupDescStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+        cachedPopupDescStyle.wordWrap = true;
+
+        cachedPopupCloseStyle = new GUIStyle();
+        cachedPopupCloseStyle.fontSize = 12;
+        cachedPopupCloseStyle.fontStyle = FontStyle.Bold;
+        cachedPopupCloseStyle.alignment = TextAnchor.MiddleCenter;
+        cachedPopupCloseStyle.normal.textColor = Color.white;
+
         stylesInitialized = true;
     }
 
@@ -379,15 +422,24 @@ public class FishInventoryPanel : MonoBehaviour
         // Initialize styles lazily (must be done inside OnGUI context)
         InitializeStyles();
 
-        // Handle dragging and resizing
-        window.UpdateWindow();
-
-        // Get window rect
+        // Get window rect BEFORE handling drag (needed for close button check)
         Rect rect = window.WindowRect;
         float panelX = rect.x;
         float panelY = rect.y;
         float panelWidth = rect.width;
         float panelHeight = rect.height;
+
+        // Check close button BEFORE drag/resize handling to prevent event consumption
+        Rect closeButtonRect = new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22);
+        if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && closeButtonRect.Contains(Event.current.mousePosition))
+        {
+            isOpen = false;
+            Event.current.Use();
+            return;
+        }
+
+        // Handle dragging and resizing
+        window.UpdateWindow();
 
         // Border and background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("border"));
@@ -408,20 +460,21 @@ public class FishInventoryPanel : MonoBehaviour
             GUI.Label(new Rect(panelX + 10, panelY + 38, panelWidth - 20, 22), "Click any fish to SELL for gold!", cachedSellBannerStyle);
         }
 
-        // Red X close button
-        Rect closeButtonRect = new Rect(panelX + panelWidth - 28, panelY + 8, 22, 22);
+        // Red X close button (visual only - click handled earlier to prevent drag interference)
         GUI.DrawTexture(closeButtonRect, GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
         GUI.Label(closeButtonRect, "X", cachedXButtonStyle);
-        if (GUI.Button(closeButtonRect, "", GUIStyle.none))
-        {
-            isOpen = false;
-        }
 
         // Draw fish inventory content
         DrawInventoryTab(panelX, panelY, panelWidth, panelHeight);
 
         // Draw resize handle
         window.DrawResizeHandle();
+
+        // Draw buff info popup on top of everything
+        if (showBuffPopup)
+        {
+            DrawBuffInfoPopup();
+        }
     }
 
     // Check if fish can be made into a buff
@@ -433,6 +486,89 @@ public class FishInventoryPanel : MonoBehaviour
             if (fishId == id) return true;
         }
         return false;
+    }
+
+    void DrawBuffInfoPopup()
+    {
+        if (selectedFishBuff == null) return;
+
+        // Popup window dimensions (declared once at the top)
+        float popupWidth = 400f;
+        float popupHeight = 280f;
+        float popupX = (Screen.width - popupWidth) / 2f;
+        float popupY = (Screen.height - popupHeight) / 2f;
+        Rect popupRect = new Rect(popupX, popupY, popupWidth, popupHeight);
+
+        // Semi-transparent overlay
+        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("popupOverlay"));
+
+        // Check for click outside popup to close
+        if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+        {
+            Vector2 mousePos = Event.current.mousePosition;
+
+            if (!popupRect.Contains(mousePos))
+            {
+                showBuffPopup = false;
+                Event.current.Use();
+                return;
+            }
+        }
+
+        // Border
+        GUI.DrawTexture(new Rect(popupX - 3, popupY - 3, popupWidth + 6, popupHeight + 6), GetTexture("border"));
+
+        // Background
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, popupHeight), GetTexture("popupBg"));
+
+        // Header background with buff color
+        Color headerColor = new Color(
+            selectedFishBuff.bowlColor.r * 0.4f,
+            selectedFishBuff.bowlColor.g * 0.4f,
+            selectedFishBuff.bowlColor.b * 0.4f,
+            0.95f
+        );
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, 50), GetOrCreateColorTexture(headerColor));
+
+        // Fish name title
+        cachedPopupTitleStyle.normal.textColor = selectedFishBuff.bowlColor;
+        GUI.Label(new Rect(popupX, popupY + 10, popupWidth, 30), selectedFishBuff.requiredFishName, cachedPopupTitleStyle);
+
+        // "Used for:" text
+        cachedPopupTextStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f);
+        GUI.Label(new Rect(popupX + 20, popupY + 60, popupWidth - 40, 30), "Used for:", cachedPopupTextStyle);
+
+        // Buff name with colored background
+        Color buffBoxColor = new Color(
+            selectedFishBuff.bowlColor.r * 0.6f,
+            selectedFishBuff.bowlColor.g * 0.6f,
+            selectedFishBuff.bowlColor.b * 0.6f,
+            0.8f
+        );
+        GUI.DrawTexture(new Rect(popupX + 40, popupY + 95, popupWidth - 80, 35), GetOrCreateColorTexture(buffBoxColor));
+        cachedPopupTextStyle.normal.textColor = Color.white;
+        GUI.Label(new Rect(popupX + 40, popupY + 95, popupWidth - 80, 35), selectedFishBuff.buffName, cachedPopupTextStyle);
+
+        // Buff description
+        cachedPopupDescStyle.normal.textColor = new Color(0.85f, 0.85f, 0.85f);
+        GUI.Label(new Rect(popupX + 20, popupY + 140, popupWidth - 40, 50), selectedFishBuff.description, cachedPopupDescStyle);
+
+        // "Bring to Chef Gusteau to cook!" message
+        GUI.DrawTexture(new Rect(popupX + 20, popupY + 195, popupWidth - 40, 30), GetOrCreateColorTexture(new Color(0.2f, 0.5f, 0.25f, 0.8f)));
+        cachedPopupTextStyle.fontSize = 12;
+        cachedPopupTextStyle.normal.textColor = new Color(0.5f, 1f, 0.6f);
+        GUI.Label(new Rect(popupX + 20, popupY + 195, popupWidth - 40, 30), "Bring to Chef Gusteau to cook!", cachedPopupTextStyle);
+        cachedPopupTextStyle.fontSize = 13; // Reset font size
+
+        // Close button
+        Rect closeBtnRect = new Rect(popupX + (popupWidth - 100) / 2f, popupY + popupHeight - 45, 100, 30);
+        GUI.DrawTexture(closeBtnRect, GetOrCreateColorTexture(new Color(0.6f, 0.3f, 0.2f)));
+        GUI.Label(closeBtnRect, "CLOSE", cachedPopupCloseStyle);
+
+        if (GUI.Button(closeBtnRect, "", GUIStyle.none))
+        {
+            showBuffPopup = false;
+        }
     }
 
     void DrawInventoryTab(float panelX, float panelY, float panelWidth, float panelHeight)
@@ -507,6 +643,49 @@ public class FishInventoryPanel : MonoBehaviour
                 // Item background
                 GUI.DrawTexture(itemRect, hover ? GetTexture("itemHover") : GetTexture("itemBg"));
 
+                // Check for fish click to show buff info popup (only if not clicking on buttons)
+                if (hover && Event.current.type == EventType.MouseDown && Event.current.button == 0)
+                {
+                    // Calculate button rects to check if click is on a button
+                    bool clickedButton = false;
+                    Vector2 mousePos = Event.current.mousePosition;
+
+                    // Check SELL button area
+                    if (sellModeEnabled && fish.coinValue > 0)
+                    {
+                        Rect sellBtnRect = new Rect(listArea.x + itemRect.x + 160, listY + itemY + 14, 32, 18);
+                        if (sellBtnRect.Contains(mousePos))
+                            clickedButton = true;
+                    }
+                    // Check MAKE BUFF button area
+                    else if (nearChef && hasCompletedQuest && !sellModeEnabled && fish.isSpecialFish && IsBuffFish(fish.id))
+                    {
+                        Rect buffBtnRect = new Rect(listArea.x + itemRect.x + 150, listY + itemY + 14, 50, 18);
+                        if (buffBtnRect.Contains(mousePos))
+                            clickedButton = true;
+                    }
+                    // Check COOK button area
+                    else if (nearBBQ && !sellModeEnabled && !fish.isSpecialFish)
+                    {
+                        Rect cookBtnRect = new Rect(listArea.x + itemRect.x + 160, listY + itemY + 14, 36, 18);
+                        if (cookBtnRect.Contains(mousePos))
+                            clickedButton = true;
+                    }
+
+                    // Only show popup if not clicking on a button and fish has a buff
+                    if (!clickedButton && FishBuffSystem.Instance != null)
+                    {
+                        FishBuff buffData = FishBuffSystem.Instance.GetBuffByFishId(fish.id);
+                        if (buffData != null)
+                        {
+                            selectedFishId = fish.id;
+                            selectedFishBuff = buffData;
+                            showBuffPopup = true;
+                            Event.current.Use();
+                        }
+                    }
+                }
+
                 // Fish pixel art sprite
                 float imgSize = 36;
                 Texture2D fishTex = null;
@@ -549,6 +728,8 @@ public class FishInventoryPanel : MonoBehaviour
                 if (sellModeEnabled && fish.coinValue > 0)
                 {
                     Rect sellBtnRect = new Rect(itemRect.x + 160, itemRect.y + 14, 32, 18);
+                    Rect globalSellBtnRect = new Rect(listArea.x + sellBtnRect.x, listY + itemY + sellBtnRect.y, sellBtnRect.width, sellBtnRect.height);
+
                     // Special fish get golden sell button
                     Color btnColor = fish.isSpecialFish ? new Color(0.7f, 0.5f, 0.2f) : new Color(0.2f, 0.6f, 0.3f);
                     GUI.DrawTexture(sellBtnRect, GetOrCreateColorTexture(btnColor));
@@ -557,6 +738,7 @@ public class FishInventoryPanel : MonoBehaviour
                     if (GUI.Button(sellBtnRect, "", GUIStyle.none))
                     {
                         SellFish(fish.id, fish.coinValue, fish.isSpecialFish);
+                        Event.current.Use();
                     }
                 }
                 // MAKE BUFF button when near Chef, quest completed, and fish is a buff fish
@@ -570,6 +752,7 @@ public class FishInventoryPanel : MonoBehaviour
                     if (GUI.Button(buffBtnRect, "", GUIStyle.none))
                     {
                         MakeBuffFromFish(fish.id);
+                        Event.current.Use();
                     }
                 }
                 // COOK button when near BBQ and not in sell mode
@@ -583,6 +766,7 @@ public class FishInventoryPanel : MonoBehaviour
                     if (GUI.Button(cookBtnRect, "", GUIStyle.none))
                     {
                         CookFish(fish.id);
+                        Event.current.Use();
                     }
                 }
 

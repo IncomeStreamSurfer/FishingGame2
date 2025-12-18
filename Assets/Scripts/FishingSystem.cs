@@ -58,6 +58,12 @@ public class FishingSystem : MonoBehaviour
     private AudioClip rareChimeClip;
     private AudioClip legendaryChimeClip;
 
+    // Jackpot system
+    private bool showingJackpot = false;
+    private float jackpotTimer = 0f;
+    private const float JACKPOT_DURATION = 5f;
+    private AudioSource jackpotAudioSource;
+
     // Cached textures for OnGUI performance
     private Texture2D popupBgTex;
     private Texture2D bottleBgTex;
@@ -71,6 +77,7 @@ public class FishingSystem : MonoBehaviour
 
         InitializeFish();
         InitializeRareFishAudio();
+        InitializeJackpotAudio();
         InitializeCachedTextures();
     }
 
@@ -202,38 +209,331 @@ public class FishingSystem : MonoBehaviour
         rareFishAudioSource.Play();
     }
 
+    void InitializeJackpotAudio()
+    {
+        // Create dedicated audio source for jackpot celebration
+        jackpotAudioSource = gameObject.AddComponent<AudioSource>();
+        jackpotAudioSource.playOnAwake = false;
+        jackpotAudioSource.spatialBlend = 0f; // 2D sound
+        jackpotAudioSource.volume = 1.0f;
+    }
+
+    void TriggerMillionGoldJackpot()
+    {
+        Debug.Log("JACKPOT! 1,000,000 GOLD COINS!");
+
+        // Add 1 million gold to player
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.AddCoins(1000000);
+        }
+
+        // Show massive UI notification
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("JACKPOT! 1,000,000 GOLD!", new Color(1f, 0.85f, 0f));
+        }
+
+        // Start jackpot celebration
+        showingJackpot = true;
+        jackpotTimer = JACKPOT_DURATION;
+
+        // Start all celebration effects
+        StartCoroutine(JackpotCelebration());
+
+        // Reset fishing state
+        isFishing = false;
+        StartCoroutine(ResetCooldown());
+    }
+
+    IEnumerator JackpotCelebration()
+    {
+        // Spawn massive confetti burst
+        SpawnConfetti(200);
+
+        // Play celebration sounds in sequence
+        yield return StartCoroutine(PlayJackpotSounds());
+
+        // Shake camera for impact
+        StartCoroutine(ShakeCamera());
+
+        // Spawn massive gold coin explosion
+        if (GameCache.IsPlayerValid())
+        {
+            Vector3 spawnPos = GameCache.Player.position + GameCache.Player.forward * 3f;
+            spawnPos.y = 2f;
+            SpawnGoldCoins(spawnPos, 100); // Massive coin shower
+        }
+    }
+
+    IEnumerator PlayJackpotSounds()
+    {
+        if (jackpotAudioSource == null) yield break;
+
+        // 1. Party popper burst
+        AudioClip popperClip = GeneratePartyPopperSound();
+        jackpotAudioSource.PlayOneShot(popperClip, 0.8f);
+
+        yield return new WaitForSeconds(0.3f);
+
+        // 2. Coin crash avalanche
+        AudioClip coinClip = GenerateCoinCrashSound();
+        jackpotAudioSource.PlayOneShot(coinClip, 0.9f);
+
+        yield return new WaitForSeconds(0.2f);
+
+        // 3. Triumphant fanfare
+        AudioClip fanfareClip = GenerateFanfareSound();
+        jackpotAudioSource.PlayOneShot(fanfareClip, 1.0f);
+
+        yield return new WaitForSeconds(0.5f);
+
+        // 4. Crowd cheer
+        AudioClip cheerClip = GenerateCrowdCheerSound();
+        jackpotAudioSource.PlayOneShot(cheerClip, 0.7f);
+    }
+
+    AudioClip GeneratePartyPopperSound()
+    {
+        int sampleRate = 44100;
+        float duration = 0.6f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+
+            // Sharp pop at start
+            float pop = Mathf.Exp(-t * 40f) * Random.Range(-1f, 1f);
+
+            // Fizzy streamer whoosh
+            float fizz = Mathf.Sin(2f * Mathf.PI * Random.Range(800f, 2000f) * t) * Mathf.Exp(-t * 3f);
+
+            samples[i] = (pop * 0.7f + fizz * 0.3f) * 0.5f;
+        }
+
+        AudioClip clip = AudioClip.Create("PartyPopper", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateCoinCrashSound()
+    {
+        int sampleRate = 44100;
+        float duration = 1.5f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Layer multiple metallic impacts for avalanche effect
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float sample = 0;
+
+            // Multiple coin impacts at random intervals
+            for (int c = 0; c < 50; c++)
+            {
+                float coinTime = c * 0.03f;
+                if (t >= coinTime && t < coinTime + 0.1f)
+                {
+                    float coinT = t - coinTime;
+                    float freq = Random.Range(2000f, 4000f);
+                    float impact = Mathf.Sin(2f * Mathf.PI * freq * coinT) * Mathf.Exp(-coinT * 15f);
+                    sample += impact;
+                }
+            }
+
+            samples[i] = Mathf.Clamp(sample * 0.3f, -1f, 1f);
+        }
+
+        AudioClip clip = AudioClip.Create("CoinCrash", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateFanfareSound()
+    {
+        int sampleRate = 44100;
+        float duration = 2.0f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Triumphant ascending fanfare: C-E-G-C
+        float[] notes = { 261.63f, 329.63f, 392.00f, 523.25f }; // C4, E4, G4, C5
+        float noteLength = duration / notes.Length;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            int noteIndex = Mathf.Min((int)(t / noteLength), notes.Length - 1);
+            float noteT = (t - noteIndex * noteLength) / noteLength;
+            float freq = notes[noteIndex];
+
+            // Brass-like tone
+            float envelope = Mathf.Min(noteT * 20f, 1f) * (1f - noteT * 0.3f);
+            float sample = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.6f;
+            sample += Mathf.Sin(2f * Mathf.PI * freq * 2f * t) * 0.3f;
+            sample += Mathf.Sin(2f * Mathf.PI * freq * 3f * t) * 0.15f;
+
+            samples[i] = sample * envelope * 0.4f;
+        }
+
+        AudioClip clip = AudioClip.Create("Fanfare", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateCrowdCheerSound()
+    {
+        int sampleRate = 44100;
+        float duration = 1.0f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Filtered noise burst for crowd effect
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float envelope = Mathf.Sin(Mathf.PI * t / duration); // Rise and fall
+
+            // Band-passed noise (human voice range)
+            float noise = Random.Range(-1f, 1f);
+            samples[i] = noise * envelope * 0.3f;
+        }
+
+        AudioClip clip = AudioClip.Create("CrowdCheer", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    void SpawnConfetti(int count)
+    {
+        if (!GameCache.IsPlayerValid()) return;
+
+        Vector3 centerPos = GameCache.Player.position + GameCache.Player.forward * 5f;
+        centerPos.y = 8f; // Spawn high in the sky
+
+        for (int i = 0; i < count; i++)
+        {
+            GameObject confetti = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            confetti.name = "Confetti";
+            confetti.transform.localScale = new Vector3(0.1f, 0.1f, 0.01f);
+
+            // Random spawn position in a wide area
+            Vector3 spawnPos = centerPos;
+            spawnPos.x += Random.Range(-5f, 5f);
+            spawnPos.z += Random.Range(-5f, 5f);
+            spawnPos.y += Random.Range(0f, 3f);
+            confetti.transform.position = spawnPos;
+
+            // Remove collider
+            Object.Destroy(confetti.GetComponent<Collider>());
+
+            // Random bright colors
+            Material mat = new Material(Shader.Find("Standard"));
+            mat.color = new Color(Random.value, Random.value, Random.value);
+            confetti.GetComponent<Renderer>().material = mat;
+
+            // Start falling animation
+            StartCoroutine(ConfettiAnimation(confetti));
+        }
+    }
+
+    IEnumerator ConfettiAnimation(GameObject confetti)
+    {
+        float lifetime = 5f;
+        float fallSpeed = Random.Range(1f, 3f);
+        Vector3 rotation = new Vector3(Random.Range(-500f, 500f), Random.Range(-500f, 500f), Random.Range(-500f, 500f));
+
+        float t = 0;
+        while (t < lifetime && confetti != null)
+        {
+            t += Time.deltaTime;
+
+            // Fall down with random drift
+            confetti.transform.position += Vector3.down * fallSpeed * Time.deltaTime;
+            confetti.transform.position += new Vector3(
+                Mathf.Sin(t * 2f) * 0.02f,
+                0,
+                Mathf.Cos(t * 2f) * 0.02f
+            );
+
+            // Spin wildly
+            confetti.transform.Rotate(rotation * Time.deltaTime);
+
+            yield return null;
+        }
+
+        if (confetti != null)
+        {
+            Object.Destroy(confetti);
+        }
+    }
+
+    IEnumerator ShakeCamera()
+    {
+        if (!GameCache.IsPlayerValid()) yield break;
+
+        Transform cameraTransform = Camera.main.transform;
+        Vector3 originalPos = cameraTransform.localPosition;
+        float duration = 0.8f;
+        float magnitude = 0.15f;
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float x = Random.Range(-1f, 1f) * magnitude;
+            float y = Random.Range(-1f, 1f) * magnitude;
+
+            cameraTransform.localPosition = originalPos + new Vector3(x, y, 0);
+
+            elapsed += Time.deltaTime;
+            magnitude *= 0.95f; // Decay shake
+            yield return null;
+        }
+
+        cameraTransform.localPosition = originalPos;
+    }
+
     void InitializeFish()
     {
-        // Common fish
-        fishDatabase.Add(new FishData { id = "sardine", fishName = "Sardine", rarity = Rarity.Common, coinValue = 5, weight = 50f, fishColor = Color.gray });
-        fishDatabase.Add(new FishData { id = "anchovy", fishName = "Anchovy", rarity = Rarity.Common, coinValue = 5, weight = 50f, fishColor = new Color(0.6f, 0.6f, 0.7f) });
-        fishDatabase.Add(new FishData { id = "minnow", fishName = "Minnow", rarity = Rarity.Common, coinValue = 3, weight = 60f, fishColor = new Color(0.7f, 0.75f, 0.8f) });
-        fishDatabase.Add(new FishData { id = "cod", fishName = "Cod", rarity = Rarity.Common, coinValue = 8, weight = 45f, fishColor = new Color(0.6f, 0.55f, 0.4f) });
+        // ============ NORMAL FISH WITH BALANCED RARITY WEIGHTS ============
+        // Weight distribution for ~94.5% of catches (after special fish checks):
+        // COMMON: 55% of normal pool (~52% overall)
+        // UNCOMMON: 28% of normal pool (~26.5% overall)
+        // RARE: 12% of normal pool (~11.3% overall)
+        // EPIC: 4% of normal pool (~3.8% overall)
+        // LEGENDARY: 1% of normal pool (~0.9% overall)
+        // Plus special fish: 5% rare, 0.5% epic, 0.02% legendary = ~100% total
 
-        // Special quest item - Tackle Box (not in normal pool, handled separately)
-        fishDatabase.Add(new FishData { id = "tackle_box", fishName = "Pete's Tackle Box", rarity = Rarity.Legendary, coinValue = 0, weight = 0f, fishColor = new Color(1f, 0.85f, 0.2f) });
+        // Common fish - Weight: 55 each (220 total)
+        fishDatabase.Add(new FishData { id = "sardine", fishName = "Sardine", rarity = Rarity.Common, coinValue = 5, weight = 55f, fishColor = Color.gray });
+        fishDatabase.Add(new FishData { id = "anchovy", fishName = "Anchovy", rarity = Rarity.Common, coinValue = 5, weight = 55f, fishColor = new Color(0.6f, 0.6f, 0.7f) });
+        fishDatabase.Add(new FishData { id = "minnow", fishName = "Minnow", rarity = Rarity.Common, coinValue = 3, weight = 55f, fishColor = new Color(0.7f, 0.75f, 0.8f) });
+        fishDatabase.Add(new FishData { id = "cod", fishName = "Cod", rarity = Rarity.Common, coinValue = 8, weight = 55f, fishColor = new Color(0.6f, 0.55f, 0.4f) });
 
-        // Uncommon fish
-        fishDatabase.Add(new FishData { id = "bass", fishName = "Bass", rarity = Rarity.Uncommon, coinValue = 20, weight = 20f, fishColor = new Color(0.3f, 0.5f, 0.3f) });
-        fishDatabase.Add(new FishData { id = "salmon", fishName = "Salmon", rarity = Rarity.Uncommon, coinValue = 30, weight = 18f, fishColor = new Color(0.9f, 0.5f, 0.4f) });
-        fishDatabase.Add(new FishData { id = "baby_turtle", fishName = "Baby Sea Turtle", rarity = Rarity.Uncommon, coinValue = 50, weight = 12f, fishColor = new Color(0.2f, 0.5f, 0.3f) });
-        fishDatabase.Add(new FishData { id = "jellyfish", fishName = "Jellyfish", rarity = Rarity.Uncommon, coinValue = 35, weight = 15f, fishColor = new Color(0.8f, 0.6f, 0.9f) });
+        // Uncommon fish - Weight: 28 each (112 total)
+        fishDatabase.Add(new FishData { id = "bass", fishName = "Bass", rarity = Rarity.Uncommon, coinValue = 20, weight = 28f, fishColor = new Color(0.3f, 0.5f, 0.3f) });
+        fishDatabase.Add(new FishData { id = "salmon", fishName = "Salmon", rarity = Rarity.Uncommon, coinValue = 30, weight = 28f, fishColor = new Color(0.9f, 0.5f, 0.4f) });
+        fishDatabase.Add(new FishData { id = "baby_turtle", fishName = "Baby Sea Turtle", rarity = Rarity.Uncommon, coinValue = 50, weight = 28f, fishColor = new Color(0.2f, 0.5f, 0.3f) });
+        fishDatabase.Add(new FishData { id = "jellyfish", fishName = "Jellyfish", rarity = Rarity.Uncommon, coinValue = 35, weight = 28f, fishColor = new Color(0.8f, 0.6f, 0.9f) });
 
-        // Rare fish
-        fishDatabase.Add(new FishData { id = "tuna", fishName = "Tuna", rarity = Rarity.Rare, coinValue = 75, weight = 8f, fishColor = new Color(0.2f, 0.3f, 0.6f) });
-        fishDatabase.Add(new FishData { id = "swordfish", fishName = "Swordfish", rarity = Rarity.Rare, coinValue = 100, weight = 6f, fishColor = new Color(0.4f, 0.4f, 0.8f) });
-        fishDatabase.Add(new FishData { id = "hammerhead", fishName = "Hammerhead", rarity = Rarity.Rare, coinValue = 120, weight = 5f, fishColor = new Color(0.45f, 0.45f, 0.5f) });
-        fishDatabase.Add(new FishData { id = "ocean_eel", fishName = "Ocean Sprinter Eel", rarity = Rarity.Rare, coinValue = 90, weight = 7f, fishColor = new Color(0.2f, 0.25f, 0.3f) });
+        // Rare fish - Weight: 12 each (48 total)
+        fishDatabase.Add(new FishData { id = "tuna", fishName = "Tuna", rarity = Rarity.Rare, coinValue = 75, weight = 12f, fishColor = new Color(0.2f, 0.3f, 0.6f) });
+        fishDatabase.Add(new FishData { id = "swordfish", fishName = "Swordfish", rarity = Rarity.Rare, coinValue = 100, weight = 12f, fishColor = new Color(0.4f, 0.4f, 0.8f) });
+        fishDatabase.Add(new FishData { id = "hammerhead", fishName = "Hammerhead", rarity = Rarity.Rare, coinValue = 120, weight = 12f, fishColor = new Color(0.45f, 0.45f, 0.5f) });
+        fishDatabase.Add(new FishData { id = "ocean_eel", fishName = "Ocean Sprinter Eel", rarity = Rarity.Rare, coinValue = 90, weight = 12f, fishColor = new Color(0.2f, 0.25f, 0.3f) });
 
-        // Epic fish
-        fishDatabase.Add(new FishData { id = "shark", fishName = "Shark", rarity = Rarity.Epic, coinValue = 250, weight = 3f, fishColor = new Color(0.5f, 0.5f, 0.6f) });
-        fishDatabase.Add(new FishData { id = "vampire_sealfish", fishName = "Vampire Sealfish", rarity = Rarity.Epic, coinValue = 350, weight = 2.5f, fishColor = new Color(0.3f, 0.1f, 0.15f) });
-        fishDatabase.Add(new FishData { id = "icelandic_sunscale", fishName = "Icelandic Sunscale", rarity = Rarity.Epic, coinValue = 400, weight = 2f, fishColor = new Color(0.9f, 0.8f, 0.3f) });
+        // Epic fish - Weight: 5.33 each (16 total)
+        fishDatabase.Add(new FishData { id = "shark", fishName = "Shark", rarity = Rarity.Epic, coinValue = 250, weight = 5.33f, fishColor = new Color(0.5f, 0.5f, 0.6f) });
+        fishDatabase.Add(new FishData { id = "vampire_sealfish", fishName = "Vampire Sealfish", rarity = Rarity.Epic, coinValue = 350, weight = 5.33f, fishColor = new Color(0.3f, 0.1f, 0.15f) });
+        fishDatabase.Add(new FishData { id = "icelandic_sunscale", fishName = "Icelandic Sunscale", rarity = Rarity.Epic, coinValue = 400, weight = 5.33f, fishColor = new Color(0.9f, 0.8f, 0.3f) });
 
-        // Legendary fish
-        fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.7f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
-        fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.5f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
-        fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.4f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
+        // Legendary fish - Weight: 1.33 each (4 total) - About 1% of normal pool
+        fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 5000, weight = 1.33f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
+        fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 5000, weight = 1.33f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
+        fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 5000, weight = 1.33f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
 
         // ============ SPECIAL RARE FISH (5% chance, blue glow) ============
         // 100 XP, 100g sell to Pete, instant full health, can't be BBQ'd
@@ -541,22 +841,25 @@ public class FishingSystem : MonoBehaviour
     // Called by FishingRodAnimator when player successfully reels in during a bite
     public void CompleteCatch()
     {
+        // Check for JACKPOT - 1 in 100,000 chance to win 1 MILLION GOLD!
+        if (Random.Range(0, 100000) == 0)
+        {
+            TriggerMillionGoldJackpot();
+            return; // Skip normal fish
+        }
+
         // Check if player should find tackle box (10% chance during quest)
         if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsTackleBoxQuestActive())
         {
             if (Random.Range(0f, 100f) < 10f)
             {
                 // Found the tackle box!
-                FishData tackleBox = fishDatabase.Find(f => f.id == "tackle_box");
-                if (tackleBox != null)
-                {
-                    WetsuitPeteQuests.Instance.OnTackleBoxFound();
-                    SpawnTackleBoxEffect();
-                    Debug.Log("TACKLE BOX FOUND! Return to Wetsuit Pete!");
-                    isFishing = false;
-                    StartCoroutine(ResetCooldown());
-                    return;
-                }
+                WetsuitPeteQuests.Instance.OnTackleBoxFound();
+                SpawnTackleBoxEffect();
+                Debug.Log("TACKLE BOX FOUND! Return to Wetsuit Pete!");
+                isFishing = false;
+                StartCoroutine(ResetCooldown());
+                return;
             }
         }
 
@@ -849,6 +1152,10 @@ public class FishingSystem : MonoBehaviour
         Vector3 spawnPos = GameCache.Player.position + GameCache.Player.forward * 3f;
         spawnPos.y = 1.5f;
 
+        // Spawn gold coins based on fish rarity
+        int coinCount = GetCoinCountForRarity(fish.rarity);
+        SpawnGoldCoins(spawnPos, coinCount);
+
         // Check if epic or legendary - show special glowing golden fish
         if (fish.rarity == Rarity.Epic || fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
         {
@@ -873,6 +1180,126 @@ public class FishingSystem : MonoBehaviour
 
             StartCoroutine(FishCaughtAnimation(fishObj, fish));
         }
+    }
+
+    int GetCoinCountForRarity(Rarity rarity)
+    {
+        switch (rarity)
+        {
+            case Rarity.Common:
+                return Random.Range(2, 4); // 2-3 coins
+            case Rarity.Uncommon:
+                return Random.Range(4, 7); // 4-6 coins
+            case Rarity.Rare:
+                return Random.Range(8, 13); // 8-12 coins
+            case Rarity.Epic:
+                return Random.Range(12, 18); // 12-17 coins
+            case Rarity.Legendary:
+                return Random.Range(15, 26); // 15-25 coins
+            case Rarity.Mythic:
+                return Random.Range(20, 31); // 20-30 coins
+            default:
+                return 3;
+        }
+    }
+
+    void SpawnGoldCoins(Vector3 position, int coinCount)
+    {
+        for (int i = 0; i < coinCount; i++)
+        {
+            // Create coin as a cylinder (disc shape)
+            GameObject coin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            coin.name = "GoldCoin";
+            coin.transform.position = position;
+            coin.transform.localScale = new Vector3(0.15f, 0.03f, 0.15f); // Flat disc shape
+
+            // Remove collider to avoid physics interference
+            Object.Destroy(coin.GetComponent<Collider>());
+
+            // Create golden material with emission
+            Material coinMat = new Material(Shader.Find("Standard"));
+            coinMat.color = new Color(1f, 0.85f, 0.2f); // Golden color
+            coinMat.SetFloat("_Metallic", 0.9f);
+            coinMat.SetFloat("_Glossiness", 0.8f);
+            coinMat.EnableKeyword("_EMISSION");
+            coinMat.SetColor("_EmissionColor", new Color(1f, 0.85f, 0.2f) * 0.8f); // Golden glow
+            coin.GetComponent<Renderer>().material = coinMat;
+
+            // Start animation with slight delay for staggered effect
+            StartCoroutine(GoldCoinAnimation(coin, i * 0.05f));
+        }
+    }
+
+    IEnumerator GoldCoinAnimation(GameObject coin, float delay)
+    {
+        // Wait for staggered start
+        if (delay > 0)
+        {
+            yield return new WaitForSeconds(delay);
+        }
+
+        Vector3 startPos = coin.transform.position;
+
+        // Random spread for variety
+        float randomAngle = Random.Range(0f, 360f);
+        float randomDistance = Random.Range(0.5f, 1.5f);
+        Vector3 randomOffset = new Vector3(
+            Mathf.Cos(randomAngle * Mathf.Deg2Rad) * randomDistance,
+            0,
+            Mathf.Sin(randomAngle * Mathf.Deg2Rad) * randomDistance
+        );
+
+        // Arc parameters
+        float arcHeight = Random.Range(2f, 3.5f);
+        float duration = Random.Range(1.2f, 1.8f);
+        float fadeStartTime = duration * 0.7f; // Start fading at 70% of duration
+
+        float t = 0;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float progress = t / duration;
+
+            // Arc motion (parabola)
+            float heightFactor = 4f * progress * (1f - progress); // Parabola: peaks at 0.5
+            Vector3 currentPos = startPos + randomOffset * progress;
+            currentPos.y = startPos.y + arcHeight * heightFactor;
+            coin.transform.position = currentPos;
+
+            // Spin the coin
+            coin.transform.Rotate(Vector3.up, Time.deltaTime * 720f); // 2 rotations per second
+
+            // Fade out in the last 30% of the animation
+            if (t > fadeStartTime)
+            {
+                float fadeProgress = (t - fadeStartTime) / (duration - fadeStartTime);
+                float alpha = 1f - fadeProgress;
+
+                Material mat = coin.GetComponent<Renderer>().material;
+                Color color = mat.color;
+                color.a = alpha;
+                mat.color = color;
+
+                // Fade emission too
+                Color emissionColor = mat.GetColor("_EmissionColor");
+                mat.SetColor("_EmissionColor", emissionColor * alpha);
+
+                // Make material transparent
+                mat.SetFloat("_Mode", 3); // Transparent mode
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+            }
+
+            yield return null;
+        }
+
+        // Destroy the coin
+        Destroy(coin);
     }
 
     GameObject CreateGlowingRareFish(FishData fish)
@@ -977,6 +1404,12 @@ public class FishingSystem : MonoBehaviour
 
     IEnumerator RareFishCaughtAnimation(GameObject fishObj, FishData fish)
     {
+        // Play special rare fish caught sound
+        if (FishingRodAnimator.Instance != null)
+        {
+            FishingRodAnimator.Instance.PlayFishCaughtSound(true);
+        }
+
         // Show fish name popup for rare fish too!
         StartCoroutine(ShowCatchPopup(fish));
 
@@ -1131,6 +1564,12 @@ public class FishingSystem : MonoBehaviour
 
     IEnumerator SpecialFishAnimation(GameObject fishObj, FishData fish)
     {
+        // Play special fish caught sound
+        if (FishingRodAnimator.Instance != null)
+        {
+            FishingRodAnimator.Instance.PlayFishCaughtSound(true);
+        }
+
         // Show popup
         if (UIManager.Instance != null)
         {
@@ -1189,6 +1628,12 @@ public class FishingSystem : MonoBehaviour
 
     IEnumerator GoldenStarfishAnimation(GameObject starfish, FishData fish)
     {
+        // Play legendary fish caught sound
+        if (FishingRodAnimator.Instance != null)
+        {
+            FishingRodAnimator.Instance.PlayFishCaughtSound(true);
+        }
+
         // Epic announcement
         if (UIManager.Instance != null)
         {
@@ -1287,10 +1732,10 @@ public class FishingSystem : MonoBehaviour
         GameObject confettiSystem = new GameObject("LegendaryConfetti");
         confettiSystem.transform.position = spawnPos;
 
-        StartCoroutine(ConfettiAnimation(confettiSystem));
+        StartCoroutine(JackpotConfettiAnimation(confettiSystem));
     }
 
-    IEnumerator ConfettiAnimation(GameObject confettiSystem)
+    IEnumerator JackpotConfettiAnimation(GameObject confettiSystem)
     {
         List<GameObject> confettiPieces = new List<GameObject>();
 
@@ -1697,6 +2142,12 @@ public class FishingSystem : MonoBehaviour
 
     IEnumerator FishCaughtAnimation(GameObject fish, FishData fishData)
     {
+        // Play fish caught splash sound
+        if (FishingRodAnimator.Instance != null)
+        {
+            FishingRodAnimator.Instance.PlayFishCaughtSound(false);
+        }
+
         // Show fish name popup
         StartCoroutine(ShowCatchPopup(fishData));
 
@@ -1773,6 +2224,12 @@ public class FishingSystem : MonoBehaviour
 
     void OnGUI()
     {
+        // Draw jackpot popup if active (highest priority)
+        if (showingJackpot)
+        {
+            DrawJackpotPopup();
+        }
+
         // Performance: Skip frames when not actively needed
         if (!showingCatchPopup && !showingBottlePopup)
         {
@@ -1902,6 +2359,88 @@ public class FishingSystem : MonoBehaviour
         // No cleanup needed - using cached textures
     }
 
+    void DrawJackpotPopup()
+    {
+        if (!showingJackpot) return;
+
+        // MASSIVE full-screen jackpot announcement
+        float popupWidth = 600;
+        float popupHeight = 250;
+        float popupX = (Screen.width - popupWidth) / 2;
+        float popupY = (Screen.height - popupHeight) / 2;
+
+        // Pulsing effect based on time
+        float pulseScale = 1f + Mathf.Sin(Time.time * 8f) * 0.1f;
+        float alpha = Mathf.Clamp01(jackpotTimer / 0.5f);
+
+        // Outer glow effect
+        GUI.color = new Color(1f, 0.85f, 0f, alpha * 0.3f);
+        float glowSize = 30f;
+        GUI.DrawTexture(new Rect(popupX - glowSize, popupY - glowSize, popupWidth + glowSize * 2, popupHeight + glowSize * 2), Texture2D.whiteTexture);
+
+        // Main background
+        GUI.color = new Color(0.1f, 0.05f, 0.05f, alpha * 0.95f);
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, popupHeight), Texture2D.whiteTexture);
+
+        // Golden border with pulse
+        GUI.color = new Color(1f, 0.85f, 0f, alpha);
+        float borderWidth = 8f * pulseScale;
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, borderWidth), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(popupX, popupY + popupHeight - borderWidth, popupWidth, borderWidth), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(popupX, popupY, borderWidth, popupHeight), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(popupX + popupWidth - borderWidth, popupY, borderWidth, popupHeight), Texture2D.whiteTexture);
+
+        // JACKPOT header with massive pulsing text
+        GUIStyle jackpotStyle = new GUIStyle();
+        jackpotStyle.fontSize = (int)(72 * pulseScale);
+        jackpotStyle.fontStyle = FontStyle.Bold;
+        jackpotStyle.normal.textColor = new Color(1f, 0.85f, 0f, alpha);
+        jackpotStyle.alignment = TextAnchor.MiddleCenter;
+
+        // Shadow effect for header
+        GUI.color = new Color(0, 0, 0, alpha * 0.5f);
+        GUI.Label(new Rect(popupX + 5, popupY + 25, popupWidth, 80), "JACKPOT!", jackpotStyle);
+        GUI.color = new Color(1f, 0.85f, 0f, alpha);
+        GUI.Label(new Rect(popupX, popupY + 20, popupWidth, 80), "JACKPOT!", jackpotStyle);
+
+        // 1,000,000 GOLD text
+        GUIStyle goldStyle = new GUIStyle();
+        goldStyle.fontSize = (int)(48 * pulseScale);
+        goldStyle.fontStyle = FontStyle.Bold;
+        goldStyle.normal.textColor = new Color(1f, 1f, 0.5f, alpha);
+        goldStyle.alignment = TextAnchor.MiddleCenter;
+
+        // Shadow for gold amount
+        GUI.color = new Color(0, 0, 0, alpha * 0.5f);
+        GUI.Label(new Rect(popupX + 3, popupY + 108, popupWidth, 60), "1,000,000 GOLD!", goldStyle);
+        GUI.color = new Color(1f, 1f, 0.5f, alpha);
+        GUI.Label(new Rect(popupX, popupY + 105, popupWidth, 60), "1,000,000 GOLD!", goldStyle);
+
+        // Congratulations message
+        GUIStyle congrats = new GUIStyle();
+        congrats.fontSize = 24;
+        congrats.fontStyle = FontStyle.Bold;
+        congrats.normal.textColor = new Color(0.8f, 0.8f, 1f, alpha);
+        congrats.alignment = TextAnchor.MiddleCenter;
+        GUI.Label(new Rect(popupX, popupY + 175, popupWidth, 40), "YOU WON THE JACKPOT!", congrats);
+
+        // Rarity indicator
+        GUIStyle rarityStyle = new GUIStyle();
+        rarityStyle.fontSize = 14;
+        rarityStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f, alpha * 0.7f);
+        rarityStyle.alignment = TextAnchor.MiddleCenter;
+        GUI.Label(new Rect(popupX, popupY + 210, popupWidth, 30), "1 in 100,000 chance!", rarityStyle);
+
+        GUI.color = Color.white;
+
+        // Update timer
+        jackpotTimer -= Time.deltaTime;
+        if (jackpotTimer <= 0)
+        {
+            showingJackpot = false;
+        }
+    }
+
     IEnumerator SpawnCoin(Vector3 basePos, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -1976,10 +2515,29 @@ public class FishingSystem : MonoBehaviour
             buffBonus = FishBuffSystem.Instance.GetRareFishBonus();
         }
 
+        // Fishing Pool bonus - +50% for rare fish when bobber is in pool
+        float poolBonus = 0f;
+        if (FishingPoolSystem.Instance != null && GameCache.IsPlayerValid())
+        {
+            FishingRodAnimator rodAnimator = GameCache.PlayerObject.GetComponent<FishingRodAnimator>();
+            if (rodAnimator != null && rodAnimator.IsLineOut())
+            {
+                Vector3 bobberPos = rodAnimator.GetBobberPosition();
+                if (FishingPoolSystem.Instance.IsInFishingPool(bobberPos))
+                {
+                    poolBonus = 0.5f; // +50% bonus
+                    Debug.Log("FISHING POOL BONUS ACTIVE! +50% rare fish chance!");
+                }
+            }
+        }
+
+        // Combine all bonuses
+        float totalRareBonus = rodBonus + buffBonus + poolBonus;
+
         // ========== CHECK FOR SPECIAL FISH FIRST ==========
 
-        // LEGENDARY: 0.02% base chance (+ rod bonus + buff bonus)
-        float legendaryChance = 0.02f * (1f + rodBonus + buffBonus);
+        // LEGENDARY: 0.02% base chance (+ all bonuses)
+        float legendaryChance = 0.02f * (1f + totalRareBonus);
         if (Random.Range(0f, 100f) < legendaryChance)
         {
             FishData legendary = fishDatabase.Find(f => f.id == "golden_starfish");
@@ -1990,8 +2548,8 @@ public class FishingSystem : MonoBehaviour
             }
         }
 
-        // EPIC: 0.5% base chance (+ rod bonus + buff bonus)
-        float epicChance = 0.5f * (1f + rodBonus + buffBonus);
+        // EPIC: 0.5% base chance (+ all bonuses)
+        float epicChance = 0.5f * (1f + totalRareBonus);
         if (Random.Range(0f, 100f) < epicChance)
         {
             string[] epicIds = { "sting_ray", "rainbow_fish", "hammerhead_special", "whale_baby", "seahorse" };
@@ -2004,8 +2562,8 @@ public class FishingSystem : MonoBehaviour
             }
         }
 
-        // RARE SPECIAL: 5% base chance (+ rod bonus + buff bonus)
-        float rareSpecialChance = 5f * (1f + rodBonus * 0.5f + buffBonus);
+        // RARE SPECIAL: 5% base chance (+ all bonuses)
+        float rareSpecialChance = 5f * (1f + rodBonus * 0.5f + buffBonus + poolBonus);
         if (Random.Range(0f, 100f) < rareSpecialChance)
         {
             string[] rareIds = { "red_snapper", "blue_marlin", "rainbow_trout", "sunshore_od", "icelandic_snubnose" };
@@ -2074,9 +2632,9 @@ public class FishingSystem : MonoBehaviour
             else if (fish.rarity == Rarity.Uncommon)
                 adjustedWeight *= (1f - totalBonus * 0.3f);
             else if (fish.rarity == Rarity.Rare || fish.rarity == Rarity.Epic)
-                adjustedWeight *= (1f + totalBonus * 3f);
+                adjustedWeight *= (1f + totalBonus * 3f + poolBonus * 1.5f); // Pool bonus for rare+
             else if (fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
-                adjustedWeight *= (1f + totalBonus * 5f); // Big bonus for mythic on power casts
+                adjustedWeight *= (1f + totalBonus * 5f + poolBonus * 2f); // Extra pool bonus for legendary
 
             adjustedWeights.Add(adjustedWeight);
             totalWeight += adjustedWeight;

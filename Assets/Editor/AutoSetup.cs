@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using System.Collections.Generic;
 
 [InitializeOnLoad]
 public class AutoSetup
@@ -137,6 +138,10 @@ public class AutoSetup
         GameObject weather = new GameObject("WeatherSystem");
         weather.AddComponent<WeatherSystem>();
 
+        // Thunderstorm System (dangerous storms with lightning)
+        GameObject thunderstorm = new GameObject("ThunderstormSystem");
+        thunderstorm.AddComponent<ThunderstormSystem>();
+
         // UI System
         GameObject ui = new GameObject("UIManager");
         ui.AddComponent<UIManager>();
@@ -173,6 +178,10 @@ public class AutoSetup
         GameObject fishBuffSprites = new GameObject("FishBuffSprites");
         fishBuffSprites.AddComponent<FishBuffSprites>();
 
+        // Fishing Pool System - spawns special fishing pools in water
+        GameObject fishingPoolSystem = new GameObject("FishingPoolSystem");
+        fishingPoolSystem.AddComponent<FishingPoolSystem>();
+
         // BBQ Station at end of dock
         CreateBBQ();
 
@@ -187,6 +196,9 @@ public class AutoSetup
 
         // Goldie Banks - Rastafarian who walks on the beach
         CreateGoldieBanks();
+
+        // Beach Towel - Rest spot for health regen
+        CreateBeachTowel();
 
         // Camera setup
         SetupCamera();
@@ -232,7 +244,7 @@ public class AutoSetup
 
     static void CleanupScene()
     {
-        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "AtmosphericSounds", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot", "Bobber", "FishingLine", "FishSprites", "RodSprites", "TutorialCat", "GoldieBanks", "GoldieIsland", "BridgeToShop", "SpawnNPC", "WetsuitPete", "SmallIslands", "WeedBagCollectible", "PauseMenu", "WeatherSystem", "ClothingSprites", "FishDiary", "RealmManager", "IceRealm" };
+        string[] toDelete = { "Player", "Ground", "Water", "WaterBed", "Dock", "Ramp", "GameManager", "FishingSystem", "UIManager", "Sun", "TreesParent", "LevelingSystem", "QuestSystem", "BottleEventSystem", "QuestNPC", "PortalsParent", "CharacterPanel", "DevPanel", "FishInventoryPanel", "MainMenu", "ClothingShopIsland", "HorizonBoats", "AtmosphericSounds", "BirdFlock", "PlayerHealth", "FoodInventory", "BBQStation", "DockRadio", "ShoulderParrot", "Bobber", "FishingLine", "FishSprites", "RodSprites", "TutorialCat", "GoldieBanks", "GoldieIsland", "BridgeToShop", "SpawnNPC", "WetsuitPete", "SmallIslands", "WeedBagCollectible", "PauseMenu", "WeatherSystem", "ClothingSprites", "FishDiary", "RealmManager", "IceRealm", "FishingPoolSystem" };
         foreach (string name in toDelete)
         {
             GameObject obj = GameObject.Find(name);
@@ -657,37 +669,69 @@ public class AutoSetup
         Material grassMat = new Material(Shader.Find("Standard"));
         grassMat.color = new Color(0.25f, 0.5f, 0.2f);
 
-        // Small islands scattered ALL AROUND the main island
-        // Raised above water level (water is at Y=0.75)
-        Vector3[] islandPositions = new Vector3[]
-        {
-            // North
-            new Vector3(0f, 1.0f, 95f),
-            new Vector3(-40f, 0.95f, 85f),
-            new Vector3(45f, 1.0f, 90f),
-            // Northeast
-            new Vector3(75f, 1.0f, 70f),
-            new Vector3(95f, 0.95f, 45f),
-            // East
-            new Vector3(100f, 1.0f, 0f),
-            new Vector3(90f, 1.0f, -35f),
-            // Southeast
-            new Vector3(80f, 0.95f, -75f),
-            new Vector3(55f, 1.0f, -90f),
-            // South
-            new Vector3(0f, 1.0f, -100f),
-            new Vector3(-45f, 0.95f, -95f),
-            // Southwest
-            new Vector3(-80f, 1.0f, -70f),
-            new Vector3(-95f, 1.0f, -40f),
-            // West
-            new Vector3(-100f, 0.95f, 0f),
-            new Vector3(-90f, 1.0f, 40f),
-            // Northwest
-            new Vector3(-75f, 1.0f, 75f),
-            new Vector3(-50f, 0.95f, 90f)
-        };
+        // Generate random island positions around the main island
+        // Islands spawn in a ring around the main island at varying distances
+        List<Vector3> islandPositions = new List<Vector3>();
+        int numIslands = Random.Range(12, 18); // Random number of islands (12-17)
+        float minDistanceFromCenter = 50f; // Minimum distance from main island center
+        float maxDistanceFromCenter = 100f; // Maximum distance from main island center
+        float minIslandSpacing = 25f; // Minimum distance between islands
 
+        // Keep trying to place islands until we have enough
+        int attempts = 0;
+        int maxAttempts = 200; // Prevent infinite loops
+
+        while (islandPositions.Count < numIslands && attempts < maxAttempts)
+        {
+            attempts++;
+
+            // Generate random angle around the main island (0-360 degrees)
+            float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+
+            // Generate random distance from center
+            float distance = Random.Range(minDistanceFromCenter, maxDistanceFromCenter);
+
+            // Calculate position using polar coordinates
+            float x = Mathf.Cos(angle) * distance;
+            float z = Mathf.Sin(angle) * distance;
+            float y = Random.Range(0.95f, 1.05f); // Slight height variation
+
+            Vector3 candidatePos = new Vector3(x, y, z);
+
+            // Check if this position is far enough from existing islands
+            bool validPosition = true;
+            foreach (Vector3 existingPos in islandPositions)
+            {
+                float distanceToExisting = Vector3.Distance(
+                    new Vector3(candidatePos.x, 0, candidatePos.z),
+                    new Vector3(existingPos.x, 0, existingPos.z)
+                );
+
+                if (distanceToExisting < minIslandSpacing)
+                {
+                    validPosition = false;
+                    break;
+                }
+            }
+
+            // Check if position is far enough from dock area (around z=10 to z=25, x=-5 to x=5)
+            float dockDistance = Vector3.Distance(
+                new Vector3(candidatePos.x, 0, candidatePos.z),
+                new Vector3(0, 0, 15f) // Approximate dock center
+            );
+            if (dockDistance < 30f)
+            {
+                validPosition = false;
+            }
+
+            // If position is valid, add it to the list
+            if (validPosition)
+            {
+                islandPositions.Add(candidatePos);
+            }
+        }
+
+        // Create islands at the generated positions
         foreach (var pos in islandPositions)
         {
             float size = Random.Range(4f, 8f);
@@ -1477,6 +1521,12 @@ public class AutoSetup
             handrail.GetComponent<Renderer>().sharedMaterial = darkWood;
             Object.DestroyImmediate(handrail.GetComponent<Collider>());
         }
+
+        // === STANDING TORCH at the end of the dock ===
+        GameObject torch = new GameObject("DockTorch");
+        torch.transform.SetParent(dockParent.transform);
+        torch.transform.localPosition = new Vector3(0, dockHeight + 0.15f, dockEndZ - 1.5f); // End of dock, on surface
+        torch.AddComponent<DockTorch>(); // Component creates its own model and handles lighting
     }
 
     static void CreateRamp()
@@ -2433,10 +2483,10 @@ public class AutoSetup
 
     static void CreateStatsSign()
     {
-        // Stats Board Sign at the end of the dock - wooden sign showing player stats
+        // Stats Board Sign on the beach - wooden sign showing player stats
         GameObject sign = new GameObject("StatsBoardSign");
-        sign.transform.position = new Vector3(-8f, 3.2f, 54f);  // End of dock, right side
-        sign.transform.rotation = Quaternion.Euler(0, 180, 0);  // Face toward player approaching
+        sign.transform.position = new Vector3(-25f, 1.5f, 10f);  // Left side beach, away from docks
+        sign.transform.rotation = Quaternion.Euler(0, 90, 0);  // Face toward center of island
 
         // Sign board (wooden plank)
         GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -2505,27 +2555,35 @@ public class AutoSetup
 
     static void CreateChefNPC()
     {
-        // Chef Gusteau - cooks fish into buffs
-        // Random location on the beach (away from dock and other NPCs)
-        float randomX = UnityEngine.Random.Range(25f, 45f);
-        float randomZ = UnityEngine.Random.Range(15f, 35f);
+        // Check if Chef already exists
+        if (ChefNPC.Instance != null)
+        {
+            Debug.Log("Chef NPC already exists, skipping creation.");
+            return;
+        }
 
+        // Chef Gusteau - cooks fish into buffs
+        // Located near the BBQ area on the beach
         GameObject chef = new GameObject("ChefNPC");
-        chef.transform.position = new Vector3(randomX, 1.6f, randomZ);
-        chef.transform.rotation = Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0);
+        chef.transform.position = new Vector3(18f, 1.6f, 28f); // Near BBQ area
+        chef.transform.rotation = Quaternion.Euler(0, 200f, 0); // Facing toward beach/player
         chef.AddComponent<ChefNPC>();
     }
 
     static void CreateFishConnoisseurNPC()
     {
-        // Pierre le Connoisseur - French fish collector who pays big for legendary fish
-        // Random location on the beach (different area from Chef)
-        float randomX = UnityEngine.Random.Range(50f, 70f);
-        float randomZ = UnityEngine.Random.Range(20f, 40f);
+        // Check if Connoisseur already exists
+        if (FishConnoisseurNPC.Instance != null)
+        {
+            Debug.Log("Fish Connoisseur NPC already exists, skipping creation.");
+            return;
+        }
 
+        // Pierre le Connoisseur - French fish collector who pays big for legendary fish
+        // Located on the other side of the island, near the dock
         GameObject connoisseur = new GameObject("FishConnoisseurNPC");
-        connoisseur.transform.position = new Vector3(randomX, 1.6f, randomZ);
-        connoisseur.transform.rotation = Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0);
+        connoisseur.transform.position = new Vector3(-5f, 1.6f, 15f); // Near dock area, ~25 units from Chef
+        connoisseur.transform.rotation = Quaternion.Euler(0, 90f, 0); // Facing toward water
         connoisseur.AddComponent<FishConnoisseurNPC>();
     }
 
@@ -2536,6 +2594,16 @@ public class AutoSetup
         GameObject goldie = new GameObject("GoldieBanks");
         goldie.transform.position = new Vector3(15f, 1.6f, 20f); // Starting position on the beach
         goldie.AddComponent<GoldieBanksNPC>();
+    }
+
+    static void CreateBeachTowel()
+    {
+        // Beach Towel - Rest spot where player can sleep to regain health
+        // Press E to interact, hold CTRL to sleep
+        GameObject towel = new GameObject("BeachTowel");
+        towel.transform.position = new Vector3(25f, 1.0f, 12f); // On the beach near water
+        towel.transform.rotation = Quaternion.Euler(0, -15f, 0); // Slightly angled for natural look
+        towel.AddComponent<BeachTowel>();
     }
 
     static void CreateQuestNPC()
@@ -2935,8 +3003,8 @@ public class AutoSetup
         GameObject player = GameObject.Find("Player");
         Camera.main.GetComponent<CameraController>().target = player.transform;
         Camera.main.transform.position = new Vector3(0, 7, -12);
-        Camera.main.backgroundColor = new Color(0.5f, 0.7f, 0.9f);  // Sky blue
-        Camera.main.clearFlags = CameraClearFlags.SolidColor;
+        Camera.main.backgroundColor = new Color(0.5f, 0.7f, 0.9f);  // Sky blue fallback
+        Camera.main.clearFlags = CameraClearFlags.Skybox;  // Use skybox rendering
     }
 
     static void CreatePortals()
@@ -4715,6 +4783,12 @@ public class AutoSetup
             iceChunk.GetComponent<Renderer>().sharedMaterial = iceMat;
             Object.DestroyImmediate(iceChunk.GetComponent<Collider>());
         }
+
+        // === STANDING TORCH at the end of the dock ===
+        GameObject torch = new GameObject("IceRealmDockTorch");
+        torch.transform.SetParent(dockParent.transform);
+        torch.transform.localPosition = new Vector3(2f, dockHeight + 0.15f, dockEndZ - 3f); // Side of dock, near end
+        torch.AddComponent<DockTorch>(); // Component creates its own model and handles lighting
     }
 
     static void CreateWeaponShop(Transform parent, Vector3 localPos)
@@ -6608,6 +6682,12 @@ public class AutoSetup
             lily.GetComponent<Renderer>().sharedMaterial = lilyMat;
             Object.DestroyImmediate(lily.GetComponent<Collider>());
         }
+
+        // === STANDING TORCH at the end of the dock ===
+        GameObject torch = new GameObject("JungleDockTorch");
+        torch.transform.SetParent(dockParent.transform);
+        torch.transform.localPosition = new Vector3(0, dockHeight + 0.15f, dockEndZ - 1.5f); // End of dock, on surface
+        torch.AddComponent<DockTorch>(); // Component creates its own model and handles lighting
     }
 
 

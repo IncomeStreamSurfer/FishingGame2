@@ -10,8 +10,8 @@ public class CoconutManager : MonoBehaviour
     public static CoconutManager Instance { get; private set; }
 
     [Header("Coconut Settings")]
-    public float dropChancePerSecond = 0.02f;  // 2% chance per second per coconut
-    public float coconutDamage = 10f;
+    public float dropChancePerSecond = 0.0333f;  // ~1 drop every 30 seconds per coconut
+    public float coconutDamage = 100f;  // Instant death!
     public float respawnTime = 30f;
 
     [Header("Visual Settings")]
@@ -269,10 +269,13 @@ public class CoconutManager : MonoBehaviour
 
     void HitPlayer(Coconut coconut)
     {
-        Debug.Log($"COCONUT HIT PLAYER! Damage: {coconutDamage}");
+        Debug.Log("COCONUT HIT PLAYER! Instant death!");
 
-        // Find player health component if exists
-        // For now, just log the damage - you can integrate with your health system
+        // Deal instant death damage with custom death message
+        if (PlayerHealth.Instance != null)
+        {
+            PlayerHealth.Instance.TakeDamage(100f, "your skull was broken... by a coconut!");
+        }
 
         // Visual feedback - could spawn particles here
 

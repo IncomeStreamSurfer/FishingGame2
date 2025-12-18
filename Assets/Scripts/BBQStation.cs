@@ -26,10 +26,23 @@ public class BBQStation : MonoBehaviour
     private GameObject smoke;
     private float fireIntensity = 0f;
 
+    // Cached renderer materials to avoid GetComponent every frame
+    private Material fireGlowMaterial;
+    private Material smokeMaterial;
+
     // UI
     private Texture2D promptBg;
     private int guiFrameSkip = 0;
     private bool initialized = false;
+
+    // Cached GUIStyles to avoid GC every frame
+    private GUIStyle promptStyle;
+    private GUIStyle shadowStyle;
+    private GUIStyle titleStyle;
+    private GUIStyle infoStyle;
+    private GUIStyle closeHintStyle;
+    private GUIStyle buttonStyle;
+    private bool stylesInitialized = false;
 
     void Awake()
     {
@@ -270,6 +283,7 @@ public class BBQStation : MonoBehaviour
         fireMat.EnableKeyword("_EMISSION");
         fireMat.SetColor("_EmissionColor", new Color(1f, 0.3f, 0f) * 2f);
         fireGlow.GetComponent<Renderer>().material = fireMat;
+        fireGlowMaterial = fireMat; // Cache the material reference
         Object.Destroy(fireGlow.GetComponent<Collider>());
         fireGlow.SetActive(false);
 
@@ -287,6 +301,7 @@ public class BBQStation : MonoBehaviour
         smokeMat.EnableKeyword("_ALPHABLEND_ON");
         smokeMat.renderQueue = 3000;
         smoke.GetComponent<Renderer>().material = smokeMat;
+        smokeMaterial = smokeMat; // Cache the material reference
         Object.Destroy(smoke.GetComponent<Collider>());
         smoke.SetActive(false);
 
@@ -387,10 +402,9 @@ public class BBQStation : MonoBehaviour
     {
         // Animate fire glow
         fireIntensity = 1.5f + Mathf.Sin(Time.time * 8f) * 0.3f + Mathf.Sin(Time.time * 13f) * 0.2f;
-        if (fireGlow != null)
+        if (fireGlow != null && fireGlowMaterial != null)
         {
-            Material mat = fireGlow.GetComponent<Renderer>().material;
-            mat.SetColor("_EmissionColor", new Color(1f, 0.3f, 0f) * fireIntensity);
+            fireGlowMaterial.SetColor("_EmissionColor", new Color(1f, 0.3f, 0f) * fireIntensity);
         }
 
         // Animate smoke rising
@@ -407,11 +421,13 @@ public class BBQStation : MonoBehaviour
             smoke.transform.localScale = new Vector3(smokeScale, smokeScale * 0.5f, smokeScale);
 
             // Fade smoke
-            Material smokeMat = smoke.GetComponent<Renderer>().material;
-            float alpha = 0.4f - (Time.time % 2f) * 0.2f;
-            Color c = smokeMat.color;
-            c.a = Mathf.Max(0.1f, alpha);
-            smokeMat.color = c;
+            if (smokeMaterial != null)
+            {
+                float alpha = 0.4f - (Time.time % 2f) * 0.2f;
+                Color c = smokeMaterial.color;
+                c.a = Mathf.Max(0.1f, alpha);
+                smokeMaterial.color = c;
+            }
         }
     }
 
@@ -436,16 +452,45 @@ public class BBQStation : MonoBehaviour
         }
     }
 
-    void DrawInteractionPrompt()
+    void InitializeGUIStyles()
     {
-        GUIStyle promptStyle = new GUIStyle();
+        if (stylesInitialized) return;
+
+        promptStyle = new GUIStyle();
         promptStyle.fontSize = 18;
         promptStyle.fontStyle = FontStyle.Bold;
         promptStyle.normal.textColor = new Color(1f, 0.8f, 0.4f);
         promptStyle.alignment = TextAnchor.MiddleCenter;
 
-        GUIStyle shadowStyle = new GUIStyle(promptStyle);
+        shadowStyle = new GUIStyle(promptStyle);
         shadowStyle.normal.textColor = new Color(0, 0, 0, 0.7f);
+
+        titleStyle = new GUIStyle();
+        titleStyle.fontSize = 16;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(1f, 0.6f, 0.2f);
+
+        infoStyle = new GUIStyle();
+        infoStyle.fontSize = 11;
+        infoStyle.alignment = TextAnchor.MiddleCenter;
+        infoStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+
+        closeHintStyle = new GUIStyle();
+        closeHintStyle.fontSize = 12;
+        closeHintStyle.fontStyle = FontStyle.Bold;
+        closeHintStyle.alignment = TextAnchor.MiddleCenter;
+        closeHintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.5f);
+
+        buttonStyle = new GUIStyle(GUI.skin.button);
+        buttonStyle.fontSize = 10;
+
+        stylesInitialized = true;
+    }
+
+    void DrawInteractionPrompt()
+    {
+        InitializeGUIStyles();
 
         float promptY = Screen.height * 0.6f;
         string text = "[E] Use BBQ";
@@ -456,6 +501,8 @@ public class BBQStation : MonoBehaviour
 
     void DrawBBQOpenUI()
     {
+        InitializeGUIStyles();
+
         float bgWidth = 200;
         float bgHeight = 85;
         float bgX = 20;  // Left side of screen
@@ -465,32 +512,15 @@ public class BBQStation : MonoBehaviour
         GUI.DrawTexture(new Rect(bgX, bgY, bgWidth, bgHeight), promptBg);
 
         // Title
-        GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 16;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(1f, 0.6f, 0.2f);
         GUI.Label(new Rect(bgX, bgY + 8, bgWidth, 20), "BBQ IS OPEN", titleStyle);
 
         // Instruction
-        GUIStyle infoStyle = new GUIStyle();
-        infoStyle.fontSize = 11;
-        infoStyle.alignment = TextAnchor.MiddleCenter;
-        infoStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
         GUI.Label(new Rect(bgX, bgY + 28, bgWidth, 16), "Click fish in inventory to cook", infoStyle);
 
         // E to Close hint
-        GUIStyle closeHintStyle = new GUIStyle();
-        closeHintStyle.fontSize = 12;
-        closeHintStyle.fontStyle = FontStyle.Bold;
-        closeHintStyle.alignment = TextAnchor.MiddleCenter;
-        closeHintStyle.normal.textColor = new Color(0.9f, 0.9f, 0.5f);
         GUI.Label(new Rect(bgX, bgY + 48, bgWidth, 16), "[E] to Close", closeHintStyle);
 
         // Close button as backup
-        GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
-        buttonStyle.fontSize = 10;
-
         if (GUI.Button(new Rect(bgX + bgWidth / 2 - 40, bgY + 65, 80, 18), "CLOSE", buttonStyle))
         {
             CloseBBQ();

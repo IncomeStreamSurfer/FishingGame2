@@ -38,6 +38,10 @@ public class MainMenu : MonoBehaviour
     // Water animation for background
     private float waterTime = 0f;
 
+    // Title screen music
+    private AudioSource titleMusicSource;
+    private AudioClip titleMusicClip;
+
     // Title screen effects
     private float lightningTimer = 0f;
     private float lightningFlash = 0f;
@@ -50,6 +54,11 @@ public class MainMenu : MonoBehaviour
     private static GUIStyle cachedTitleStyle;
     private static GUIStyle cachedSubStyle;
     private static bool stylesInitialized = false;
+
+    // 16:9 safe area calculations
+    private Rect safeArea;
+    private float safeMarginX;
+    private float safeMarginY;
 
     void Awake()
     {
@@ -72,8 +81,43 @@ public class MainMenu : MonoBehaviour
         // Disable all game systems until game starts
         DisableGameSystems();
 
+        // Setup title screen music
+        SetupTitleMusic();
+
         // Delay texture creation
         Invoke("Initialize", 0.2f);
+    }
+
+    void SetupTitleMusic()
+    {
+        // Load title music from Resources
+        titleMusicClip = Resources.Load<AudioClip>("TitleMusic");
+
+        if (titleMusicClip != null)
+        {
+            titleMusicSource = gameObject.AddComponent<AudioSource>();
+            titleMusicSource.clip = titleMusicClip;
+            titleMusicSource.loop = true;
+            titleMusicSource.volume = musicVolume;
+            titleMusicSource.playOnAwake = false;
+            titleMusicSource.priority = 0; // Highest priority
+            titleMusicSource.spatialBlend = 0f; // 2D sound
+            titleMusicSource.Play();
+            Debug.Log($"MainMenu: Title music playing - {titleMusicClip.name} | Length: {titleMusicClip.length}s | Loop: {titleMusicSource.loop} | Playing: {titleMusicSource.isPlaying}");
+        }
+        else
+        {
+            Debug.LogWarning("MainMenu: Could not load TitleMusic from Resources folder");
+        }
+    }
+
+    void StopTitleMusic()
+    {
+        if (titleMusicSource != null && titleMusicSource.isPlaying)
+        {
+            titleMusicSource.Stop();
+            Debug.Log("MainMenu: Title music stopped");
+        }
     }
 
     void Initialize()
@@ -155,6 +199,13 @@ public class MainMenu : MonoBehaviour
     {
         if (GameStarted) return;
 
+        // Monitor title music playback - restart if stopped unexpectedly
+        if (titleMusicSource != null && titleMusicClip != null && !titleMusicSource.isPlaying)
+        {
+            Debug.LogWarning("MainMenu: Title music stopped unexpectedly, restarting...");
+            titleMusicSource.Play();
+        }
+
         titleBob += Time.deltaTime;
         waterTime += Time.deltaTime;
         skullPulse += Time.deltaTime;
@@ -193,6 +244,30 @@ public class MainMenu : MonoBehaviour
         }
     }
 
+    void CalculateSafeArea()
+    {
+        // Calculate 16:9 safe area within current screen
+        float targetAspect = 16f / 9f;
+        float currentAspect = (float)Screen.width / Screen.height;
+
+        if (currentAspect > targetAspect)
+        {
+            // Screen is wider than 16:9 - add horizontal margins
+            float safeWidth = Screen.height * targetAspect;
+            safeMarginX = (Screen.width - safeWidth) / 2f;
+            safeMarginY = 0;
+            safeArea = new Rect(safeMarginX, 0, safeWidth, Screen.height);
+        }
+        else
+        {
+            // Screen is taller than 16:9 - add vertical margins
+            float safeHeight = Screen.width / targetAspect;
+            safeMarginX = 0;
+            safeMarginY = (Screen.height - safeHeight) / 2f;
+            safeArea = new Rect(0, safeMarginY, Screen.width, safeHeight);
+        }
+    }
+
     void OnGUI()
     {
         // Performance: Skip frames when not actively needed (menu is less critical)
@@ -203,6 +278,9 @@ public class MainMenu : MonoBehaviour
         }
 
         if (GameStarted || !initialized) return;
+
+        // Calculate safe area for 16:9
+        CalculateSafeArea();
 
         // Initialize styles lazily (must be done in OnGUI context) - BEFORE any drawing
         if (!stylesInitialized)
@@ -251,9 +329,9 @@ public class MainMenu : MonoBehaviour
                 break;
         }
 
-        // Version and credits - update color dynamically
+        // Version and credits - update color dynamically, within safe area
         cachedVersionStyle.normal.textColor = new Color(0.4f, 0.35f, 0.35f, menuAlpha);
-        GUI.Label(new Rect(Screen.width - 210, Screen.height - 30, 200, 25), "BETA v0.1", cachedVersionStyle);
+        GUI.Label(new Rect(safeArea.x + safeArea.width - 210, safeArea.y + safeArea.height - 30, 200, 25), "BETA v0.1", cachedVersionStyle);
 
         GUI.color = Color.white;
     }
@@ -316,18 +394,22 @@ public class MainMenu : MonoBehaviour
         float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 5f;
         float pulseScale = 1f + Mathf.Sin(skullPulse * 2f) * 0.02f;
 
+        // Use safe area for positioning
+        float centerX = safeArea.x + safeArea.width / 2;
+        float titleY = safeArea.y + safeArea.height * 0.05f; // Start 5% down the safe area
+
         // Large ominous glow behind title
         GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.25f * menuAlpha);
-        GUI.DrawTexture(new Rect(Screen.width / 2 - 350, 30 + bobOffset, 700, 180), GetTexture("white"));
+        GUI.DrawTexture(new Rect(centerX - 350, titleY + 30 + bobOffset, 700, 180), GetTexture("white"));
 
         // Secondary glow
         GUI.color = new Color(1f, 0.3f, 0.1f, 0.15f * menuAlpha);
-        GUI.DrawTexture(new Rect(Screen.width / 2 - 300, 50 + bobOffset, 600, 140), GetTexture("white"));
+        GUI.DrawTexture(new Rect(centerX - 300, titleY + 50 + bobOffset, 600, 140), GetTexture("white"));
 
         // Draw crossed fishing rods behind title (X shape)
         GUI.color = new Color(0.3f, 0.25f, 0.2f, 0.8f * menuAlpha);
-        DrawRotatedRect(new Rect(Screen.width / 2 - 180, 40 + bobOffset, 360, 8), 15f);
-        DrawRotatedRect(new Rect(Screen.width / 2 - 180, 40 + bobOffset, 360, 8), -15f);
+        DrawRotatedRect(new Rect(centerX - 180, titleY + 40 + bobOffset, 360, 8), 15f);
+        DrawRotatedRect(new Rect(centerX - 180, titleY + 40 + bobOffset, 360, 8), -15f);
 
         // "FISH" text
         GUIStyle fishStyle = new GUIStyle();
@@ -338,12 +420,12 @@ public class MainMenu : MonoBehaviour
         // Blood drip shadow
         GUI.color = new Color(0.3f, 0f, 0f, 0.6f * menuAlpha);
         fishStyle.normal.textColor = new Color(0.3f, 0f, 0f, menuAlpha);
-        GUI.Label(new Rect(shakeX + 4, 44 + bobOffset, Screen.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX + 4, titleY + 44 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
 
         // Main "FISH" text - blood red
         GUI.color = new Color(1, 1, 1, menuAlpha);
         fishStyle.normal.textColor = new Color(0.85f, 0.15f, 0.1f, menuAlpha);
-        GUI.Label(new Rect(shakeX, 40 + bobOffset, Screen.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 40 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
 
         // "OR" text - smaller, white/gray
         GUIStyle orStyle = new GUIStyle();
@@ -351,7 +433,7 @@ public class MainMenu : MonoBehaviour
         orStyle.fontStyle = FontStyle.BoldAndItalic;
         orStyle.alignment = TextAnchor.MiddleCenter;
         orStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f, menuAlpha);
-        GUI.Label(new Rect(shakeX, 115 + bobOffset, Screen.width, 50), "OR", orStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 115 + bobOffset, safeArea.width, 50), "OR", orStyle);
 
         // "DIE" text - even more dramatic
         GUIStyle dieStyle = new GUIStyle();
@@ -362,16 +444,16 @@ public class MainMenu : MonoBehaviour
         // Heavy shadow for DIE
         GUI.color = new Color(0, 0, 0, 0.7f * menuAlpha);
         dieStyle.normal.textColor = new Color(0, 0, 0, menuAlpha);
-        GUI.Label(new Rect(shakeX + 5, 140 + bobOffset, Screen.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX + 5, titleY + 140 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
 
         // Main "DIE" text - darker blood red, pulsing
         float diePulse = 0.7f + Mathf.Sin(skullPulse * 3f) * 0.15f;
         GUI.color = new Color(1, 1, 1, menuAlpha);
         dieStyle.normal.textColor = new Color(0.7f * diePulse, 0.05f, 0.05f, menuAlpha);
-        GUI.Label(new Rect(shakeX, 135 + bobOffset, Screen.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 135 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
 
         // Draw skull and crossbones between the words (simple version)
-        DrawSkull(Screen.width / 2 - 15, 125 + bobOffset, 30f * pulseScale, menuAlpha);
+        DrawSkull(centerX - 15, titleY + 125 + bobOffset, 30f * pulseScale, menuAlpha);
 
         // Tagline
         GUIStyle tagStyle = new GUIStyle();
@@ -379,7 +461,7 @@ public class MainMenu : MonoBehaviour
         tagStyle.fontStyle = FontStyle.Italic;
         tagStyle.alignment = TextAnchor.MiddleCenter;
         tagStyle.normal.textColor = new Color(0.5f, 0.55f, 0.6f, menuAlpha);
-        GUI.Label(new Rect(0, 235 + bobOffset, Screen.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
+        GUI.Label(new Rect(safeArea.x, titleY + 235 + bobOffset, safeArea.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
 
         // Beta version badge
         GUIStyle betaStyle = new GUIStyle();
@@ -387,7 +469,7 @@ public class MainMenu : MonoBehaviour
         betaStyle.fontStyle = FontStyle.Bold;
         betaStyle.alignment = TextAnchor.MiddleCenter;
         betaStyle.normal.textColor = new Color(1f, 0.8f, 0.2f, menuAlpha * 0.9f);
-        GUI.Label(new Rect(0, 265 + bobOffset, Screen.width, 25), "[ BETA - Tropical Island ]", betaStyle);
+        GUI.Label(new Rect(safeArea.x, titleY + 265 + bobOffset, safeArea.width, 25), "[ BETA - Tropical Island ]", betaStyle);
     }
 
     void DrawRotatedRect(Rect rect, float angle)
@@ -434,8 +516,10 @@ public class MainMenu : MonoBehaviour
         float buttonWidth = 180;
         float buttonHeight = 32;
         float buttonSpacing = 8;
-        float startY = Screen.height / 2 - 20;
-        float centerX = (Screen.width - buttonWidth) / 2;
+        // Position buttons in lower half of screen, within safe area
+        // Title ends around y=280, so start buttons well below that
+        float startY = safeArea.y + safeArea.height * 0.52f; // Start at 52% down the safe area
+        float centerX = safeArea.x + (safeArea.width - buttonWidth) / 2;
 
         string[] buttons = { "START NEW GAME", "LOAD GAME", "SAVED GAMES", "SETTINGS", "QUIT" };
 
@@ -461,8 +545,8 @@ public class MainMenu : MonoBehaviour
     {
         float panelWidth = 500;
         float panelHeight = 400;
-        float panelX = (Screen.width - panelWidth) / 2;
-        float panelY = (Screen.height - panelHeight) / 2;
+        float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
+        float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
 
         // Panel background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
@@ -530,8 +614,8 @@ public class MainMenu : MonoBehaviour
     {
         float panelWidth = 550;
         float panelHeight = 450;
-        float panelX = (Screen.width - panelWidth) / 2;
-        float panelY = (Screen.height - panelHeight) / 2;
+        float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
+        float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
 
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
@@ -571,8 +655,8 @@ public class MainMenu : MonoBehaviour
     {
         float panelWidth = 550;
         float panelHeight = 450;
-        float panelX = (Screen.width - panelWidth) / 2;
-        float panelY = (Screen.height - panelHeight) / 2;
+        float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
+        float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
 
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
@@ -705,6 +789,9 @@ public class MainMenu : MonoBehaviour
 
     void StartNewGame()
     {
+        // Stop title music when game starts
+        StopTitleMusic();
+
         GameStarted = true;
         EnableGameSystems();
 
@@ -721,6 +808,9 @@ public class MainMenu : MonoBehaviour
 
     void LoadGame(SavedGameInfo save)
     {
+        // Stop title music when game starts
+        StopTitleMusic();
+
         GameStarted = true;
         EnableGameSystems();
 

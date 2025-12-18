@@ -191,32 +191,32 @@ public class PlayerClothingVisuals : MonoBehaviour
         Material strawMat = new Material(Shader.Find("Standard"));
         strawMat.color = new Color(0.9f, 0.8f, 0.5f);
 
-        // Hat brim (half size)
+        // Hat brim - positioned to sit on top of head
         GameObject brim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         brim.name = "HatBrim";
         brim.transform.SetParent(headClothingObject.transform);
-        brim.transform.localPosition = new Vector3(0, 0.2f, 0);
+        brim.transform.localPosition = new Vector3(0, 0.35f, 0);
         brim.transform.localScale = new Vector3(0.9f, 0.025f, 0.9f);
         brim.GetComponent<Renderer>().material = strawMat;
         Object.Destroy(brim.GetComponent<Collider>());
 
-        // Hat crown (half size)
+        // Hat crown
         GameObject crown = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         crown.name = "HatCrown";
         crown.transform.SetParent(headClothingObject.transform);
-        crown.transform.localPosition = new Vector3(0, 0.3f, 0);
+        crown.transform.localPosition = new Vector3(0, 0.45f, 0);
         crown.transform.localScale = new Vector3(0.5f, 0.125f, 0.5f);
         crown.GetComponent<Renderer>().material = strawMat;
         Object.Destroy(crown.GetComponent<Collider>());
 
-        // Hat band (half size)
+        // Hat band
         Material bandMat = new Material(Shader.Find("Standard"));
         bandMat.color = new Color(0.45f, 0.20f, 0.10f);
 
         GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         band.name = "HatBand";
         band.transform.SetParent(headClothingObject.transform);
-        band.transform.localPosition = new Vector3(0, 0.24f, 0);
+        band.transform.localPosition = new Vector3(0, 0.39f, 0);
         band.transform.localScale = new Vector3(0.525f, 0.03f, 0.525f);
         band.GetComponent<Renderer>().material = bandMat;
         Object.Destroy(band.GetComponent<Collider>());
@@ -227,33 +227,33 @@ public class PlayerClothingVisuals : MonoBehaviour
         Material capMat = new Material(Shader.Find("Standard"));
         capMat.color = new Color(0.85f, 0.15f, 0.1f); // Red
 
-        // Cap dome (half size)
+        // Cap dome - positioned to sit on head
         GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         dome.name = "CapDome";
         dome.transform.SetParent(headClothingObject.transform);
-        dome.transform.localPosition = new Vector3(0, 0.175f, 0);
+        dome.transform.localPosition = new Vector3(0, 0.32f, 0);
         dome.transform.localScale = new Vector3(0.575f, 0.25f, 0.575f);
         dome.GetComponent<Renderer>().material = capMat;
         Object.Destroy(dome.GetComponent<Collider>());
 
-        // Cap visor/brim (half size)
+        // Cap visor/brim
         GameObject visor = GameObject.CreatePrimitive(PrimitiveType.Cube);
         visor.name = "CapVisor";
         visor.transform.SetParent(headClothingObject.transform);
-        visor.transform.localPosition = new Vector3(0, 0.125f, 0.25f);
+        visor.transform.localPosition = new Vector3(0, 0.28f, 0.25f);
         visor.transform.localRotation = Quaternion.Euler(-15, 0, 0);
         visor.transform.localScale = new Vector3(0.4f, 0.025f, 0.25f);
         visor.GetComponent<Renderer>().material = capMat;
         Object.Destroy(visor.GetComponent<Collider>());
 
-        // Cap button on top (half size)
+        // Cap button on top
         Material whiteMat = new Material(Shader.Find("Standard"));
         whiteMat.color = Color.white;
 
         GameObject button = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         button.name = "CapButton";
         button.transform.SetParent(headClothingObject.transform);
-        button.transform.localPosition = new Vector3(0, 0.275f, 0);
+        button.transform.localPosition = new Vector3(0, 0.42f, 0);
         button.transform.localScale = Vector3.one * 0.075f;
         button.GetComponent<Renderer>().material = whiteMat;
         Object.Destroy(button.GetComponent<Collider>());
@@ -265,32 +265,32 @@ public class PlayerClothingVisuals : MonoBehaviour
         hatMat.color = new Color(0.1f, 0.1f, 0.1f); // Black
         hatMat.SetFloat("_Glossiness", 0.7f);
 
-        // Hat brim (half size)
+        // Hat brim - positioned to sit on head
         GameObject brim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         brim.name = "TopHatBrim";
         brim.transform.SetParent(headClothingObject.transform);
-        brim.transform.localPosition = new Vector3(0, 0.175f, 0);
+        brim.transform.localPosition = new Vector3(0, 0.32f, 0);
         brim.transform.localScale = new Vector3(0.75f, 0.02f, 0.75f);
         brim.GetComponent<Renderer>().material = hatMat;
         Object.Destroy(brim.GetComponent<Collider>());
 
-        // Tall crown (half size)
+        // Tall crown
         GameObject crown = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         crown.name = "TopHatCrown";
         crown.transform.SetParent(headClothingObject.transform);
-        crown.transform.localPosition = new Vector3(0, 0.35f, 0);
-        crown.transform.localScale = new Vector3(0.45f, 0.2f, 0.45f);
+        crown.transform.localPosition = new Vector3(0, 0.52f, 0);
+        crown.transform.localScale = new Vector3(0.45f, 0.22f, 0.45f);
         crown.GetComponent<Renderer>().material = hatMat;
         Object.Destroy(crown.GetComponent<Collider>());
 
-        // Satin band (half size)
+        // Satin band
         Material bandMat = new Material(Shader.Find("Standard"));
         bandMat.color = new Color(0.6f, 0.1f, 0.1f); // Dark red
 
         GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         band.name = "TopHatBand";
         band.transform.SetParent(headClothingObject.transform);
-        band.transform.localPosition = new Vector3(0, 0.225f, 0);
+        band.transform.localPosition = new Vector3(0, 0.38f, 0);
         band.transform.localScale = new Vector3(0.475f, 0.03f, 0.475f);
         band.GetComponent<Renderer>().material = bandMat;
         Object.Destroy(band.GetComponent<Collider>());
@@ -1202,11 +1202,11 @@ public class PlayerClothingVisuals : MonoBehaviour
         Material furMat = new Material(Shader.Find("Standard"));
         furMat.color = new Color(0.95f, 0.95f, 0.98f);
 
-        // Main fluffy hat body
+        // Main fluffy hat body - positioned to sit on head
         GameObject hatBody = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         hatBody.name = "BearHatBody";
         hatBody.transform.SetParent(headClothingObject.transform);
-        hatBody.transform.localPosition = new Vector3(0, 0.15f, 0);
+        hatBody.transform.localPosition = new Vector3(0, 0.32f, 0);
         hatBody.transform.localScale = new Vector3(0.65f, 0.35f, 0.6f);
         hatBody.GetComponent<Renderer>().material = furMat;
         Object.Destroy(hatBody.GetComponent<Collider>());
@@ -1215,7 +1215,7 @@ public class PlayerClothingVisuals : MonoBehaviour
         GameObject leftEar = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         leftEar.name = "LeftEar";
         leftEar.transform.SetParent(headClothingObject.transform);
-        leftEar.transform.localPosition = new Vector3(-0.2f, 0.35f, 0);
+        leftEar.transform.localPosition = new Vector3(-0.2f, 0.52f, 0);
         leftEar.transform.localScale = new Vector3(0.15f, 0.12f, 0.1f);
         leftEar.GetComponent<Renderer>().material = furMat;
         Object.Destroy(leftEar.GetComponent<Collider>());
@@ -1224,7 +1224,7 @@ public class PlayerClothingVisuals : MonoBehaviour
         GameObject rightEar = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         rightEar.name = "RightEar";
         rightEar.transform.SetParent(headClothingObject.transform);
-        rightEar.transform.localPosition = new Vector3(0.2f, 0.35f, 0);
+        rightEar.transform.localPosition = new Vector3(0.2f, 0.52f, 0);
         rightEar.transform.localScale = new Vector3(0.15f, 0.12f, 0.1f);
         rightEar.GetComponent<Renderer>().material = furMat;
         Object.Destroy(rightEar.GetComponent<Collider>());
@@ -1238,7 +1238,7 @@ public class PlayerClothingVisuals : MonoBehaviour
             tuft.transform.SetParent(headClothingObject.transform);
             tuft.transform.localPosition = new Vector3(
                 Mathf.Cos(angle) * 0.25f,
-                0.1f + Random.Range(0f, 0.1f),
+                0.27f + Random.Range(0f, 0.1f),
                 Mathf.Sin(angle) * 0.22f
             );
             tuft.transform.localScale = Vector3.one * Random.Range(0.08f, 0.12f);
@@ -1257,11 +1257,11 @@ public class PlayerClothingVisuals : MonoBehaviour
         goldMat.color = new Color(0.85f, 0.7f, 0.3f);
         goldMat.SetFloat("_Metallic", 0.5f);
 
-        // Main hat body
+        // Main hat body - positioned to sit on head
         GameObject hatBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         hatBody.name = "PirateHatBody";
         hatBody.transform.SetParent(headClothingObject.transform);
-        hatBody.transform.localPosition = new Vector3(0, 0.2f, 0);
+        hatBody.transform.localPosition = new Vector3(0, 0.37f, 0);
         hatBody.transform.localScale = new Vector3(0.6f, 0.15f, 0.55f);
         hatBody.GetComponent<Renderer>().material = blackMat;
         Object.Destroy(hatBody.GetComponent<Collider>());
@@ -1275,7 +1275,7 @@ public class PlayerClothingVisuals : MonoBehaviour
             peak.transform.SetParent(headClothingObject.transform);
             peak.transform.localPosition = new Vector3(
                 Mathf.Cos(angle) * 0.2f,
-                0.3f,
+                0.47f,
                 Mathf.Sin(angle) * 0.2f
             );
             peak.transform.localRotation = Quaternion.Euler(0, -angle * Mathf.Rad2Deg, 30);
@@ -1288,7 +1288,7 @@ public class PlayerClothingVisuals : MonoBehaviour
         GameObject trim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         trim.name = "GoldTrim";
         trim.transform.SetParent(headClothingObject.transform);
-        trim.transform.localPosition = new Vector3(0, 0.12f, 0);
+        trim.transform.localPosition = new Vector3(0, 0.29f, 0);
         trim.transform.localScale = new Vector3(0.62f, 0.02f, 0.57f);
         trim.GetComponent<Renderer>().material = goldMat;
         Object.Destroy(trim.GetComponent<Collider>());
@@ -1300,11 +1300,11 @@ public class PlayerClothingVisuals : MonoBehaviour
         Material beretMat = new Material(Shader.Find("Standard"));
         beretMat.color = new Color(0.6f, 0.1f, 0.15f);
 
-        // Main beret body (flat and round)
+        // Main beret body (flat and round) - positioned to sit on head
         GameObject beretBody = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         beretBody.name = "BeretBody";
         beretBody.transform.SetParent(headClothingObject.transform);
-        beretBody.transform.localPosition = new Vector3(0.05f, 0.15f, 0);
+        beretBody.transform.localPosition = new Vector3(0.05f, 0.32f, 0);
         beretBody.transform.localRotation = Quaternion.Euler(0, 0, 15);
         beretBody.transform.localScale = new Vector3(0.55f, 0.08f, 0.55f);
         beretBody.GetComponent<Renderer>().material = beretMat;
@@ -1317,7 +1317,7 @@ public class PlayerClothingVisuals : MonoBehaviour
         GameObject stem = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         stem.name = "BeretStem";
         stem.transform.SetParent(headClothingObject.transform);
-        stem.transform.localPosition = new Vector3(0.05f, 0.22f, 0);
+        stem.transform.localPosition = new Vector3(0.05f, 0.39f, 0);
         stem.transform.localScale = new Vector3(0.06f, 0.06f, 0.06f);
         stem.GetComponent<Renderer>().material = blackMat;
         Object.Destroy(stem.GetComponent<Collider>());

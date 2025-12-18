@@ -21,16 +21,16 @@ public class DayNightCycle : MonoBehaviour
     public float sunDistance = 100f;
     public float sunSize = 8f;
 
-    [Header("Lighting Colors - DRASTICALLY REDUCED")]
-    public Color dawnColor = new Color(0.70f, 0.40f, 0.25f);      // Darker warm dawn
-    public Color noonColor = new Color(0.75f, 0.70f, 0.60f);      // Much darker noon - no more white!
-    public Color duskColor = new Color(0.70f, 0.35f, 0.20f);      // Darker orange dusk
-    public Color nightColor = new Color(0.05f, 0.08f, 0.18f);     // Very deep blue night
+    [Header("Lighting Colors - Beautiful & Atmospheric")]
+    public Color sunriseColor = new Color(0.95f, 0.60f, 0.40f);   // Warm orange-pink sunrise
+    public Color noonColor = new Color(0.85f, 0.80f, 0.70f);      // Bright but not white noon
+    public Color sunsetColor = new Color(0.98f, 0.50f, 0.30f);    // Dramatic orange-red sunset
+    public Color nightColor = new Color(0.0f, 0.0f, 0.0f);        // PURE BLACK for dramatic moonlight and starlight
 
     [Header("Sky Colors - More Vibrant")]
     public Color daySkyColor = new Color(0.35f, 0.60f, 0.90f);    // Vibrant blue sky
     public Color sunsetSkyColor = new Color(0.95f, 0.50f, 0.40f); // Rich sunset
-    public Color nightSkyColor = new Color(0.03f, 0.03f, 0.12f);  // Deep night
+    public Color nightSkyColor = new Color(0.0f, 0.0f, 0.0f);     // PURE BLACK night sky for stars and moonlight
 
     // Time tracking (0-24 hours)
     private float currentTimeOfDay = 8f; // Start at 8 AM
@@ -66,6 +66,9 @@ public class DayNightCycle : MonoBehaviour
     private GUIStyle cachedTimeStyle;
     private bool stylesInitialized = false;
 
+    // Performance optimization - frame counter for star updates
+    private int starUpdateFrameCounter = 0;
+
     void Awake()
     {
         if (Instance == null)
@@ -81,6 +84,15 @@ public class DayNightCycle : MonoBehaviour
     void Start()
     {
         timeSpeed = 24f / dayLengthInSeconds;
+
+        // Configure global shadow quality settings for smooth, soft shadows
+        QualitySettings.shadows = ShadowQuality.All;
+        QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
+        QualitySettings.shadowProjection = ShadowProjection.StableFit;
+        QualitySettings.shadowDistance = 150f;
+        QualitySettings.shadowCascades = 4;
+        QualitySettings.shadowCascade2Split = 0.33333f;
+        QualitySettings.shadowCascade4Split = new Vector3(0.06666f, 0.2f, 0.46666f);
 
         CreateSun();
         CreateMoon();
@@ -109,6 +121,7 @@ public class DayNightCycle : MonoBehaviour
         sunMaterial.color = new Color(1f, 0.95f, 0.8f);
         sunMaterial.EnableKeyword("_EMISSION");
         sunMaterial.SetColor("_EmissionColor", new Color(1f, 0.95f, 0.8f) * 3f);
+        sunMaterial.renderQueue = 2250; // Render AFTER skybox and black dome overlay
         sunSphere.GetComponent<Renderer>().material = sunMaterial;
 
         // Sun glow (larger transparent sphere)
@@ -125,7 +138,7 @@ public class DayNightCycle : MonoBehaviour
         glowMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         glowMaterial.SetInt("_ZWrite", 0);
         glowMaterial.EnableKeyword("_ALPHABLEND_ON");
-        glowMaterial.renderQueue = 3000;
+        glowMaterial.renderQueue = 2240; // Render AFTER skybox and black dome overlay, slightly before sun sphere
         glowMaterial.color = new Color(1f, 0.9f, 0.6f, 0.15f);
         glowMaterial.EnableKeyword("_EMISSION");
         glowMaterial.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.6f) * 0.5f);
@@ -141,6 +154,13 @@ public class DayNightCycle : MonoBehaviour
         sunLight.color = noonColor;
         sunLight.intensity = 1.2f;
         sunLight.shadows = LightShadows.Soft;
+
+        // Configure high-quality soft shadows
+        sunLight.shadowStrength = 1f;
+        sunLight.shadowResolution = UnityEngine.Rendering.LightShadowResolution.VeryHigh;
+        sunLight.shadowBias = 0.05f;
+        sunLight.shadowNormalBias = 0.4f;
+        sunLight.shadowNearPlane = 0.2f;
     }
 
     void CreateMoon()
@@ -148,19 +168,21 @@ public class DayNightCycle : MonoBehaviour
         moonObject = new GameObject("Moon");
         moonObject.transform.SetParent(transform);
 
+        // Create a SMALL, realistic moon (not a huge ball)
         GameObject moonSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         moonSphere.name = "MoonSphere";
         moonSphere.transform.SetParent(moonObject.transform);
         moonSphere.transform.localPosition = Vector3.zero;
-        moonSphere.transform.localScale = Vector3.one * sunSize * 0.6f;
+        moonSphere.transform.localScale = Vector3.one * sunSize * 0.15f;  // Small realistic moon (was 0.6f - too big)
         Destroy(moonSphere.GetComponent<Collider>());
 
         moonMaterial = new Material(Shader.Find("Standard"));
-        moonMaterial.color = new Color(0.9f, 0.9f, 0.95f);
+        moonMaterial.color = new Color(1f, 1f, 1f);  // Pure white moon
         moonMaterial.EnableKeyword("_EMISSION");
-        moonMaterial.SetColor("_EmissionColor", new Color(0.7f, 0.75f, 0.9f) * 0.5f);
+        moonMaterial.SetColor("_EmissionColor", new Color(1f, 1f, 1f) * 2f);  // Much brighter moon emission
         moonMaterial.SetFloat("_Metallic", 0f);
-        moonMaterial.SetFloat("_Glossiness", 0.2f);
+        moonMaterial.SetFloat("_Glossiness", 0.3f);
+        moonMaterial.renderQueue = 2250; // Render AFTER skybox and black dome overlay
         moonSphere.GetComponent<Renderer>().material = moonMaterial;
 
         // Moon glow
@@ -168,7 +190,7 @@ public class DayNightCycle : MonoBehaviour
         moonGlow.name = "MoonGlow";
         moonGlow.transform.SetParent(moonObject.transform);
         moonGlow.transform.localPosition = Vector3.zero;
-        moonGlow.transform.localScale = Vector3.one * sunSize * 1.5f;
+        moonGlow.transform.localScale = Vector3.one * sunSize * 0.4f;  // Smaller glow (was 1.5f)
         Destroy(moonGlow.GetComponent<Collider>());
 
         Material moonGlowMat = new Material(Shader.Find("Standard"));
@@ -176,8 +198,10 @@ public class DayNightCycle : MonoBehaviour
         moonGlowMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
         moonGlowMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         moonGlowMat.EnableKeyword("_ALPHABLEND_ON");
-        moonGlowMat.renderQueue = 3000;
-        moonGlowMat.color = new Color(0.7f, 0.75f, 0.9f, 0.1f);
+        moonGlowMat.renderQueue = 2240; // Render AFTER skybox and black dome overlay
+        moonGlowMat.color = new Color(1f, 1f, 1f, 0.2f);  // Brighter white glow
+        moonGlowMat.EnableKeyword("_EMISSION");
+        moonGlowMat.SetColor("_EmissionColor", new Color(1f, 1f, 1f) * 1f);  // Add emission to glow
         moonGlow.GetComponent<Renderer>().material = moonGlowMat;
     }
 
@@ -194,6 +218,7 @@ public class DayNightCycle : MonoBehaviour
         starMat.color = Color.white;
         starMat.EnableKeyword("_EMISSION");
         starMat.SetColor("_EmissionColor", Color.white * 2.5f);
+        starMat.renderQueue = 2200; // Render AFTER skybox and black dome overlay so stars appear on top
 
         for (int i = 0; i < numStars; i++)
         {
@@ -325,12 +350,15 @@ public class DayNightCycle : MonoBehaviour
         // Convert time to angle (0 at 6AM, 180 at 6PM)
         float sunAngle = (currentTimeOfDay - 6f) * 15f; // 15 degrees per hour
 
-        // Sun path is an arc from east to west
+        // Sun path: rises in front of dock (positive Z), arcs overhead, sets on horizon (negative Z)
+        // This makes sunrise and sunset visible from the dock area
         float radAngle = sunAngle * Mathf.Deg2Rad;
         float height = Mathf.Sin(radAngle);
         float horizontal = Mathf.Cos(radAngle);
 
-        Vector3 sunPos = new Vector3(horizontal * sunDistance, height * sunDistance, 0);
+        // Changed: sun travels along Z-axis (forward/back) instead of X-axis (left/right)
+        // Sunrise at positive Z (in front), sunset at negative Z (still visible on horizon)
+        Vector3 sunPos = new Vector3(0, height * sunDistance, horizontal * sunDistance);
         sunObject.transform.position = sunPos;
 
         // Sun always looks at world center (for light direction)
@@ -356,17 +384,26 @@ public class DayNightCycle : MonoBehaviour
     {
         if (moonObject == null) return;
 
-        // Moon is opposite to sun
+        // Moon is opposite to sun (180 degrees phase shift)
+        // Moon movement is SLOW and tied to game time - moves gradually across the sky
+        // Rises at 6 PM, peaks at midnight, sets at 6 AM
+        // Movement speed is determined by dayLengthInSeconds (same as sun)
         float moonAngle = (currentTimeOfDay - 6f) * 15f + 180f;
         float radAngle = moonAngle * Mathf.Deg2Rad;
+
+        // Calculate moon height and horizontal position
         float height = Mathf.Sin(radAngle);
         float horizontal = Mathf.Cos(radAngle);
 
-        Vector3 moonPos = new Vector3(horizontal * sunDistance * 0.9f, height * sunDistance * 0.9f, 0);
+        // Moon follows same path as sun but 180 degrees opposite along Z-axis
+        // This makes moon rise from BEHIND horizon (negative Z when sun sets at positive Z)
+        Vector3 moonPos = new Vector3(0, height * sunDistance * 0.9f, horizontal * sunDistance * 0.9f);
         moonObject.transform.position = moonPos;
         moonObject.transform.LookAt(Vector3.zero);
 
-        bool moonVisible = height > -0.1f;
+        // CRITICAL: Moon only visible when ABOVE horizon (y > 0)
+        // This ensures moon rises FROM BEHIND horizon and sets BEHIND horizon
+        bool moonVisible = height > 0f;  // Changed from -0.1f to 0f for strict horizon visibility
         moonObject.SetActive(moonVisible);
     }
 
@@ -379,25 +416,59 @@ public class DayNightCycle : MonoBehaviour
         Color currentSunColor;
         float intensity;
 
-        if (sunHeight > 0.3f)
+        // ENHANCED: Better lighting transitions matching skybox system
+        if (currentTimeOfDay >= 5f && currentTimeOfDay < 6.5f)
         {
-            // Daytime - DRASTICALLY REDUCED brightness
-            currentSunColor = Color.Lerp(dawnColor, noonColor, (sunHeight - 0.3f) / 0.7f);
-            intensity = 0.3f + sunHeight * 0.2f;  // Much lower - max ~0.5
+            // Early sunrise
+            float t = (currentTimeOfDay - 5f) / 1.5f;
+            currentSunColor = Color.Lerp(nightColor, sunriseColor, t);
+            intensity = Mathf.Lerp(0.05f, 0.4f, t);
         }
-        else if (sunHeight > 0f)
+        else if (currentTimeOfDay >= 6.5f && currentTimeOfDay < 8.5f)
         {
-            // Dawn/Dusk
-            float t = sunHeight / 0.3f;
-            bool isMorning = currentTimeOfDay < 12f;
-            currentSunColor = isMorning ? Color.Lerp(nightColor, dawnColor, t) : Color.Lerp(nightColor, duskColor, t);
-            intensity = 0.1f + t * 0.3f;  // Lower dawn/dusk
+            // Sunrise peak to day
+            float t = (currentTimeOfDay - 6.5f) / 2f;
+            currentSunColor = Color.Lerp(sunriseColor, noonColor, t);
+            intensity = Mathf.Lerp(0.4f, 0.6f, t);
+        }
+        else if (currentTimeOfDay >= 8.5f && currentTimeOfDay < 16.5f)
+        {
+            // Full daytime - bright lighting
+            float t = Mathf.InverseLerp(8.5f, 12f, currentTimeOfDay);
+            if (currentTimeOfDay > 12f)
+            {
+                t = Mathf.InverseLerp(16.5f, 12f, currentTimeOfDay);
+            }
+            currentSunColor = Color.Lerp(noonColor, new Color(1f, 0.98f, 0.92f), t); // Slightly brighter at noon
+            intensity = 0.6f + t * 0.2f; // Max 0.8 at noon
+        }
+        else if (currentTimeOfDay >= 16.5f && currentTimeOfDay < 18f)
+        {
+            // Beginning of sunset
+            float t = (currentTimeOfDay - 16.5f) / 1.5f;
+            currentSunColor = Color.Lerp(noonColor, sunsetColor, t);
+            intensity = Mathf.Lerp(0.6f, 0.5f, t);
+        }
+        else if (currentTimeOfDay >= 18f && currentTimeOfDay < 19.5f)
+        {
+            // Sunset peak - dramatic colors
+            float t = (currentTimeOfDay - 18f) / 1.5f;
+            Color enhancedSunset = new Color(1f, 0.45f, 0.25f); // More intense
+            currentSunColor = Color.Lerp(sunsetColor, enhancedSunset, Mathf.Sin(t * Mathf.PI));
+            intensity = Mathf.Lerp(0.5f, 0.3f, t);
+        }
+        else if (currentTimeOfDay >= 19.5f && currentTimeOfDay < 21f)
+        {
+            // Dusk to night
+            float t = (currentTimeOfDay - 19.5f) / 1.5f;
+            currentSunColor = Color.Lerp(new Color(1f, 0.45f, 0.25f), nightColor, t);
+            intensity = Mathf.Lerp(0.3f, 0.05f, t);
         }
         else
         {
-            // Night
+            // Night - very dark for dramatic starlight
             currentSunColor = nightColor;
-            intensity = 0.05f;  // Very dark night
+            intensity = 0.02f; // Much darker night
         }
 
         // Apply to sun light
@@ -407,10 +478,16 @@ public class DayNightCycle : MonoBehaviour
             sunLight.intensity = intensity;
         }
 
-        // Update sun material color
+        // Update sun material color - more vibrant during sunset/sunrise
         if (sunMaterial != null)
         {
-            sunMaterial.SetColor("_EmissionColor", currentSunColor * 3f);
+            float emissionBoost = 3f;
+            if ((currentTimeOfDay >= 5f && currentTimeOfDay < 8.5f) ||
+                (currentTimeOfDay >= 16.5f && currentTimeOfDay < 20f))
+            {
+                emissionBoost = 5f; // Brighter sun during golden hour
+            }
+            sunMaterial.SetColor("_EmissionColor", currentSunColor * emissionBoost);
         }
         if (glowMaterial != null)
         {
@@ -422,8 +499,9 @@ public class DayNightCycle : MonoBehaviour
         // Ambient light
         if (ambientLight != null)
         {
-            ambientLight.intensity = 0.1f + Mathf.Max(0, sunHeight) * 0.3f;
-            ambientLight.color = Color.Lerp(new Color(0.2f, 0.25f, 0.4f), Color.white, Mathf.Max(0, sunHeight));
+            ambientLight.intensity = 0.1f + Mathf.Max(0, sunHeight) * 0.4f;
+            Color ambientColor = Color.Lerp(new Color(0.15f, 0.20f, 0.35f), new Color(0.95f, 0.92f, 0.88f), Mathf.Max(0, sunHeight));
+            ambientLight.color = ambientColor;
         }
     }
 
@@ -472,9 +550,16 @@ public class DayNightCycle : MonoBehaviour
         float starVisibility = Mathf.Clamp01(-sunHeight * 2f + 0.2f);
         starsContainer.SetActive(starVisibility > 0.05f);
 
-        // Twinkle effect
+        // Twinkle effect - only update every 3rd frame for better performance
         if (starVisibility > 0.05f)
         {
+            starUpdateFrameCounter++;
+            if (starUpdateFrameCounter < 3)
+            {
+                return;
+            }
+            starUpdateFrameCounter = 0;
+
             foreach (var star in stars)
             {
                 if (star == null) continue;

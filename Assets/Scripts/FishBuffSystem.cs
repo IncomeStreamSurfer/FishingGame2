@@ -159,6 +159,12 @@ public class FishBuffSystem : MonoBehaviour
         }
     }
 
+    // Cached textures and styles for OnGUI
+    private Texture2D buffBgTex;
+    private Texture2D buffBarTex;
+    private GUIStyle buffLabelStyle;
+    private bool guiInitialized = false;
+
     void Update()
     {
         // Update active buff timers
@@ -175,6 +181,75 @@ public class FishBuffSystem : MonoBehaviour
                 activeBuffs.RemoveAt(i);
             }
         }
+    }
+
+    void OnGUI()
+    {
+        if (!MainMenu.GameStarted) return;
+        if (activeBuffs.Count == 0) return;
+
+        // Initialize GUI resources once
+        if (!guiInitialized)
+        {
+            buffBgTex = new Texture2D(1, 1);
+            buffBgTex.SetPixel(0, 0, new Color(0.1f, 0.1f, 0.15f, 0.85f));
+            buffBgTex.Apply();
+
+            buffBarTex = new Texture2D(1, 1);
+            buffBarTex.SetPixel(0, 0, new Color(0.3f, 0.8f, 0.4f, 0.9f));
+            buffBarTex.Apply();
+
+            buffLabelStyle = new GUIStyle(GUI.skin.label);
+            guiInitialized = true;
+        }
+
+        // Draw active buffs on right side, below vital signs (HP bar + ECG is ~70px)
+        float panelX = Screen.width - 180;
+        float panelY = 75; // Below ECG monitor
+        float buffHeight = 38;
+        float buffWidth = 170;
+
+        for (int i = 0; i < activeBuffs.Count; i++)
+        {
+            ActiveBuff buff = activeBuffs[i];
+            FishBuff data = GetBuffData(buff.type);
+            if (data == null) continue;
+
+            float y = panelY + i * (buffHeight + 4);
+
+            // Background
+            GUI.DrawTexture(new Rect(panelX, y, buffWidth, buffHeight), buffBgTex);
+
+            // Timer bar
+            float pct = buff.remainingTime / data.duration;
+            GUI.color = data.bowlColor;
+            GUI.DrawTexture(new Rect(panelX + 2, y + buffHeight - 6, (buffWidth - 4) * pct, 4), buffBarTex);
+            GUI.color = Color.white;
+
+            // Buff name
+            buffLabelStyle.fontSize = 11;
+            buffLabelStyle.fontStyle = FontStyle.Bold;
+            buffLabelStyle.normal.textColor = data.bowlColor;
+            buffLabelStyle.alignment = TextAnchor.UpperLeft;
+            GUI.Label(new Rect(panelX + 6, y + 3, buffWidth - 12, 16), buff.buffName, buffLabelStyle);
+
+            // Time remaining
+            int mins = (int)(buff.remainingTime / 60);
+            int secs = (int)(buff.remainingTime % 60);
+            string timeStr = mins > 0 ? $"{mins}m {secs}s" : $"{secs}s";
+
+            buffLabelStyle.fontSize = 10;
+            buffLabelStyle.fontStyle = FontStyle.Normal;
+            buffLabelStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+            GUI.Label(new Rect(panelX + 6, y + 18, buffWidth - 12, 14), timeStr, buffLabelStyle);
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (buffBgTex != null) Destroy(buffBgTex);
+        if (buffBarTex != null) Destroy(buffBarTex);
+        if (Instance == this) Instance = null;
     }
 
     // Check if a specific buff is active
@@ -376,6 +451,21 @@ public class FishBuffSystem : MonoBehaviour
     public bool HasDoubleCatch()
     {
         return IsBuffActive(FishBuffType.SeahorsesBounty);
+    }
+
+    // Clear all active buffs (called on player death)
+    public void ClearAllActiveBuffs()
+    {
+        if (activeBuffs.Count > 0)
+        {
+            Debug.Log($"Clearing {activeBuffs.Count} active buffs due to death!");
+            activeBuffs.Clear();
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("All buffs lost!", new Color(0.8f, 0.3f, 0.3f));
+            }
+        }
     }
 
     // ========== SAVE/LOAD ==========

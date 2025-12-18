@@ -37,7 +37,6 @@ public class DockRadio : MonoBehaviour
     private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" }; // Fallback only
     private int currentSongIndex = 0;
     private RealmType lastLoadedRealm = RealmType.TropicalIsland;
-    private string nowPlayingText = "";
 
     void Awake()
     {
@@ -80,6 +79,23 @@ public class DockRadio : MonoBehaviour
 
         initialized = true;
         Debug.Log("DockRadio: Ready! Press R to toggle music.");
+
+        // Auto-start music when game loads
+        Invoke("AutoStartMusic", 0.5f);
+    }
+
+    void AutoStartMusic()
+    {
+        if (!isOn && songs.Count > 0)
+        {
+            isOn = true;
+            currentSongIndex = Random.Range(0, songs.Count);
+            audioSource.clip = songs[currentSongIndex];
+            audioSource.volume = maxVolume;
+            audioSource.Play();
+            currentlyPlaying = this;
+            Debug.Log("DockRadio: Auto-started - Playing " + songs[currentSongIndex].name);
+        }
     }
 
     void LoadSongsForCurrentRealm()
@@ -267,17 +283,6 @@ public class DockRadio : MonoBehaviour
             GUI.Label(new Rect(0, promptY, Screen.width, 30), promptText, promptStyle);
         }
 
-        // Show persistent "Now Playing" text at top-left when radio is on
-        if (isOn && !string.IsNullOrEmpty(nowPlayingText))
-        {
-            GUIStyle nowPlayingStyle = new GUIStyle(GUI.skin.label);
-            nowPlayingStyle.fontSize = 11;
-            nowPlayingStyle.fontStyle = FontStyle.Normal;
-            nowPlayingStyle.alignment = TextAnchor.UpperLeft;
-            nowPlayingStyle.normal.textColor = new Color(0.7f, 0.9f, 1f, 0.9f);
-
-            GUI.Label(new Rect(10, 10, 400, 20), nowPlayingText, nowPlayingStyle);
-        }
     }
 
     void ToggleRadio()
@@ -305,7 +310,6 @@ public class DockRadio : MonoBehaviour
                 audioSource.Play();
                 currentlyPlaying = this;
                 songEndCheckDelay = 0.5f;  // Reset delay
-                nowPlayingText = "Now Playing: " + loadedSongNames[currentSongIndex];
                 Debug.Log("DockRadio: ON - Playing " + songs[currentSongIndex].name + " (" + GetMusicFolderForRealm(currentRealm) + ")");
             }
         }
@@ -314,7 +318,6 @@ public class DockRadio : MonoBehaviour
             audioSource.Stop();
             if (currentlyPlaying == this)
                 currentlyPlaying = null;
-            nowPlayingText = "";
             Debug.Log("DockRadio: OFF");
         }
     }
@@ -338,7 +341,6 @@ public class DockRadio : MonoBehaviour
         audioSource.volume = maxVolume;
         audioSource.Play();
         songEndCheckDelay = 0.5f;  // Reset delay after starting new song
-        nowPlayingText = "Now Playing: " + loadedSongNames[currentSongIndex];
         Debug.Log("DockRadio: Now playing " + songs[currentSongIndex].name);
     }
 

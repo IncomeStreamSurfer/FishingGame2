@@ -23,6 +23,15 @@ public class BjorkHuntsman : MonoBehaviour
     // Audio
     private AudioSource audioSource;
 
+    // Cached GUIStyles to avoid GC every frame
+    private GUIStyle promptStyle;
+    private GUIStyle titleStyle;
+    private GUIStyle dialogueStyle;
+    private GUIStyle btnStyle;
+    private GUIStyle questStyle;
+    private GUIStyle closeStyle;
+    private bool stylesInitialized = false;
+
     // Dialogue
     private string[] idleDialogue = {
         "Hmph. You look cold.",
@@ -417,19 +426,57 @@ public class BjorkHuntsman : MonoBehaviour
         return dialogueOpen;
     }
 
+    void InitializeGUIStyles()
+    {
+        if (stylesInitialized) return;
+
+        promptStyle = new GUIStyle();
+        promptStyle.fontSize = 18;
+        promptStyle.fontStyle = FontStyle.Bold;
+        promptStyle.alignment = TextAnchor.MiddleCenter;
+        promptStyle.normal.textColor = new Color(0.9f, 0.8f, 0.6f);
+
+        titleStyle = new GUIStyle();
+        titleStyle.fontSize = 22;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(0.9f, 0.8f, 0.6f);
+
+        dialogueStyle = new GUIStyle();
+        dialogueStyle.fontSize = 16;
+        dialogueStyle.wordWrap = true;
+        dialogueStyle.alignment = TextAnchor.UpperCenter;
+        dialogueStyle.normal.textColor = new Color(0.85f, 0.8f, 0.7f);
+
+        btnStyle = new GUIStyle();
+        btnStyle.fontSize = 14;
+        btnStyle.fontStyle = FontStyle.Bold;
+        btnStyle.alignment = TextAnchor.MiddleCenter;
+        btnStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        btnStyle.normal.background = Texture2D.whiteTexture;
+
+        questStyle = new GUIStyle();
+        questStyle.fontSize = 14;
+        questStyle.fontStyle = FontStyle.Bold;
+        questStyle.alignment = TextAnchor.MiddleCenter;
+
+        closeStyle = new GUIStyle();
+        closeStyle.fontSize = 11;
+        closeStyle.alignment = TextAnchor.MiddleCenter;
+        closeStyle.normal.textColor = new Color(0.5f, 0.45f, 0.4f);
+
+        stylesInitialized = true;
+    }
+
     void OnGUI()
     {
         if (!MainMenu.GameStarted) return;
 
+        InitializeGUIStyles();
+
         // Interaction prompt
         if (playerNearby && !dialogueOpen)
         {
-            GUIStyle promptStyle = new GUIStyle();
-            promptStyle.fontSize = 18;
-            promptStyle.fontStyle = FontStyle.Bold;
-            promptStyle.alignment = TextAnchor.MiddleCenter;
-            promptStyle.normal.textColor = new Color(0.9f, 0.8f, 0.6f);
-
             GUI.Label(new Rect(Screen.width / 2 - 150, Screen.height - 150, 300, 30),
                 "[E] Talk to Bjork", promptStyle);
         }
@@ -466,21 +513,9 @@ public class BjorkHuntsman : MonoBehaviour
         GUI.color = Color.white;
 
         // Title
-        GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 22;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(0.9f, 0.8f, 0.6f);
-
         GUI.Label(new Rect(panelRect.x, panelRect.y + 15, panelRect.width, 30), "BJORK THE HUNTSMAN", titleStyle);
 
         // Dialogue text
-        GUIStyle dialogueStyle = new GUIStyle();
-        dialogueStyle.fontSize = 16;
-        dialogueStyle.wordWrap = true;
-        dialogueStyle.alignment = TextAnchor.UpperCenter;
-        dialogueStyle.normal.textColor = new Color(0.85f, 0.8f, 0.7f);
-
         string dialogueText = "";
 
         if (!questComplete && bearSkinsCollected == 0)
@@ -498,13 +533,6 @@ public class BjorkHuntsman : MonoBehaviour
             dialogueText = string.Join("\n\n", completeDialogue);
 
             // Give reward button
-            GUIStyle btnStyle = new GUIStyle();
-            btnStyle.fontSize = 14;
-            btnStyle.fontStyle = FontStyle.Bold;
-            btnStyle.alignment = TextAnchor.MiddleCenter;
-            btnStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-            btnStyle.normal.background = Texture2D.whiteTexture;
-
             Rect btnRect = new Rect(panelRect.x + panelRect.width / 2 - 75, panelRect.y + panelHeight - 80, 150, 35);
             GUI.color = new Color(0.3f, 0.25f, 0.15f);
             GUI.DrawTexture(btnRect, Texture2D.whiteTexture);
@@ -525,10 +553,6 @@ public class BjorkHuntsman : MonoBehaviour
         GUI.Label(new Rect(panelRect.x + 30, panelRect.y + 60, panelRect.width - 60, panelHeight - 120), dialogueText, dialogueStyle);
 
         // Quest tracker
-        GUIStyle questStyle = new GUIStyle();
-        questStyle.fontSize = 14;
-        questStyle.fontStyle = FontStyle.Bold;
-        questStyle.alignment = TextAnchor.MiddleCenter;
         questStyle.normal.textColor = questComplete ? new Color(0.3f, 1f, 0.5f) : new Color(0.9f, 0.7f, 0.4f);
 
         string questText = questComplete ?
@@ -538,10 +562,6 @@ public class BjorkHuntsman : MonoBehaviour
         GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 45, panelRect.width, 25), questText, questStyle);
 
         // Close instruction
-        GUIStyle closeStyle = new GUIStyle();
-        closeStyle.fontSize = 11;
-        closeStyle.alignment = TextAnchor.MiddleCenter;
-        closeStyle.normal.textColor = new Color(0.5f, 0.45f, 0.4f);
 
         GUI.Label(new Rect(panelRect.x, panelRect.y + panelHeight - 25, panelRect.width, 20),
             "[ESC] Close", closeStyle);

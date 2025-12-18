@@ -35,7 +35,7 @@ public class WeatherSystem : MonoBehaviour
 
     // Audio
     private AudioSource rainAudio;
-    private float rainVolume = 0.3f;
+    private float rainVolume = 0.15f;
 
     // Cached texture for rain UI
     private Texture2D rainTex;

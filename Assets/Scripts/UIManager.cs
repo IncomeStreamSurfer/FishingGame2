@@ -736,7 +736,7 @@ public class UIManager : MonoBehaviour
             inventoryOpen = !inventoryOpen;
             currentTab = 0;
         }
-        if (GUI.Button(new Rect(barX + 262, barY + 4, 48, 18), "SHOP", buttonStyle))
+        if (GUI.Button(new Rect(barX + 262, barY + 4, 48, 18), "BUFFS", buttonStyle))
         {
             inventoryOpen = true;
             currentTab = 2;

@@ -124,19 +124,57 @@ public class FishingRodAnimator : MonoBehaviour
 
     void SetupAudio()
     {
+        // Ensure AudioListener exists on Main Camera
+        EnsureAudioListener();
+
         audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.spatialBlend = 0.5f;
-        audioSource.volume = 0.3f;
+        audioSource.spatialBlend = 0.7f;  // More 3D spatial audio (0 = 2D, 1 = 3D)
+        audioSource.volume = 0.5f;  // Increased from 0.3 to 0.5
         audioSource.playOnAwake = false;
+        audioSource.minDistance = 1f;
+        audioSource.maxDistance = 20f;
+        audioSource.rolloffMode = AudioRolloffMode.Linear;
+        Debug.Log("FishingRodAnimator: AudioSource setup complete. Volume: " + audioSource.volume);
+    }
+
+    void EnsureAudioListener()
+    {
+        // Check if any AudioListener exists in the scene
+        AudioListener listener = FindObjectOfType<AudioListener>();
+        if (listener == null)
+        {
+            // No listener found, add one to main camera
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                mainCam.gameObject.AddComponent<AudioListener>();
+                Debug.Log("FishingRodAnimator: Added AudioListener to Main Camera");
+            }
+            else
+            {
+                Debug.LogWarning("FishingRodAnimator: No Main Camera found to add AudioListener!");
+            }
+        }
+        else
+        {
+            Debug.Log("FishingRodAnimator: AudioListener already exists on " + listener.gameObject.name);
+        }
     }
 
     void PlayCastSound(float power)
     {
+        Debug.Log("PlayCastSound called with power: " + power);
+        if (audioSource == null)
+        {
+            Debug.LogError("AudioSource is NULL in PlayCastSound!");
+            return;
+        }
         StartCoroutine(GenerateCastSound(power));
     }
 
     System.Collections.IEnumerator GenerateCastSound(float power)
     {
+        Debug.Log("GenerateCastSound coroutine started");
         // Reel unwind sound (no whistle)
         int sampleRate = 44100;
         float duration = 0.4f + power * 0.3f;
@@ -166,7 +204,8 @@ public class FishingRodAnimator : MonoBehaviour
         castClip.SetData(samples, 0);
         audioSource.clip = castClip;
         audioSource.pitch = 0.9f + power * 0.2f;
-        audioSource.volume = 0.25f;
+        audioSource.volume = 0.5f;  // Increased from 0.25 to 0.5
+        Debug.Log("PLAYING CAST SOUND - Volume: " + audioSource.volume + ", Pitch: " + audioSource.pitch);
         audioSource.Play();
 
         yield return new WaitForSeconds(duration);
@@ -174,11 +213,18 @@ public class FishingRodAnimator : MonoBehaviour
 
     void PlaySplashSound(float power)
     {
+        Debug.Log("PlaySplashSound called with power: " + power);
+        if (audioSource == null)
+        {
+            Debug.LogError("AudioSource is NULL in PlaySplashSound!");
+            return;
+        }
         StartCoroutine(GenerateSplashSound(power));
     }
 
     System.Collections.IEnumerator GenerateSplashSound(float power)
     {
+        Debug.Log("GenerateSplashSound coroutine started");
         // Water splash/plop sound
         int sampleRate = 44100;
         float duration = 0.3f + power * 0.2f;
@@ -208,7 +254,8 @@ public class FishingRodAnimator : MonoBehaviour
         splashClip.SetData(samples, 0);
         audioSource.clip = splashClip;
         audioSource.pitch = 0.9f + Random.Range(-0.1f, 0.1f);
-        audioSource.volume = 0.35f;
+        audioSource.volume = 0.6f;  // Increased from 0.35 to 0.6
+        Debug.Log("PLAYING SPLASH SOUND - Volume: " + audioSource.volume);
         audioSource.Play();
 
         yield return new WaitForSeconds(duration);
@@ -216,11 +263,18 @@ public class FishingRodAnimator : MonoBehaviour
 
     void PlayBiteSound()
     {
+        Debug.Log("PlayBiteSound called");
+        if (audioSource == null)
+        {
+            Debug.LogError("AudioSource is NULL in PlayBiteSound!");
+            return;
+        }
         StartCoroutine(GenerateBiteSound());
     }
 
     System.Collections.IEnumerator GenerateBiteSound()
     {
+        Debug.Log("GenerateBiteSound coroutine started");
         // Watery fish bite sound - splashy tug with bubbles
         int sampleRate = 44100;
         float duration = 0.5f;
@@ -258,7 +312,141 @@ public class FishingRodAnimator : MonoBehaviour
         biteClip.SetData(samples, 0);
         audioSource.clip = biteClip;
         audioSource.pitch = 0.95f + Random.Range(-0.1f, 0.15f);
-        audioSource.volume = 0.22f;  // 50% of original
+        audioSource.volume = 0.5f;  // Increased from 0.22 to 0.5
+        Debug.Log("PLAYING BITE SOUND - Volume: " + audioSource.volume);
+        audioSource.Play();
+
+        yield return new WaitForSeconds(duration);
+    }
+
+    void PlayReelSound()
+    {
+        Debug.Log("PlayReelSound called");
+        if (audioSource == null)
+        {
+            Debug.LogError("AudioSource is NULL in PlayReelSound!");
+            return;
+        }
+        StartCoroutine(GenerateReelSound());
+    }
+
+    System.Collections.IEnumerator GenerateReelSound()
+    {
+        Debug.Log("GenerateReelSound coroutine started");
+        // Continuous reel cranking sound with clicking and line tension
+        int sampleRate = 44100;
+        float duration = 0.8f;  // Longer duration for continuous feel
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip reelClip = AudioClip.Create("ReelSound", sampleCount, 1, sampleRate, false);
+
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            // Reel clicking - faster and more mechanical
+            float clickFreq = 45f;
+            float clickPhase = clickFreq * t;
+            float click = 0f;
+
+            // Sharp clicks at regular intervals
+            if (Mathf.Sin(2 * Mathf.PI * clickPhase) > 0.95f)
+            {
+                float clickEnv = Mathf.Exp(-(t - Mathf.Floor(clickPhase) / clickFreq) * 100f);
+                click = clickEnv * 0.35f;
+            }
+
+            // Reel mechanism noise (low frequency grinding)
+            float grind = Mathf.Sin(2 * Mathf.PI * 120f * t) * 0.15f;
+            grind *= Mathf.Sin(2 * Mathf.PI * 12f * t) * 0.5f + 0.5f;  // Modulate
+
+            // Line tension noise (high frequency)
+            float tension = (Random.value * 2f - 1f) * 0.08f;
+
+            // Slight whoosh from line moving
+            float whoosh = Mathf.Sin(2 * Mathf.PI * 300f * t) * 0.1f * Mathf.Sin(progress * Mathf.PI);
+
+            samples[i] = (click + grind + tension + whoosh) * 0.8f;
+        }
+
+        reelClip.SetData(samples, 0);
+        audioSource.clip = reelClip;
+        audioSource.pitch = 1.0f + Random.Range(-0.05f, 0.05f);
+        audioSource.volume = 0.5f;  // Increased from 0.28 to 0.5
+        Debug.Log("PLAYING REEL SOUND - Volume: " + audioSource.volume);
+        audioSource.Play();
+
+        yield return new WaitForSeconds(duration);
+    }
+
+    void PlayCatchSplashSound(bool isRare)
+    {
+        Debug.Log("PlayCatchSplashSound called with isRare: " + isRare);
+        if (audioSource == null)
+        {
+            Debug.LogError("AudioSource is NULL in PlayCatchSplashSound!");
+            return;
+        }
+        StartCoroutine(GenerateCatchSplashSound(isRare));
+    }
+
+    System.Collections.IEnumerator GenerateCatchSplashSound(bool isRare)
+    {
+        Debug.Log("GenerateCatchSplashSound coroutine started for " + (isRare ? "RARE" : "COMMON") + " fish");
+        // Exciting splash sound when fish is caught - bigger and more celebratory
+        int sampleRate = 44100;
+        float duration = isRare ? 1.2f : 0.8f;
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip catchClip = AudioClip.Create("CatchSplashSound", sampleCount, 1, sampleRate, false);
+
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            // Big initial splash
+            float splash = Mathf.Sin(2 * Mathf.PI * 90f * t) * Mathf.Exp(-t * 8f) * 0.7f;
+
+            // Multiple smaller splashes
+            float multiSplash = 0f;
+            for (int j = 1; j < 4; j++)
+            {
+                float delay = j * 0.15f;
+                if (t > delay)
+                {
+                    float splashT = t - delay;
+                    multiSplash += Mathf.Sin(2 * Mathf.PI * (100f + j * 20f) * splashT) *
+                                   Mathf.Exp(-splashT * 10f) * 0.3f;
+                }
+            }
+
+            // Water churning and bubbles
+            float bubbleFreq = 600f + Mathf.Sin(t * 40f) * 200f;
+            float bubbles = Mathf.Sin(2 * Mathf.PI * bubbleFreq * t) * Mathf.Exp(-t * 3f) * 0.25f;
+
+            // Water noise
+            float noise = (Random.value * 2f - 1f) * Mathf.Exp(-t * 5f) * 0.3f;
+
+            // Extra sparkle for rare fish
+            float sparkle = 0f;
+            if (isRare)
+            {
+                sparkle = Mathf.Sin(2 * Mathf.PI * 1200f * t) * Mathf.Exp(-t * 2f) * 0.2f;
+                sparkle *= Mathf.Sin(t * 20f) * 0.5f + 0.5f;  // Modulate
+            }
+
+            samples[i] = (splash + multiSplash + bubbles + noise + sparkle) * 0.75f;
+        }
+
+        catchClip.SetData(samples, 0);
+        audioSource.clip = catchClip;
+        audioSource.pitch = isRare ? 1.1f : 1.0f;
+        audioSource.volume = 0.6f;  // Increased from 0.4 to 0.6
+        Debug.Log("PLAYING CATCH SPLASH SOUND - Volume: " + audioSource.volume + ", Pitch: " + audioSource.pitch);
         audioSource.Play();
 
         yield return new WaitForSeconds(duration);
@@ -1155,6 +1343,9 @@ public class FishingRodAnimator : MonoBehaviour
     {
         if (bobber == null) yield break;
 
+        // Play reeling sound
+        PlayReelSound();
+
         // Reel animation on rod
         StartCoroutine(RodReelAnimation());
 
@@ -1466,9 +1657,23 @@ public class FishingRodAnimator : MonoBehaviour
         return isLineOut;
     }
 
+    public Vector3 GetBobberPosition()
+    {
+        if (bobber != null)
+        {
+            return bobber.transform.position;
+        }
+        return bobberTargetPos;
+    }
+
     public bool IsFishBiting()
     {
         return fishBiting;
+    }
+
+    public void PlayFishCaughtSound(bool isRare)
+    {
+        PlayCatchSplashSound(isRare);
     }
 
     // Called when a humpback whale breaks the rod!

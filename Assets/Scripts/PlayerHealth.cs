@@ -4,9 +4,11 @@ using System.Collections.Generic;
 /// <summary>
 /// Player Health System
 /// - Starts at 100 HP
-/// - Loses 1 HP every 5 seconds (hunger)
+/// - Loses 1 HP every 5 seconds (hunger is punishing!)
+/// - Loses 1 HP per second when drowning (water below Y=0.85)
 /// - Displays HP bar and heartbeat sensor in top right
-/// - Death resets stats/fish but keeps cosmetics and gold
+/// - Death resets fish/quests/buffs but keeps gold, cosmetics, and XP
+/// - Custom death messages for different death causes (drowning shows special message)
 /// </summary>
 public class PlayerHealth : MonoBehaviour
 {
@@ -16,12 +18,13 @@ public class PlayerHealth : MonoBehaviour
     private float maxHealth = 100f;
     private float currentHealth = 100f;
     private float healthDecayTimer = 0f;
-    private float healthDecayInterval = 20f; // 20 seconds
+    private float healthDecayInterval = 5f; // 5 seconds - hunger is punishing!
 
     // Death state
     private bool isDead = false;
     private float deathTimer = 0f;
     private float respawnDelay = 3f;
+    private string customDeathMessage = "";
 
     // Low health warning
     private bool showLowHealthWarning = false;
@@ -123,12 +126,12 @@ public class PlayerHealth : MonoBehaviour
             return;
         }
 
-        // Health decay - 1 HP every 20 seconds (hunger)
+        // Health decay - 1 HP every 5 seconds (hunger is punishing!)
         healthDecayTimer += Time.deltaTime;
         if (healthDecayTimer >= healthDecayInterval)
         {
             healthDecayTimer = 0f;
-            TakeDamage(1f);
+            TakeDamage(1f); // No custom death message for hunger - just default "YOU DIED"
         }
 
         // Check for drowning
@@ -194,8 +197,15 @@ public class PlayerHealth : MonoBehaviour
         else
             baseBPM = 120; // Danger zone - heart racing
 
-        // Add attack boost to current BPM
-        currentBPM = baseBPM + Mathf.RoundToInt(attackBPMBoost);
+        // Add cold BPM boost if player is cold
+        int coldBoost = 0;
+        if (ColdMechanic.Instance != null)
+        {
+            coldBoost = ColdMechanic.Instance.GetColdBPMBoost();
+        }
+
+        // Add attack boost and cold boost to current BPM
+        currentBPM = baseBPM + Mathf.RoundToInt(attackBPMBoost) + coldBoost;
     }
 
     void UpdateECG()
@@ -279,13 +289,13 @@ public class PlayerHealth : MonoBehaviour
         float playerY = GameCache.Player.position.y;
 
         // Check if player is below water level
-        // Water (blue part) rapidly drains health - 5 HP per second!
+        // Water (blue part) drains health - 1 HP per second!
         // Player MUST stand on docks to fish safely
         if (playerY < waterLevel)
         {
             isDrowning = true;
-            // Rapid health loss - 5 HP per second
-            TakeDamage(5f * Time.deltaTime);
+            // Health loss - 1 HP per second (slow enough to see health bar decreasing)
+            TakeDamage(1f * Time.deltaTime, "you have been taken out into the ocean by the strong current.. you're dead");
         }
         else
         {
@@ -296,6 +306,11 @@ public class PlayerHealth : MonoBehaviour
     public bool IsDrowning() => isDrowning;
 
     public void TakeDamage(float damage)
+    {
+        TakeDamage(damage, ""); // Call overload with no custom message
+    }
+
+    public void TakeDamage(float damage, string deathMessage)
     {
         if (isDead) return;
 
@@ -318,6 +333,8 @@ public class PlayerHealth : MonoBehaviour
 
         if (currentHealth <= 0)
         {
+            // Set custom death message if provided
+            customDeathMessage = deathMessage;
             Die();
         }
     }
@@ -376,22 +393,20 @@ public class PlayerHealth : MonoBehaviour
 
     void Respawn()
     {
-        // Reset stats but keep gold and cosmetics
+        // Reset stats but keep gold, cosmetics, and XP
         currentHealth = maxHealth;
         healthDecayTimer = 0f;
         isDead = false;
+        customDeathMessage = ""; // Clear custom death message
 
-        // Reset fish count
+        // Reset fish count (lose all fish on death)
         if (GameManager.Instance != null)
         {
             GameManager.Instance.ResetFishStats();
         }
 
-        // Reset XP/Level
-        if (LevelingSystem.Instance != null)
-        {
-            LevelingSystem.Instance.ResetProgress();
-        }
+        // KEEP XP/Level on death (players retain progression)
+        // LevelingSystem.Instance.ResetProgress(); // REMOVED - players keep XP
 
         // Reset quests
         if (QuestSystem.Instance != null)
@@ -405,17 +420,23 @@ public class PlayerHealth : MonoBehaviour
             FoodInventory.Instance.ClearInventory();
         }
 
+        // Clear all active buffs (buffs are lost on death)
+        if (FishBuffSystem.Instance != null)
+        {
+            FishBuffSystem.Instance.ClearAllActiveBuffs();
+        }
+
         // Move player back to spawn - use cached reference
         if (GameCache.IsPlayerValid())
         {
             GameCache.Player.position = new Vector3(0, 2f, -5f);
         }
 
-        Debug.Log("Player respawned! Gold and cosmetics preserved.");
+        Debug.Log("Player respawned! Gold, cosmetics, and XP preserved.");
 
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowLootNotification("Respawned - Gold & Cosmetics Saved!", new Color(0.3f, 0.8f, 1f));
+            UIManager.Instance.ShowLootNotification("Respawned - Gold, XP & Cosmetics Saved!", new Color(0.3f, 0.8f, 1f));
         }
     }
 
@@ -676,20 +697,34 @@ public class PlayerHealth : MonoBehaviour
         // Red overlay
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("deathOverlay"));
 
-        // Simple death message
+        // Death message - show custom message if available
         GUIStyle deathStyle = new GUIStyle();
         deathStyle.fontSize = 56;
         deathStyle.fontStyle = FontStyle.Bold;
         deathStyle.alignment = TextAnchor.MiddleCenter;
         deathStyle.normal.textColor = Color.white;
 
-        GUI.Label(new Rect(0, Screen.height / 2 - 50, Screen.width, 70), "YOU DIED", deathStyle);
+        string mainMessage = string.IsNullOrEmpty(customDeathMessage) ? "YOU DIED" : "YOU DIED";
+        GUI.Label(new Rect(0, Screen.height / 2 - 50, Screen.width, 70), mainMessage, deathStyle);
+
+        // Custom death message (smaller text below)
+        if (!string.IsNullOrEmpty(customDeathMessage))
+        {
+            GUIStyle customMessageStyle = new GUIStyle();
+            customMessageStyle.fontSize = 18;
+            customMessageStyle.fontStyle = FontStyle.Italic;
+            customMessageStyle.alignment = TextAnchor.MiddleCenter;
+            customMessageStyle.normal.textColor = new Color(1f, 0.9f, 0.9f);
+            customMessageStyle.wordWrap = true;
+            GUI.Label(new Rect(Screen.width / 2 - 300, Screen.height / 2 + 20, 600, 60), customDeathMessage, customMessageStyle);
+        }
 
         // Countdown
         float remainingTime = respawnDelay - deathTimer;
         deathStyle.fontSize = 20;
         deathStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
-        GUI.Label(new Rect(0, Screen.height / 2 + 30, Screen.width, 30), $"{remainingTime:F0}", deathStyle);
+        int yOffset = string.IsNullOrEmpty(customDeathMessage) ? 30 : 90;
+        GUI.Label(new Rect(0, Screen.height / 2 + yOffset, Screen.width, 30), $"{remainingTime:F0}", deathStyle);
     }
 
     // Public getters

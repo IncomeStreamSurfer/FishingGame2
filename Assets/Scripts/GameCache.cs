@@ -26,6 +26,7 @@ public class GameCache : MonoBehaviour
     public static FoodInventory Food { get; private set; }
     public static WeaponSystem Weapons { get; private set; }
     public static AccessorySystem Accessories { get; private set; }
+    public static ColdMechanic Cold { get; private set; }
 
     // NPCs - cached by name for quick lookup
     public static ClothingShopNPC ClothingShop { get; private set; }
@@ -153,6 +154,7 @@ public class GameCache : MonoBehaviour
         if (Food == null) Food = FindObjectOfType<FoodInventory>();
         if (Weapons == null) Weapons = FindObjectOfType<WeaponSystem>();
         if (Accessories == null) Accessories = FindObjectOfType<AccessorySystem>();
+        if (Cold == null) Cold = FindObjectOfType<ColdMechanic>();
 
         // Cache NPCs
         if (ClothingShop == null) ClothingShop = FindObjectOfType<ClothingShopNPC>();

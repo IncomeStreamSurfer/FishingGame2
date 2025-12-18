@@ -30,7 +30,6 @@ public class ShopRadio : MonoBehaviour
     private List<AudioClip> songs = new List<AudioClip>();
     private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" };
     private int currentSongIndex = 0;
-    private string nowPlayingText = "";
 
     void Awake()
     {
@@ -222,17 +221,6 @@ public class ShopRadio : MonoBehaviour
             GUI.Label(new Rect(0, promptY, Screen.width, 30), promptText, promptStyle);
         }
 
-        // Show persistent "Now Playing" text at top-left when radio is on
-        if (isOn && !string.IsNullOrEmpty(nowPlayingText))
-        {
-            GUIStyle nowPlayingStyle = new GUIStyle(GUI.skin.label);
-            nowPlayingStyle.fontSize = 11;
-            nowPlayingStyle.fontStyle = FontStyle.Normal;
-            nowPlayingStyle.alignment = TextAnchor.UpperLeft;
-            nowPlayingStyle.normal.textColor = new Color(1f, 0.9f, 0.6f, 0.9f);
-
-            GUI.Label(new Rect(10, 10, 400, 20), nowPlayingText, nowPlayingStyle);
-        }
     }
 
     void ToggleRadio()
@@ -246,14 +234,12 @@ public class ShopRadio : MonoBehaviour
                 audioSource.clip = songs[currentSongIndex];
                 audioSource.volume = maxVolume;
                 audioSource.Play();
-                nowPlayingText = "Now Playing: " + songNames[currentSongIndex];
                 Debug.Log("ShopRadio: ON - Playing " + songNames[currentSongIndex]);
             }
         }
         else
         {
             audioSource.Stop();
-            nowPlayingText = "";
             Debug.Log("ShopRadio: OFF");
         }
     }
@@ -264,7 +250,6 @@ public class ShopRadio : MonoBehaviour
         audioSource.clip = songs[currentSongIndex];
         audioSource.volume = maxVolume;
         audioSource.Play();
-        nowPlayingText = "Now Playing: " + songNames[currentSongIndex];
         Debug.Log("ShopRadio: Now playing - " + songNames[currentSongIndex]);
     }
 

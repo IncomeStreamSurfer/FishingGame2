@@ -15,6 +15,12 @@ public class AccessorySystem : MonoBehaviour
     // Currently equipped accessories by slot
     private Dictionary<string, AccessoryItem> equippedAccessories = new Dictionary<string, AccessoryItem>();
 
+    // Cached GUIStyles to avoid GC every frame
+    private GUIStyle labelStyle;
+    private GUIStyle iconStyle;
+    private GUIStyle nameStyle;
+    private bool stylesInitialized = false;
+
     void Awake()
     {
         if (Instance == null)
@@ -145,29 +151,37 @@ public class AccessorySystem : MonoBehaviour
             GUI.DrawTexture(ringSlot, Texture2D.whiteTexture);
             GUI.color = Color.white;
 
+            // Initialize styles once in OnGUI context
+            if (!stylesInitialized)
+            {
+                labelStyle = new GUIStyle();
+                labelStyle.fontSize = 9;
+                labelStyle.fontStyle = FontStyle.Bold;
+                labelStyle.alignment = TextAnchor.MiddleCenter;
+                labelStyle.normal.textColor = new Color(0.8f, 0.7f, 0.4f);
+
+                iconStyle = new GUIStyle();
+                iconStyle.fontSize = 8;
+                iconStyle.alignment = TextAnchor.MiddleCenter;
+                iconStyle.normal.textColor = new Color(0.3f, 0.8f, 0.3f);
+                iconStyle.wordWrap = true;
+                iconStyle.fontStyle = FontStyle.Bold;
+
+                nameStyle = new GUIStyle();
+                nameStyle.fontSize = 8;
+                nameStyle.alignment = TextAnchor.MiddleCenter;
+                nameStyle.normal.textColor = new Color(0.3f, 0.9f, 0.3f);
+
+                stylesInitialized = true;
+            }
+
             // Label
-            GUIStyle labelStyle = new GUIStyle();
-            labelStyle.fontSize = 9;
-            labelStyle.fontStyle = FontStyle.Bold;
-            labelStyle.alignment = TextAnchor.MiddleCenter;
-            labelStyle.normal.textColor = new Color(0.8f, 0.7f, 0.4f);
             GUI.Label(new Rect(ringSlot.x, ringSlot.y - 16, ringSlot.width, 14), "RING", labelStyle);
 
             // Icon or text
-            GUIStyle iconStyle = new GUIStyle();
-            iconStyle.fontSize = 8;
-            iconStyle.alignment = TextAnchor.MiddleCenter;
-            iconStyle.normal.textColor = new Color(0.3f, 0.8f, 0.3f);
-            iconStyle.wordWrap = true;
-            iconStyle.fontStyle = FontStyle.Bold;
-
             GUI.Label(ringSlot, "SNAKE\nCHARM", iconStyle);
 
             // Name below
-            GUIStyle nameStyle = new GUIStyle();
-            nameStyle.fontSize = 8;
-            nameStyle.alignment = TextAnchor.MiddleCenter;
-            nameStyle.normal.textColor = new Color(0.3f, 0.9f, 0.3f);
             GUI.Label(new Rect(ringSlot.x, ringSlot.y + ringSlot.height + 2, ringSlot.width, 12), ringItem.name, nameStyle);
         }
     }

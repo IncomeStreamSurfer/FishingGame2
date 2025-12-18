@@ -863,7 +863,9 @@ public class HorizonBoats : MonoBehaviour
             float puffScale = Random.Range(2f, 4f) * cloudScale;
             puff.transform.localScale = new Vector3(puffScale, puffScale * 0.6f, puffScale);
 
-            puff.GetComponent<Renderer>().material = materials["cloud"];
+            Renderer rend = puff.GetComponent<Renderer>();
+            rend.material = materials["cloud"];
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;  // No shadows from clouds
             Object.Destroy(puff.GetComponent<Collider>());
         }
 

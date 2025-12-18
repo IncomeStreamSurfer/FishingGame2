@@ -47,11 +47,37 @@ public class FishConnoisseurNPC : MonoBehaviour
     private GameObject beret;
     private Transform playerTransform;
 
+    // French ambient sounds
+    private float nextFrenchSoundTime = 0f;
+    private float frenchSoundInterval = 8f; // Every 8-12 seconds
+    private AudioSource frenchAudioSource;
+    private string[] frenchPhrases = {
+        "Ooh la la!",
+        "Magnifique!",
+        "Sacré bleu!",
+        "Incroyable!",
+        "Fantastique!",
+        "Très bien!",
+        "Mon dieu!"
+    };
+
     // Cached textures
     private Texture2D dialogueBgTex;
     private Texture2D buttonTex;
     private Texture2D buttonHoverTex;
     private Texture2D questBgTex;
+
+    // Cached GUIStyles (created once to avoid GC every frame)
+    private GUIStyle nameStyle;
+    private GUIStyle titleStyle;
+    private GUIStyle dialogueStyle;
+    private GUIStyle questStyle;
+    private GUIStyle descStyle;
+    private GUIStyle rewardStyle;
+    private GUIStyle readyStyle;
+    private GUIStyle completeStyle;
+    private GUIStyle buttonStyle;
+    private bool stylesInitialized = false;
 
     void Awake()
     {
@@ -65,6 +91,10 @@ public class FishConnoisseurNPC : MonoBehaviour
         CreateVisuals();
         CreateCachedTextures();
         LoadQuestProgress();
+        SetupAudio();
+
+        // Randomize first French sound
+        nextFrenchSoundTime = Time.time + Random.Range(frenchSoundInterval, frenchSoundInterval + 4f);
     }
 
     void InitializeQuests()
@@ -120,6 +150,113 @@ public class FishConnoisseurNPC : MonoBehaviour
         questBgTex = new Texture2D(1, 1);
         questBgTex.SetPixel(0, 0, new Color(0.15f, 0.12f, 0.18f, 0.9f));
         questBgTex.Apply();
+    }
+
+    void SetupAudio()
+    {
+        frenchAudioSource = gameObject.AddComponent<AudioSource>();
+        frenchAudioSource.spatialBlend = 1f; // 3D sound
+        frenchAudioSource.minDistance = 3f;
+        frenchAudioSource.maxDistance = 8f;
+        frenchAudioSource.volume = 0.4f;
+        frenchAudioSource.playOnAwake = false;
+    }
+
+    void PlayFrenchSound(string phrase)
+    {
+        if (frenchAudioSource == null) return;
+
+        // Generate a simple French-sounding tone sequence
+        int sampleRate = 44100;
+        float duration = 0.8f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Base frequency varies by phrase for variety
+        float baseFreq = 200f + (phrase.Length * 10f);
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+
+            // Rising then falling pitch (French intonation)
+            float pitchMod = Mathf.Sin(t * Mathf.PI / duration) * 80f;
+            float freq = baseFreq + pitchMod;
+
+            // Gentle voice-like waveform
+            float voice = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.4f;
+            voice += Mathf.Sin(2f * Mathf.PI * freq * 2f * t) * 0.2f; // Harmonic
+
+            // Envelope (fade in/out)
+            float envelope = Mathf.Sin(t * Mathf.PI / duration);
+
+            samples[i] = voice * envelope;
+        }
+
+        AudioClip clip = AudioClip.Create($"French_{phrase}", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        frenchAudioSource.PlayOneShot(clip);
+    }
+
+    void InitializeGUIStyles()
+    {
+        if (stylesInitialized) return;
+
+        nameStyle = new GUIStyle();
+        nameStyle.fontSize = 16;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.alignment = TextAnchor.MiddleCenter;
+        nameStyle.normal.textColor = new Color(0.9f, 0.8f, 1f);
+
+        titleStyle = new GUIStyle();
+        titleStyle.fontSize = 22;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(0.9f, 0.8f, 1f);
+
+        dialogueStyle = new GUIStyle();
+        dialogueStyle.fontSize = 15;
+        dialogueStyle.alignment = TextAnchor.UpperCenter;
+        dialogueStyle.normal.textColor = new Color(0.85f, 0.8f, 0.9f);
+        dialogueStyle.wordWrap = true;
+
+        questStyle = new GUIStyle();
+        questStyle.fontSize = 14;
+        questStyle.fontStyle = FontStyle.Bold;
+        questStyle.alignment = TextAnchor.MiddleLeft;
+        questStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
+
+        descStyle = new GUIStyle();
+        descStyle.fontSize = 12;
+        descStyle.alignment = TextAnchor.MiddleLeft;
+        descStyle.normal.textColor = new Color(0.7f, 0.65f, 0.8f);
+        descStyle.wordWrap = true;
+
+        rewardStyle = new GUIStyle();
+        rewardStyle.fontSize = 13;
+        rewardStyle.fontStyle = FontStyle.Bold;
+        rewardStyle.alignment = TextAnchor.MiddleRight;
+        rewardStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+
+        readyStyle = new GUIStyle();
+        readyStyle.fontSize = 16;
+        readyStyle.fontStyle = FontStyle.Bold;
+        readyStyle.alignment = TextAnchor.MiddleCenter;
+        readyStyle.normal.textColor = new Color(0.3f, 1f, 0.4f);
+
+        completeStyle = new GUIStyle();
+        completeStyle.fontSize = 18;
+        completeStyle.fontStyle = FontStyle.Bold;
+        completeStyle.alignment = TextAnchor.MiddleCenter;
+        completeStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+
+        buttonStyle = new GUIStyle();
+        buttonStyle.fontSize = 14;
+        buttonStyle.fontStyle = FontStyle.Bold;
+        buttonStyle.alignment = TextAnchor.MiddleCenter;
+        buttonStyle.normal.textColor = Color.white;
+
+        stylesInitialized = true;
     }
 
     void CreateVisuals()
@@ -357,6 +494,16 @@ public class FishConnoisseurNPC : MonoBehaviour
         float distance = Vector3.Distance(transform.position, playerTransform.position);
         playerNearby = distance <= interactionRange;
 
+        // Play ambient French sounds when player is nearby
+        if (playerNearby && Time.time >= nextFrenchSoundTime && !showingDialogue)
+        {
+            string randomPhrase = frenchPhrases[Random.Range(0, frenchPhrases.Length)];
+            PlayFrenchSound(randomPhrase);
+
+            // Schedule next sound
+            nextFrenchSoundTime = Time.time + Random.Range(frenchSoundInterval, frenchSoundInterval + 4f);
+        }
+
         // E key to interact
         if (playerNearby && Input.GetKeyDown(KeyCode.E) && MainMenu.GameStarted)
         {
@@ -483,6 +630,9 @@ public class FishConnoisseurNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Initialize styles once (must be done in OnGUI context)
+        InitializeGUIStyles();
+
         if (playerNearby && !showingDialogue)
         {
             DrawInteractionPrompt();
@@ -496,12 +646,9 @@ public class FishConnoisseurNPC : MonoBehaviour
 
     void DrawInteractionPrompt()
     {
-        GUIStyle nameStyle = new GUIStyle();
+        // Use cached nameStyle
         nameStyle.fontSize = 16;
-        nameStyle.fontStyle = FontStyle.Bold;
-        nameStyle.alignment = TextAnchor.MiddleCenter;
         nameStyle.normal.textColor = new Color(0.9f, 0.85f, 1f);
-
         GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 120, 200, 30), "Pierre le Connoisseur", nameStyle);
 
         nameStyle.fontSize = 14;
@@ -531,12 +678,7 @@ public class FishConnoisseurNPC : MonoBehaviour
         GUI.DrawTexture(new Rect(panelX + panelWidth - 3, panelY, 3, panelHeight), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        // Title
-        GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 22;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(0.9f, 0.85f, 1f);
+        // Title - use cached titleStyle
         GUI.Label(new Rect(panelX, panelY + 15, panelWidth, 30), "Pierre le Connoisseur", titleStyle);
 
         // Close button
@@ -556,11 +698,9 @@ public class FishConnoisseurNPC : MonoBehaviour
 
     void DrawQuestSelect(float panelX, float panelY, float panelWidth, float panelHeight)
     {
-        GUIStyle dialogueStyle = new GUIStyle();
+        // Use cached dialogueStyle
         dialogueStyle.fontSize = 14;
-        dialogueStyle.alignment = TextAnchor.UpperCenter;
         dialogueStyle.normal.textColor = new Color(0.9f, 0.88f, 0.95f);
-        dialogueStyle.wordWrap = true;
 
         GUI.Label(new Rect(panelX + 20, panelY + 55, panelWidth - 40, 50),
             "\"Bonjour, mon ami! I am Pierre, collector of ze finest fish!\nBring me a legendary catch and I shall pay you handsomely!\"",
@@ -583,28 +723,20 @@ public class FishConnoisseurNPC : MonoBehaviour
 
         GUI.DrawTexture(rect, questBgTex);
 
-        GUIStyle nameStyle = new GUIStyle();
-        nameStyle.fontSize = 14;
-        nameStyle.fontStyle = FontStyle.Bold;
-        nameStyle.normal.textColor = isCompleted ? new Color(0.5f, 0.5f, 0.5f) : new Color(1f, 0.9f, 0.5f);
+        // Use cached questStyle for name
+        questStyle.fontSize = 14;
+        questStyle.normal.textColor = isCompleted ? new Color(0.5f, 0.5f, 0.5f) : new Color(1f, 0.9f, 0.5f);
+        GUI.Label(new Rect(rect.x + 10, rect.y + 5, rect.width - 100, 20), quest.questName, questStyle);
 
-        GUI.Label(new Rect(rect.x + 10, rect.y + 5, rect.width - 100, 20), quest.questName, nameStyle);
-
-        GUIStyle descStyle = new GUIStyle();
+        // Use cached descStyle
         descStyle.fontSize = 11;
         descStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f);
-        descStyle.wordWrap = true;
-
         string status = isCompleted ? "[COMPLETED]" : $"Find: {quest.fishName}";
         GUI.Label(new Rect(rect.x + 10, rect.y + 25, rect.width - 120, 25), status, descStyle);
 
-        // Reward
-        GUIStyle rewardStyle = new GUIStyle();
+        // Reward - use cached rewardStyle
         rewardStyle.fontSize = 12;
-        rewardStyle.fontStyle = FontStyle.Bold;
-        rewardStyle.alignment = TextAnchor.MiddleRight;
         rewardStyle.normal.textColor = isCompleted ? new Color(0.4f, 0.4f, 0.4f) : new Color(1f, 0.85f, 0.2f);
-
         GUI.Label(new Rect(rect.x + rect.width - 90, rect.y + 15, 80, 25),
             isCompleted ? "DONE" : $"{quest.goldReward}g", rewardStyle);
 
@@ -615,12 +747,9 @@ public class FishConnoisseurNPC : MonoBehaviour
             bool hover = btnRect.Contains(Event.current.mousePosition);
             GUI.DrawTexture(btnRect, hover ? buttonHoverTex : buttonTex);
 
-            GUIStyle btnStyle = new GUIStyle();
-            btnStyle.fontSize = 10;
-            btnStyle.fontStyle = FontStyle.Bold;
-            btnStyle.alignment = TextAnchor.MiddleCenter;
-            btnStyle.normal.textColor = Color.white;
-            GUI.Label(btnRect, "ACCEPT", btnStyle);
+            // Use cached buttonStyle
+            buttonStyle.fontSize = 10;
+            GUI.Label(btnRect, "ACCEPT", buttonStyle);
 
             if (GUI.Button(btnRect, "", GUIStyle.none))
             {
@@ -641,22 +770,17 @@ public class FishConnoisseurNPC : MonoBehaviour
 
         var quest = legendaryQuests[currentQuestIndex];
 
-        GUIStyle dialogueStyle = new GUIStyle();
+        // Use cached dialogueStyle
         dialogueStyle.fontSize = 15;
-        dialogueStyle.alignment = TextAnchor.UpperCenter;
         dialogueStyle.normal.textColor = new Color(0.9f, 0.88f, 0.95f);
-        dialogueStyle.wordWrap = true;
 
         GUI.Label(new Rect(panelX + 30, panelY + 60, panelWidth - 60, 80),
             $"\"{quest.description}\"", dialogueStyle);
 
-        // Quest info
-        GUIStyle questStyle = new GUIStyle();
+        // Quest info - use cached questStyle
         questStyle.fontSize = 18;
-        questStyle.fontStyle = FontStyle.Bold;
         questStyle.alignment = TextAnchor.MiddleCenter;
         questStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
-
         GUI.Label(new Rect(panelX, panelY + 150, panelWidth, 30), quest.questName, questStyle);
 
         questStyle.fontSize = 14;
@@ -672,11 +796,7 @@ public class FishConnoisseurNPC : MonoBehaviour
         bool hasFish = HasRequiredFish(quest.fishId);
         if (hasFish)
         {
-            GUIStyle readyStyle = new GUIStyle();
-            readyStyle.fontSize = 16;
-            readyStyle.fontStyle = FontStyle.Bold;
-            readyStyle.alignment = TextAnchor.MiddleCenter;
-            readyStyle.normal.textColor = new Color(0.3f, 1f, 0.5f);
+            // Use cached readyStyle
             GUI.Label(new Rect(panelX, panelY + 250, panelWidth, 25), "You have the fish!", readyStyle);
 
             if (DrawButton(new Rect(panelX + panelWidth / 2 - 70, panelY + panelHeight - 70, 140, 35), "TURN IN"))
@@ -706,23 +826,18 @@ public class FishConnoisseurNPC : MonoBehaviour
 
         var quest = legendaryQuests[currentQuestIndex];
 
-        GUIStyle dialogueStyle = new GUIStyle();
+        // Use cached dialogueStyle
         dialogueStyle.fontSize = 16;
-        dialogueStyle.alignment = TextAnchor.UpperCenter;
         dialogueStyle.normal.textColor = new Color(0.9f, 0.88f, 0.95f);
-        dialogueStyle.wordWrap = true;
 
         GUI.Label(new Rect(panelX + 30, panelY + 60, panelWidth - 60, 80),
             $"\"Magnifique! Ze {quest.fishName}! It is even more beautiful than I imagined!\n\nHere is your payment, mon ami!\"",
             dialogueStyle);
 
-        // Reward display
-        GUIStyle rewardStyle = new GUIStyle();
+        // Reward display - use cached rewardStyle
         rewardStyle.fontSize = 28;
-        rewardStyle.fontStyle = FontStyle.Bold;
         rewardStyle.alignment = TextAnchor.MiddleCenter;
         rewardStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
-
         GUI.Label(new Rect(panelX, panelY + 170, panelWidth, 40), $"+{quest.goldReward} GOLD!", rewardStyle);
 
         // Claim button
@@ -754,22 +869,17 @@ public class FishConnoisseurNPC : MonoBehaviour
 
     void DrawAllComplete(float panelX, float panelY, float panelWidth, float panelHeight)
     {
-        GUIStyle dialogueStyle = new GUIStyle();
+        // Use cached dialogueStyle
         dialogueStyle.fontSize = 16;
-        dialogueStyle.alignment = TextAnchor.UpperCenter;
         dialogueStyle.normal.textColor = new Color(0.9f, 0.88f, 0.95f);
-        dialogueStyle.wordWrap = true;
 
         GUI.Label(new Rect(panelX + 30, panelY + 80, panelWidth - 60, 100),
             "\"Ah, mon ami! You have brought me every legendary fish I could dream of!\n\nYou are truly ze greatest fisherman in all ze land!\n\nMerci beaucoup!\"",
             dialogueStyle);
 
-        GUIStyle completeStyle = new GUIStyle();
+        // Use cached completeStyle
         completeStyle.fontSize = 20;
-        completeStyle.fontStyle = FontStyle.Bold;
-        completeStyle.alignment = TextAnchor.MiddleCenter;
         completeStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-
         GUI.Label(new Rect(panelX, panelY + 200, panelWidth, 30), "ALL QUESTS COMPLETE!", completeStyle);
 
         completeStyle.fontSize = 14;
@@ -782,12 +892,9 @@ public class FishConnoisseurNPC : MonoBehaviour
         bool hover = rect.Contains(Event.current.mousePosition);
         GUI.DrawTexture(rect, hover ? buttonHoverTex : buttonTex);
 
-        GUIStyle btnStyle = new GUIStyle();
-        btnStyle.fontSize = 13;
-        btnStyle.fontStyle = FontStyle.Bold;
-        btnStyle.alignment = TextAnchor.MiddleCenter;
-        btnStyle.normal.textColor = Color.white;
-        GUI.Label(rect, text, btnStyle);
+        // Use cached buttonStyle
+        buttonStyle.fontSize = 13;
+        GUI.Label(rect, text, buttonStyle);
 
         return GUI.Button(rect, "", GUIStyle.none);
     }

@@ -25,9 +25,9 @@ public class WaterEffect : MonoBehaviour
     public float drowningDistance = 25f; // Player starts drowning
 
     [Header("Water Particles")]
-    public int maxSparkles = 20;
-    public int maxFoamParticles = 20;
-    public int maxSunGlints = 10;
+    public int maxSparkles = 10;  // Reduced from 20 for better performance
+    public int maxFoamParticles = 10;  // Reduced from 20 for better performance
+    public int maxSunGlints = 5;  // Reduced from 10 for better performance
 
     private Vector3 startPos;
     private Material waterMat;
@@ -51,6 +51,10 @@ public class WaterEffect : MonoBehaviour
 
     // Sun reflection
     private GameObject sunReflection;
+
+    // Performance optimization - frame counters for expensive operations
+    private int waterLightingFrameCounter = 0;
+    private int causticLightsFrameCounter = 0;
 
     void Awake()
     {
@@ -101,7 +105,7 @@ public class WaterEffect : MonoBehaviour
     void CreateShimmerRipples()
     {
         // Create multiple shimmer/ripple circles across the water surface
-        int rippleCount = 15;
+        int rippleCount = 8;  // Reduced from 15 for better performance
 
         for (int i = 0; i < rippleCount; i++)
         {
@@ -235,7 +239,7 @@ public class WaterEffect : MonoBehaviour
     void CreateCausticLights()
     {
         // Create several point lights under water for caustic effect
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 3; i++)  // Reduced from 5 for better performance
         {
             GameObject lightObj = new GameObject("CausticLight_" + i);
             lightObj.transform.SetParent(transform);
@@ -262,7 +266,7 @@ public class WaterEffect : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(Random.Range(0.05f, 0.15f));
+            yield return new WaitForSeconds(Random.Range(0.15f, 0.3f));  // Increased from 0.05-0.15 for better performance
 
             if (!MainMenu.GameStarted) continue;
 
@@ -350,7 +354,7 @@ public class WaterEffect : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(Random.Range(0.08f, 0.2f));
+            yield return new WaitForSeconds(Random.Range(0.2f, 0.4f));  // Increased from 0.08-0.2 for better performance
 
             if (!MainMenu.GameStarted) continue;
 
@@ -459,7 +463,7 @@ public class WaterEffect : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(Random.Range(0.2f, 0.5f));
+            yield return new WaitForSeconds(Random.Range(0.4f, 0.8f));  // Increased from 0.2-0.5 for better performance
 
             if (!MainMenu.GameStarted) continue;
 
@@ -636,7 +640,7 @@ public class WaterEffect : MonoBehaviour
     void CreateWaveCrests()
     {
         // Light blue foam-like crests that move across the water - NOT WHITE
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < 8; i++)  // Reduced from 15 for better performance
         {
             GameObject crest = GameObject.CreatePrimitive(PrimitiveType.Cube);
             crest.name = "WaveCrest_" + i;
@@ -706,7 +710,7 @@ public class WaterEffect : MonoBehaviour
     void CreateUnderwaterBeams()
     {
         // Light beams visible under/through water
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 4; i++)  // Reduced from 8 for better performance
         {
             GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
             beam.name = "UnderwaterBeam_" + i;
@@ -797,11 +801,21 @@ public class WaterEffect : MonoBehaviour
         // Update sun reflection position and intensity
         UpdateSunReflection();
 
-        // Animate caustic lights
-        UpdateCausticLights();
+        // Animate caustic lights - only every 2nd frame
+        causticLightsFrameCounter++;
+        if (causticLightsFrameCounter >= 2)
+        {
+            causticLightsFrameCounter = 0;
+            UpdateCausticLights();
+        }
 
-        // Update water color based on time of day
-        UpdateWaterLighting();
+        // Update water color based on time of day - only every 5th frame (expensive)
+        waterLightingFrameCounter++;
+        if (waterLightingFrameCounter >= 5)
+        {
+            waterLightingFrameCounter = 0;
+            UpdateWaterLighting();
+        }
     }
 
     void UpdateSunReflection()
@@ -817,7 +831,26 @@ public class WaterEffect : MonoBehaviour
 
         // Scale and intensity based on sun height (no reflection at night)
         float daylight = DayNightCycle.Instance.GetDaylightIntensity();
+        float hour = DayNightCycle.Instance.GetCurrentHour();
+
+        // ENHANCED: Bigger, more vibrant reflection during sunrise/sunset
         float scale = 6f * daylight;
+        float emissionMultiplier = 0.3f;
+
+        if (hour >= 5f && hour < 8.5f)
+        {
+            // Sunrise - larger, more vibrant reflection
+            float t = (hour - 5f) / 3.5f;
+            scale = Mathf.Lerp(3f, 10f, Mathf.Sin(t * Mathf.PI)) * daylight;
+            emissionMultiplier = 0.6f;
+        }
+        else if (hour >= 16.5f && hour < 20f)
+        {
+            // Sunset - dramatic, large reflection
+            float t = (hour - 16.5f) / 3.5f;
+            scale = Mathf.Lerp(6f, 12f, Mathf.Sin(t * Mathf.PI)) * daylight;
+            emissionMultiplier = 0.8f;
+        }
 
         Transform glow = sunReflection.transform.Find("SunGlow");
 
@@ -828,15 +861,40 @@ public class WaterEffect : MonoBehaviour
             if (r != null)
             {
                 Color sunColor = DayNightCycle.Instance.GetSunColor();
-                // Softer golden color, not white
-                Color glowColor = new Color(sunColor.r * 0.9f, sunColor.g * 0.8f, sunColor.b * 0.5f, 0.15f * daylight);
+
+                // Color changes during sunset/sunrise
+                Color reflectionColor;
+                if (hour >= 5f && hour < 8.5f)
+                {
+                    // Sunrise - pink/orange glow
+                    reflectionColor = new Color(1f, 0.75f, 0.55f);
+                }
+                else if (hour >= 16.5f && hour < 20f)
+                {
+                    // Sunset - intense orange/red glow
+                    reflectionColor = new Color(1f, 0.65f, 0.40f);
+                }
+                else
+                {
+                    // Normal - softer golden color
+                    reflectionColor = new Color(sunColor.r * 0.9f, sunColor.g * 0.8f, sunColor.b * 0.5f);
+                }
+
+                Color glowColor = new Color(reflectionColor.r, reflectionColor.g, reflectionColor.b, 0.15f * daylight);
                 r.material.color = glowColor;
-                r.material.SetColor("_EmissionColor", new Color(1f, 0.8f, 0.4f) * 0.3f * daylight);
+                r.material.SetColor("_EmissionColor", reflectionColor * emissionMultiplier * daylight);
             }
         }
 
-        // Shimmer effect
-        float shimmer = 1f + Mathf.Sin(Time.time * 5f) * 0.1f;
+        // Enhanced shimmer effect during sunrise/sunset
+        float shimmerSpeed = 5f;
+        float shimmerAmount = 0.1f;
+        if ((hour >= 5f && hour < 8.5f) || (hour >= 16.5f && hour < 20f))
+        {
+            shimmerSpeed = 8f;
+            shimmerAmount = 0.2f;
+        }
+        float shimmer = 1f + Mathf.Sin(Time.time * shimmerSpeed) * shimmerAmount;
         sunReflection.transform.localScale = Vector3.one * shimmer;
     }
 
@@ -879,20 +937,106 @@ public class WaterEffect : MonoBehaviour
         {
             float daylight = DayNightCycle.Instance.GetDaylightIntensity();
             Color sunColor = DayNightCycle.Instance.GetSunColor();
+            float hour = DayNightCycle.Instance.GetCurrentHour();
 
-            // Darken water at night
+            // Get sky colors from SkyboxManager if available for perfect sync
+            Color skyTint = Color.white;
+            Color skyHorizon = Color.white;
+            if (SkyboxManager.Instance != null)
+            {
+                // Sample current sky colors for water reflection
+                if (hour >= 5f && hour < 6.5f)
+                {
+                    float t = (hour - 5f) / 1.5f;
+                    skyTint = Color.Lerp(SkyboxManager.Instance.nightTopColor, SkyboxManager.Instance.sunriseTopColor, t);
+                    skyHorizon = Color.Lerp(SkyboxManager.Instance.nightHorizonColor, SkyboxManager.Instance.sunriseHorizonColor, t);
+                }
+                else if (hour >= 6.5f && hour < 8.5f)
+                {
+                    float t = (hour - 6.5f) / 2f;
+                    skyTint = Color.Lerp(SkyboxManager.Instance.sunriseTopColor, SkyboxManager.Instance.dayTopColor, t);
+                    skyHorizon = Color.Lerp(SkyboxManager.Instance.sunriseHorizonColor, SkyboxManager.Instance.dayHorizonColor, t);
+                }
+                else if (hour >= 8.5f && hour < 16.5f)
+                {
+                    skyTint = SkyboxManager.Instance.dayTopColor;
+                    skyHorizon = SkyboxManager.Instance.dayHorizonColor;
+                }
+                else if (hour >= 16.5f && hour < 18f)
+                {
+                    float t = (hour - 16.5f) / 1.5f;
+                    skyTint = Color.Lerp(SkyboxManager.Instance.dayTopColor, SkyboxManager.Instance.sunsetTopColor, t);
+                    skyHorizon = Color.Lerp(SkyboxManager.Instance.dayHorizonColor, SkyboxManager.Instance.sunsetHorizonColor, t);
+                }
+                else if (hour >= 18f && hour < 19.5f)
+                {
+                    skyTint = SkyboxManager.Instance.sunsetTopColor;
+                    skyHorizon = SkyboxManager.Instance.sunsetHorizonColor;
+                }
+                else if (hour >= 19.5f && hour < 21f)
+                {
+                    float t = (hour - 19.5f) / 1.5f;
+                    skyTint = Color.Lerp(SkyboxManager.Instance.sunsetTopColor, SkyboxManager.Instance.nightTopColor, t);
+                    skyHorizon = Color.Lerp(SkyboxManager.Instance.sunsetHorizonColor, SkyboxManager.Instance.nightHorizonColor, t);
+                }
+                else
+                {
+                    skyTint = SkyboxManager.Instance.nightTopColor;
+                    skyHorizon = SkyboxManager.Instance.nightHorizonColor;
+                }
+            }
+
+            // Base water colors
             Color dayWater = shallowWaterColor;
             Color nightWater = new Color(
-                shallowWaterColor.r * 0.2f,
-                shallowWaterColor.g * 0.3f,
-                shallowWaterColor.b * 0.4f,
-                shallowWaterColor.a + 0.2f
+                shallowWaterColor.r * 0.15f,
+                shallowWaterColor.g * 0.2f,
+                shallowWaterColor.b * 0.35f,
+                shallowWaterColor.a + 0.25f
             );
 
             Color currentWater = Color.Lerp(nightWater, dayWater, daylight);
 
-            // Tint with sun color
-            currentWater = Color.Lerp(currentWater, sunColor * 0.3f + currentWater * 0.7f, 0.3f);
+            // Blend water with sky horizon color for realistic reflection
+            Color skyReflection = Color.Lerp(skyTint, skyHorizon, 0.7f); // Mostly horizon
+
+            // ENHANCED: Special water colors during sunrise/sunset for that beautiful glow
+            if (hour >= 5f && hour < 8.5f)
+            {
+                // Sunrise - pink/orange water reflection matching sky
+                float t = (hour - 5f) / 3.5f;
+                float peakIntensity = Mathf.Sin(t * Mathf.PI); // Peak at middle of sunrise
+                Color sunriseWater = new Color(
+                    skyHorizon.r * 0.8f + 0.2f,
+                    skyHorizon.g * 0.7f + 0.15f,
+                    skyHorizon.b * 0.5f + 0.1f,
+                    shallowWaterColor.a
+                );
+                currentWater = Color.Lerp(currentWater, sunriseWater, peakIntensity * 0.65f);
+            }
+            else if (hour >= 16.5f && hour < 20f)
+            {
+                // Sunset - orange/red water reflection matching sky
+                float t = (hour - 16.5f) / 3.5f;
+                float peakIntensity = Mathf.Sin(t * Mathf.PI); // Peak at middle of sunset
+                Color sunsetWater = new Color(
+                    skyHorizon.r * 0.85f + 0.15f,
+                    skyHorizon.g * 0.6f + 0.1f,
+                    skyHorizon.b * 0.4f + 0.05f,
+                    shallowWaterColor.a
+                );
+                currentWater = Color.Lerp(currentWater, sunsetWater, peakIntensity * 0.7f);
+            }
+            else if (hour < 5f || hour >= 20f)
+            {
+                // Night - darker, more mysterious water with subtle sky reflection
+                currentWater = Color.Lerp(currentWater, skyReflection * 0.3f, 0.4f);
+            }
+            else
+            {
+                // Daytime - subtle sky tint
+                currentWater = Color.Lerp(currentWater, skyReflection * 0.5f + currentWater * 0.5f, 0.25f);
+            }
 
             // Only update if not in danger zone
             if (playerTransform == null || playerTransform.position.y > 1.0f ||
@@ -901,8 +1045,19 @@ public class WaterEffect : MonoBehaviour
                 waterMat.color = currentWater;
             }
 
-            // Adjust reflectivity based on light
-            waterMat.SetFloat("_Glossiness", 0.7f + daylight * 0.25f);
+            // Adjust reflectivity based on light - MORE reflective during sunset/sunrise
+            float baseGlossiness = 0.65f + daylight * 0.3f;
+            if ((hour >= 5f && hour < 8.5f) || (hour >= 16.5f && hour < 20f))
+            {
+                // Extra glossy during golden hour for that beautiful shimmer
+                baseGlossiness = Mathf.Min(0.98f, baseGlossiness + 0.2f);
+            }
+            else if (hour < 5f || hour >= 20f)
+            {
+                // Night - still reflective for moonlight
+                baseGlossiness = 0.75f;
+            }
+            waterMat.SetFloat("_Glossiness", baseGlossiness);
         }
     }
 

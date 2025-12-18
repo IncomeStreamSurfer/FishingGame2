@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Stats Board Sign at end of pier
+/// Stats Board Sign on the beach
 /// - Shows player stats when F is pressed
 /// - Displays all fish caught with counts, total gold earned, total XP gained
 /// - Styled like a wooden board/sign
