@@ -50,7 +50,9 @@
       "Bash(echo:*)",
       "Bash(done)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nMajor game update: sky system, jackpot, bottle events, and more\n\n- Enhanced day/night cycle with darker night sky and proper star/moon rendering\n- Added NightSkyOverlay system for true black nights\n- Fixed SkyboxManager debug logging to prevent MissingReferenceException\n- Added 1 in 100,000 jackpot mechanic with 1M gold celebration\n- Enhanced bottle event system with better loot \\(up to 5M coins\\) and sounds\n- Balanced fish rarity distribution across all tiers\n- Added DockTorch that lights up at night\n- Randomized island positions around main island\n- Added fish buff popup in inventory panel\n- Added console commands system \\(F12/~/F1 to open\\)\n- Fixed various compiler errors and removed corrupted recovery files\n- Enhanced fishing rod animator with sound effects\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c \"cd C:\\\\Users\\\\incom\\\\FishingGame2\\\\Assets\\\\Scripts && ren \"\"\\\\?\\\\C:\\\\Users\\\\incom\\\\FishingGame2\\\\Assets\\\\Scripts\\\\nul\"\" nul_delete.txt && del nul_delete.txt && ren \"\"\\\\?\\\\C:\\\\Users\\\\incom\\\\FishingGame2\\\\Assets\\\\Scripts\\\\nul.meta\"\" nul_delete.meta && del nul_delete.meta\")"
     ],
     "deny": [],
     "ask": []
