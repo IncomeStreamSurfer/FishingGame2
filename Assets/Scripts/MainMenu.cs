@@ -137,10 +137,15 @@ public class MainMenu : MonoBehaviour
 
     void StopTitleMusic()
     {
+        Debug.Log("MainMenu: StopTitleMusic called");
         if (titleMusicSource != null && titleMusicSource.isPlaying)
         {
             titleMusicSource.Stop();
-            Debug.Log("MainMenu: Title music stopped");
+            Debug.Log("MainMenu: Title music stopped by StopTitleMusic()");
+        }
+        else
+        {
+            Debug.Log("MainMenu: Title music was not playing (source null: " + (titleMusicSource == null) + ")");
         }
     }
 
@@ -223,7 +228,11 @@ public class MainMenu : MonoBehaviour
     {
         if (GameStarted) return;
 
-        // Title music monitoring removed - was causing audio interference
+        // Monitor title music for debugging (but don't restart)
+        if (titleMusicSource != null && !titleMusicSource.isPlaying && titleMusicClip != null)
+        {
+            Debug.LogWarning("MainMenu: Title music stopped playing! Clip: " + titleMusicClip.name + ", Source enabled: " + titleMusicSource.enabled);
+        }
 
         titleBob += Time.deltaTime;
         waterTime += Time.deltaTime;

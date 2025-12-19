@@ -93,8 +93,11 @@ public class IslandSoundManager : MonoBehaviour
 
     void EnsureAudioListener()
     {
-        AudioListener listener = FindObjectOfType<AudioListener>();
-        if (listener == null)
+        // Check for multiple audio listeners (causes problems)
+        AudioListener[] listeners = FindObjectsOfType<AudioListener>();
+        Debug.Log("[IslandSoundManager] Found " + listeners.Length + " AudioListener(s) in scene");
+
+        if (listeners.Length == 0)
         {
             Camera mainCam = Camera.main;
             if (mainCam != null)
@@ -109,9 +112,17 @@ public class IslandSoundManager : MonoBehaviour
                 Debug.Log("[IslandSoundManager] Added AudioListener to IslandSoundManager (no main camera found)");
             }
         }
+        else if (listeners.Length > 1)
+        {
+            Debug.LogWarning("[IslandSoundManager] WARNING: Multiple AudioListeners detected! This can cause audio issues.");
+            foreach (var l in listeners)
+            {
+                Debug.LogWarning("  - AudioListener on: " + l.gameObject.name);
+            }
+        }
         else
         {
-            Debug.Log("[IslandSoundManager] AudioListener found on: " + listener.gameObject.name);
+            Debug.Log("[IslandSoundManager] AudioListener found on: " + listeners[0].gameObject.name);
         }
     }
 
@@ -259,9 +270,26 @@ public class IslandSoundManager : MonoBehaviour
         }
     }
 
+    private bool gameStartedLogged = false;
+    private bool waveStopLogged = false;
+
     void Update()
     {
+        // Monitor wave source
+        if (waveSource != null && !waveSource.isPlaying && !waveStopLogged)
+        {
+            Debug.LogWarning("[IslandSoundManager] Wave source stopped playing unexpectedly!");
+            waveStopLogged = true;
+        }
+
         if (!MainMenu.GameStarted) return;
+
+        // Log once when game starts
+        if (!gameStartedLogged)
+        {
+            gameStartedLogged = true;
+            Debug.Log("[IslandSoundManager] Game started - enabling bird sounds and rain");
+        }
 
         UpdateBirdSounds();
         UpdateRainState();
