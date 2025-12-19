@@ -271,15 +271,17 @@ public class IslandSoundManager : MonoBehaviour
     }
 
     private bool gameStartedLogged = false;
-    private bool waveStopLogged = false;
 
     void Update()
     {
-        // Monitor wave source
-        if (waveSource != null && !waveSource.isPlaying && !waveStopLogged)
+        // Auto-restart wave source if it stopped (and we have a clip)
+        if (waveSource != null && waveClip != null && !waveSource.isPlaying)
         {
-            Debug.LogWarning("[IslandSoundManager] Wave source stopped playing unexpectedly!");
-            waveStopLogged = true;
+            Debug.Log("[IslandSoundManager] Restarting wave sounds...");
+            waveSource.clip = waveClip;
+            waveSource.loop = true;
+            waveSource.volume = ambientVolume * masterVolume;
+            waveSource.Play();
         }
 
         if (!MainMenu.GameStarted) return;

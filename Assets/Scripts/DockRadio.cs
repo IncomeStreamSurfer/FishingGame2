@@ -86,12 +86,33 @@ public class DockRadio : MonoBehaviour
 
     void AutoStartMusic()
     {
-        if (!isOn && songs.Count > 0 && audioSource != null)
+        // Check if we can play
+        if (audioSource == null)
         {
-            // Ensure audio source is enabled before playing
+            Debug.LogWarning("DockRadio: AudioSource is null, cannot auto-start");
+            return;
+        }
+
+        if (!gameObject.activeInHierarchy)
+        {
+            Debug.LogWarning("DockRadio: GameObject is not active, cannot auto-start");
+            return;
+        }
+
+        if (!isOn && songs.Count > 0)
+        {
+            // Ensure audio source component is enabled
             if (!audioSource.enabled)
             {
                 audioSource.enabled = true;
+                Debug.Log("DockRadio: Re-enabled audio source");
+            }
+
+            // Double-check it's enabled now
+            if (!audioSource.enabled)
+            {
+                Debug.LogError("DockRadio: Failed to enable audio source!");
+                return;
             }
 
             isOn = true;
