@@ -250,59 +250,46 @@ public class IslandSoundManager : MonoBehaviour
 
     void StartAmbientSounds()
     {
-        Debug.Log("[IslandSoundManager] StartAmbientSounds called");
-        Debug.Log("[IslandSoundManager] waveClip: " + (waveClip != null ? "EXISTS, length=" + waveClip.length + "s, samples=" + waveClip.samples : "NULL"));
-        Debug.Log("[IslandSoundManager] waveSource: " + (waveSource != null ? "EXISTS" : "NULL"));
+        Debug.Log("[IslandSoundManager] Starting tropical ambient sounds...");
 
+        // Start ocean waves
         if (waveClip != null && waveSource != null)
         {
             waveSource.clip = waveClip;
-            waveSource.volume = ambientVolume * masterVolume; // Full volume for testing
-            waveSource.playOnAwake = false;
+            waveSource.volume = 0.5f; // Good volume for ambient
+            waveSource.loop = true;
             waveSource.Play();
-
-            Debug.Log("[IslandSoundManager] Wave source playing: " + waveSource.isPlaying);
-            Debug.Log("[IslandSoundManager] Wave volume: " + waveSource.volume);
-            Debug.Log("[IslandSoundManager] Wave clip assigned: " + (waveSource.clip != null));
+            Debug.Log("[IslandSoundManager] Ocean waves started - volume: " + waveSource.volume);
         }
-        else
+
+        // Play an initial bird sound to confirm audio works
+        if (birdChirpClip != null && birdSource != null)
         {
-            Debug.LogError("[IslandSoundManager] Cannot start ambient sounds - waveClip or waveSource is null!");
+            birdSource.PlayOneShot(birdChirpClip, 0.6f);
+            Debug.Log("[IslandSoundManager] Initial bird chirp played");
         }
     }
 
     private bool gameStartedLogged = false;
-    private float audioTestTimer = 0f;
 
     void Update()
     {
-        // Check if we still exist and have valid audio sources
-        if (waveSource == null)
-        {
-            Debug.LogError("[IslandSoundManager] waveSource is NULL in Update!");
-            return;
-        }
-
-        // Auto-restart wave source if it stopped (and we have a clip)
-        if (waveClip != null && !waveSource.isPlaying)
+        // Keep waves playing
+        if (waveSource != null && waveClip != null && !waveSource.isPlaying)
         {
             waveSource.clip = waveClip;
             waveSource.loop = true;
-            waveSource.volume = ambientVolume * masterVolume;
-            waveSource.enabled = true;
+            waveSource.volume = 0.5f;
             waveSource.Play();
-            Debug.Log("[IslandSoundManager] Restarted wave sounds - isPlaying: " + waveSource.isPlaying);
         }
 
         if (!MainMenu.GameStarted) return;
 
-        // Log once when game starts and play a confirmation beep
+        // Log once when game starts
         if (!gameStartedLogged)
         {
             gameStartedLogged = true;
-            Debug.Log("[IslandSoundManager] Game started - enabling bird sounds and rain");
-            // Play another beep to confirm audio still works after game starts
-            PlayTestBeep();
+            Debug.Log("[IslandSoundManager] Game started - tropical sounds active!");
         }
 
         UpdateBirdSounds();
@@ -315,16 +302,14 @@ public class IslandSoundManager : MonoBehaviour
         if (birdTimer >= nextBirdTime)
         {
             birdTimer = 0f;
-            nextBirdTime = Random.Range(3f, 8f); // More frequent birds
+            nextBirdTime = Random.Range(2f, 6f); // Frequent tropical birds
 
             // Random bird sound
             AudioClip clip = Random.value > 0.5f ? birdChirpClip : birdCallClip;
-            if (clip != null)
+            if (clip != null && birdSource != null)
             {
-                birdSource.pitch = Random.Range(0.9f, 1.3f);
-                birdSource.volume = ambientVolume * masterVolume * Random.Range(0.5f, 0.9f); // Louder birds
-                birdSource.PlayOneShot(clip);
-                Debug.Log("[IslandSoundManager] Playing bird sound - volume: " + birdSource.volume);
+                birdSource.pitch = Random.Range(0.85f, 1.2f);
+                birdSource.PlayOneShot(clip, Random.Range(0.4f, 0.7f));
             }
         }
     }
