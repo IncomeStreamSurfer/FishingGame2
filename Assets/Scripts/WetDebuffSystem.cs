@@ -61,8 +61,8 @@ public class WetDebuffSystem : MonoBehaviour
         debuffBarTex.SetPixel(0, 0, new Color(0.3f, 0.5f, 0.9f, 0.9f));
         debuffBarTex.Apply();
 
-        // Label style
-        debuffLabelStyle = new GUIStyle(GUI.skin.label);
+        // Label style will be initialized in OnGUI (can't access GUI.skin outside OnGUI)
+        debuffLabelStyle = null;
 
         guiInitialized = true;
     }
@@ -140,6 +140,12 @@ public class WetDebuffSystem : MonoBehaviour
     {
         if (!MainMenu.GameStarted || !guiInitialized) return;
         if (!isWet) return;
+
+        // Initialize label style here (can only access GUI.skin inside OnGUI)
+        if (debuffLabelStyle == null)
+        {
+            debuffLabelStyle = new GUIStyle(GUI.skin.label);
+        }
 
         DrawWetDebuff();
     }

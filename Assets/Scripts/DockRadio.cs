@@ -86,8 +86,14 @@ public class DockRadio : MonoBehaviour
 
     void AutoStartMusic()
     {
-        if (!isOn && songs.Count > 0)
+        if (!isOn && songs.Count > 0 && audioSource != null)
         {
+            // Ensure audio source is enabled before playing
+            if (!audioSource.enabled)
+            {
+                audioSource.enabled = true;
+            }
+
             isOn = true;
             currentSongIndex = Random.Range(0, songs.Count);
             audioSource.clip = songs[currentSongIndex];
