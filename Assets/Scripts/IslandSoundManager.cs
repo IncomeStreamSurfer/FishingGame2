@@ -67,7 +67,8 @@ public class IslandSoundManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            Debug.Log("[IslandSoundManager] Instance registered successfully");
+            DontDestroyOnLoad(gameObject); // Keep alive across scenes
+            Debug.Log("[IslandSoundManager] Instance registered and marked DontDestroyOnLoad");
         }
         else
         {
@@ -271,26 +272,37 @@ public class IslandSoundManager : MonoBehaviour
     }
 
     private bool gameStartedLogged = false;
+    private float audioTestTimer = 0f;
 
     void Update()
     {
-        // Auto-restart wave source if it stopped (and we have a clip)
-        if (waveSource != null && waveClip != null && !waveSource.isPlaying)
+        // Check if we still exist and have valid audio sources
+        if (waveSource == null)
         {
-            Debug.Log("[IslandSoundManager] Restarting wave sounds...");
+            Debug.LogError("[IslandSoundManager] waveSource is NULL in Update!");
+            return;
+        }
+
+        // Auto-restart wave source if it stopped (and we have a clip)
+        if (waveClip != null && !waveSource.isPlaying)
+        {
             waveSource.clip = waveClip;
             waveSource.loop = true;
             waveSource.volume = ambientVolume * masterVolume;
+            waveSource.enabled = true;
             waveSource.Play();
+            Debug.Log("[IslandSoundManager] Restarted wave sounds - isPlaying: " + waveSource.isPlaying);
         }
 
         if (!MainMenu.GameStarted) return;
 
-        // Log once when game starts
+        // Log once when game starts and play a confirmation beep
         if (!gameStartedLogged)
         {
             gameStartedLogged = true;
             Debug.Log("[IslandSoundManager] Game started - enabling bird sounds and rain");
+            // Play another beep to confirm audio still works after game starts
+            PlayTestBeep();
         }
 
         UpdateBirdSounds();
