@@ -38,9 +38,7 @@ public class MainMenu : MonoBehaviour
     // Water animation for background
     private float waterTime = 0f;
 
-    // Title screen music
-    private AudioSource titleMusicSource;
-    private AudioClip titleMusicClip;
+    // Title screen music - REMOVED (was causing audio issues)
 
     // Title screen effects
     private float lightningTimer = 0f;
@@ -81,72 +79,10 @@ public class MainMenu : MonoBehaviour
         // Disable all game systems until game starts
         DisableGameSystems();
 
-        // Ensure AudioListener exists for title screen
-        EnsureAudioListener();
-
-        // Setup title screen music
-        SetupTitleMusic();
+        // Title music removed - was causing audio issues
 
         // Delay texture creation
         Invoke("Initialize", 0.2f);
-    }
-
-    void EnsureAudioListener()
-    {
-        AudioListener listener = FindObjectOfType<AudioListener>();
-        if (listener == null)
-        {
-            Camera mainCam = Camera.main;
-            if (mainCam != null)
-            {
-                mainCam.gameObject.AddComponent<AudioListener>();
-                Debug.Log("MainMenu: Added AudioListener to Main Camera");
-            }
-            else
-            {
-                // Add to MainMenu object as fallback
-                gameObject.AddComponent<AudioListener>();
-                Debug.Log("MainMenu: Added AudioListener to MainMenu (no camera found)");
-            }
-        }
-    }
-
-    void SetupTitleMusic()
-    {
-        // Load title music from Resources
-        Debug.Log("MainMenu: Attempting to load TitleMusic...");
-        titleMusicClip = Resources.Load<AudioClip>("TitleMusic");
-
-        if (titleMusicClip != null)
-        {
-            titleMusicSource = gameObject.AddComponent<AudioSource>();
-            titleMusicSource.clip = titleMusicClip;
-            titleMusicSource.loop = true;
-            titleMusicSource.volume = musicVolume;
-            titleMusicSource.playOnAwake = false;
-            titleMusicSource.priority = 128; // Normal priority (not highest - was causing issues)
-            titleMusicSource.spatialBlend = 0f; // 2D sound
-            titleMusicSource.Play();
-            Debug.Log($"MainMenu: Title music loaded and playing - {titleMusicClip.name} | Length: {titleMusicClip.length}s | Volume: {titleMusicSource.volume} | Playing: {titleMusicSource.isPlaying}");
-        }
-        else
-        {
-            Debug.LogError("MainMenu: FAILED to load TitleMusic from Resources folder! Make sure TitleMusic.mp3 is in Assets/Resources/");
-        }
-    }
-
-    void StopTitleMusic()
-    {
-        Debug.Log("MainMenu: StopTitleMusic called");
-        if (titleMusicSource != null && titleMusicSource.isPlaying)
-        {
-            titleMusicSource.Stop();
-            Debug.Log("MainMenu: Title music stopped by StopTitleMusic()");
-        }
-        else
-        {
-            Debug.Log("MainMenu: Title music was not playing (source null: " + (titleMusicSource == null) + ")");
-        }
     }
 
     void Initialize()
@@ -227,12 +163,6 @@ public class MainMenu : MonoBehaviour
     void Update()
     {
         if (GameStarted) return;
-
-        // Monitor title music for debugging (but don't restart)
-        if (titleMusicSource != null && !titleMusicSource.isPlaying && titleMusicClip != null)
-        {
-            Debug.LogWarning("MainMenu: Title music stopped playing! Clip: " + titleMusicClip.name + ", Source enabled: " + titleMusicSource.enabled);
-        }
 
         titleBob += Time.deltaTime;
         waterTime += Time.deltaTime;
@@ -843,9 +773,6 @@ public class MainMenu : MonoBehaviour
 
     void StartNewGame()
     {
-        // Stop title music when game starts
-        StopTitleMusic();
-
         GameStarted = true;
         EnableGameSystems();
 
@@ -862,9 +789,6 @@ public class MainMenu : MonoBehaviour
 
     void LoadGame(SavedGameInfo save)
     {
-        // Stop title music when game starts
-        StopTitleMusic();
-
         GameStarted = true;
         EnableGameSystems();
 
