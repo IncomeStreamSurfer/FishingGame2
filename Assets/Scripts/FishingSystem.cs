@@ -522,121 +522,73 @@ public class FishingSystem : MonoBehaviour
         // UNCOMMON: 28% of normal pool (~26.5% overall)
         // RARE: 12% of normal pool (~11.3% overall)
         // EPIC: 4% of normal pool (~3.8% overall)
-        // LEGENDARY: 1% of normal pool (~0.9% overall)
-        // Plus special fish: 5% rare, 0.5% epic, 0.02% legendary = ~100% total
+        // DROP RATES:
+        // Common: ~55%, Uncommon: ~28%, Rare: ~12%, Epic: ~4%, Legendary: 0.1%
+        // ULTIMATE (Golden Starfish): 0.01% - Separate roll!
+        // Using base weight of 1000 for calculations
 
-        // Common fish - Weight: 55 each (220 total)
-        fishDatabase.Add(new FishData { id = "sardine", fishName = "Sardine", rarity = Rarity.Common, coinValue = 5, weight = 55f, fishColor = Color.gray });
-        fishDatabase.Add(new FishData { id = "anchovy", fishName = "Anchovy", rarity = Rarity.Common, coinValue = 5, weight = 55f, fishColor = new Color(0.6f, 0.6f, 0.7f) });
-        fishDatabase.Add(new FishData { id = "minnow", fishName = "Minnow", rarity = Rarity.Common, coinValue = 3, weight = 55f, fishColor = new Color(0.7f, 0.75f, 0.8f) });
-        fishDatabase.Add(new FishData { id = "cod", fishName = "Cod", rarity = Rarity.Common, coinValue = 8, weight = 55f, fishColor = new Color(0.6f, 0.55f, 0.4f) });
+        // ============ COMMON FISH (55% total) ============
+        // 4 fish at 137.5 weight each = 550 total
+        fishDatabase.Add(new FishData { id = "sardine", fishName = "Sardine", rarity = Rarity.Common, coinValue = 5, weight = 137.5f, fishColor = Color.gray });
+        fishDatabase.Add(new FishData { id = "anchovy", fishName = "Anchovy", rarity = Rarity.Common, coinValue = 5, weight = 137.5f, fishColor = new Color(0.6f, 0.6f, 0.7f) });
+        fishDatabase.Add(new FishData { id = "minnow", fishName = "Minnow", rarity = Rarity.Common, coinValue = 3, weight = 137.5f, fishColor = new Color(0.7f, 0.75f, 0.8f) });
+        fishDatabase.Add(new FishData { id = "cod", fishName = "Cod", rarity = Rarity.Common, coinValue = 8, weight = 137.5f, fishColor = new Color(0.6f, 0.55f, 0.4f) });
 
-        // Uncommon fish - Weight: 28 each (112 total)
-        fishDatabase.Add(new FishData { id = "bass", fishName = "Bass", rarity = Rarity.Uncommon, coinValue = 20, weight = 28f, fishColor = new Color(0.3f, 0.5f, 0.3f) });
-        fishDatabase.Add(new FishData { id = "salmon", fishName = "Salmon", rarity = Rarity.Uncommon, coinValue = 30, weight = 28f, fishColor = new Color(0.9f, 0.5f, 0.4f) });
-        fishDatabase.Add(new FishData { id = "baby_turtle", fishName = "Baby Sea Turtle", rarity = Rarity.Uncommon, coinValue = 50, weight = 28f, fishColor = new Color(0.2f, 0.5f, 0.3f) });
-        fishDatabase.Add(new FishData { id = "jellyfish", fishName = "Jellyfish", rarity = Rarity.Uncommon, coinValue = 35, weight = 28f, fishColor = new Color(0.8f, 0.6f, 0.9f) });
+        // ============ UNCOMMON FISH (28% total) ============
+        // 4 fish at 70 weight each = 280 total
+        fishDatabase.Add(new FishData { id = "bass", fishName = "Bass", rarity = Rarity.Uncommon, coinValue = 20, weight = 70f, fishColor = new Color(0.3f, 0.5f, 0.3f) });
+        fishDatabase.Add(new FishData { id = "salmon", fishName = "Salmon", rarity = Rarity.Uncommon, coinValue = 30, weight = 70f, fishColor = new Color(0.9f, 0.5f, 0.4f) });
+        fishDatabase.Add(new FishData { id = "baby_turtle", fishName = "Baby Sea Turtle", rarity = Rarity.Uncommon, coinValue = 50, weight = 70f, fishColor = new Color(0.2f, 0.5f, 0.3f) });
+        fishDatabase.Add(new FishData { id = "jellyfish", fishName = "Jellyfish", rarity = Rarity.Uncommon, coinValue = 35, weight = 70f, fishColor = new Color(0.8f, 0.6f, 0.9f) });
 
-        // Rare fish - Weight: 12 each (48 total)
-        fishDatabase.Add(new FishData { id = "tuna", fishName = "Tuna", rarity = Rarity.Rare, coinValue = 75, weight = 12f, fishColor = new Color(0.2f, 0.3f, 0.6f) });
-        fishDatabase.Add(new FishData { id = "swordfish", fishName = "Swordfish", rarity = Rarity.Rare, coinValue = 100, weight = 12f, fishColor = new Color(0.4f, 0.4f, 0.8f) });
-        fishDatabase.Add(new FishData { id = "hammerhead", fishName = "Hammerhead", rarity = Rarity.Rare, coinValue = 120, weight = 12f, fishColor = new Color(0.45f, 0.45f, 0.5f) });
-        fishDatabase.Add(new FishData { id = "ocean_eel", fishName = "Ocean Sprinter Eel", rarity = Rarity.Rare, coinValue = 90, weight = 12f, fishColor = new Color(0.2f, 0.25f, 0.3f) });
+        // ============ RARE FISH (12% total) ============
+        // 9 fish at ~13.3 weight each = 120 total
+        // Original rare fish
+        fishDatabase.Add(new FishData { id = "tuna", fishName = "Tuna", rarity = Rarity.Rare, coinValue = 75, weight = 13.3f, fishColor = new Color(0.2f, 0.3f, 0.6f) });
+        fishDatabase.Add(new FishData { id = "swordfish", fishName = "Swordfish", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.4f, 0.4f, 0.8f) });
+        fishDatabase.Add(new FishData { id = "hammerhead", fishName = "Hammerhead", rarity = Rarity.Rare, coinValue = 120, weight = 13.3f, fishColor = new Color(0.45f, 0.45f, 0.5f) });
+        fishDatabase.Add(new FishData { id = "ocean_eel", fishName = "Ocean Sprinter Eel", rarity = Rarity.Rare, coinValue = 90, weight = 13.3f, fishColor = new Color(0.2f, 0.25f, 0.3f) });
+        // Former special rare fish - now in main pool with buff abilities
+        fishDatabase.Add(new FishData { id = "red_snapper", fishName = "Red Snapper", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.9f, 0.3f, 0.3f), healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "blue_marlin", fishName = "Blue Marlin", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.2f, 0.4f, 0.9f), healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "rainbow_trout", fishName = "Rainbow Trout", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.9f, 0.5f, 0.7f), healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "sunshore_od", fishName = "Sunshore Cod", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(1f, 0.8f, 0.3f), healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "icelandic_snubnose", fishName = "Icelandic Grey Finned Snubnose", rarity = Rarity.Rare, coinValue = 100, weight = 13.4f, fishColor = new Color(0.6f, 0.65f, 0.7f), healthBuff = HealthBuffType.InstantFullHealth });
 
-        // Epic fish - Weight: 5.33 each (16 total)
-        fishDatabase.Add(new FishData { id = "shark", fishName = "Shark", rarity = Rarity.Epic, coinValue = 250, weight = 5.33f, fishColor = new Color(0.5f, 0.5f, 0.6f) });
-        fishDatabase.Add(new FishData { id = "vampire_sealfish", fishName = "Vampire Sealfish", rarity = Rarity.Epic, coinValue = 350, weight = 5.33f, fishColor = new Color(0.3f, 0.1f, 0.15f) });
-        fishDatabase.Add(new FishData { id = "icelandic_sunscale", fishName = "Icelandic Sunscale", rarity = Rarity.Epic, coinValue = 400, weight = 5.33f, fishColor = new Color(0.9f, 0.8f, 0.3f) });
+        // ============ EPIC FISH (4% total) - 1000 GOLD EACH! ============
+        // 8 fish at 5 weight each = 40 total
+        // Original epic fish
+        fishDatabase.Add(new FishData { id = "shark", fishName = "Shark", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.5f, 0.5f, 0.6f) });
+        fishDatabase.Add(new FishData { id = "vampire_sealfish", fishName = "Vampire Sealfish", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.3f, 0.1f, 0.15f) });
+        fishDatabase.Add(new FishData { id = "icelandic_sunscale", fishName = "Icelandic Sunscale", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.9f, 0.8f, 0.3f) });
+        // Former special epic fish - now in main pool with buff abilities
+        fishDatabase.Add(new FishData { id = "sting_ray", fishName = "Sting Ray", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.5f, 0.4f, 0.6f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "rainbow_fish", fishName = "Rainbow Fish", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(1f, 0.5f, 0.8f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "hammerhead_shark", fishName = "Giant Hammerhead", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.4f, 0.45f, 0.5f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "whale_baby", fishName = "Whale Baby", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.35f, 0.45f, 0.7f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "seahorse", fishName = "Seahorse", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(1f, 0.6f, 0.3f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
 
-        // Legendary fish - Weight: 1.33 each (4 total) - About 1% of normal pool
-        fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 5000, weight = 1.33f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
-        fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 5000, weight = 1.33f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
-        fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 5000, weight = 1.33f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
+        // ============ LEGENDARY FISH (0.1% total) ============
+        // 3 fish at ~0.33 weight each = 1 total (0.1% of 1000)
+        fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.33f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
+        fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.33f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
+        fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.34f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
 
-        // ============ SPECIAL RARE FISH (5% chance, blue glow) ============
-        // 100 XP, 100g sell to Pete, instant full health, can't be BBQ'd
-        Color rareGlow = new Color(0.3f, 0.5f, 1f);
-        fishDatabase.Add(new FishData {
-            id = "red_snapper", fishName = "Red Snapper", rarity = Rarity.Rare,
-            coinValue = 0, weight = 0, fishColor = new Color(0.9f, 0.3f, 0.3f),
-            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
-            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "blue_marlin", fishName = "Blue Marlin", rarity = Rarity.Rare,
-            coinValue = 0, weight = 0, fishColor = new Color(0.2f, 0.4f, 0.9f),
-            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
-            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "rainbow_trout", fishName = "Rainbow Trout", rarity = Rarity.Rare,
-            coinValue = 0, weight = 0, fishColor = new Color(0.9f, 0.5f, 0.7f),
-            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
-            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "sunshore_od", fishName = "Sunshore Cod", rarity = Rarity.Rare,
-            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.8f, 0.3f),
-            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
-            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "icelandic_snubnose", fishName = "Icelandic Grey Finned Snubnose", rarity = Rarity.Rare,
-            coinValue = 0, weight = 0, fishColor = new Color(0.6f, 0.65f, 0.7f),
-            isSpecialFish = true, sellToNPC = 100, xpValue = 100,
-            healthBuff = HealthBuffType.InstantFullHealth, glowIntensity = 0.5f, glowColor = rareGlow
-        });
-
-        // ============ SPECIAL EPIC FISH (0.5% chance, purple glow) ============
-        // 5000 XP, 5000g sell to Pete, 10 min max health, can't be BBQ'd
-        Color epicGlow = new Color(0.7f, 0.2f, 1f);
-        fishDatabase.Add(new FishData {
-            id = "sting_ray", fishName = "Sting Ray", rarity = Rarity.Epic,
-            coinValue = 0, weight = 0, fishColor = new Color(0.5f, 0.4f, 0.6f),
-            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
-            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f, // 10 mins
-            glowIntensity = 0.8f, glowColor = epicGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "rainbow_fish", fishName = "Rainbow Fish", rarity = Rarity.Epic,
-            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.5f, 0.8f),
-            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
-            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
-            glowIntensity = 0.8f, glowColor = epicGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "hammerhead_special", fishName = "Hammerhead Shark", rarity = Rarity.Epic,
-            coinValue = 0, weight = 0, fishColor = new Color(0.4f, 0.45f, 0.5f),
-            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
-            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
-            glowIntensity = 0.8f, glowColor = epicGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "whale_baby", fishName = "Whale Baby", rarity = Rarity.Epic,
-            coinValue = 0, weight = 0, fishColor = new Color(0.35f, 0.45f, 0.7f),
-            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
-            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
-            glowIntensity = 0.8f, glowColor = epicGlow
-        });
-        fishDatabase.Add(new FishData {
-            id = "seahorse", fishName = "Seahorse", rarity = Rarity.Epic,
-            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.6f, 0.3f),
-            isSpecialFish = true, sellToNPC = 5000, xpValue = 5000,
-            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f,
-            glowIntensity = 0.8f, glowColor = epicGlow
-        });
-
-        // ============ LEGENDARY FISH (0.02% chance, golden glow) ============
-        // 100,000 XP, 100,000g sell to Pete, 1 hour max health, special effects
+        // ============ ULTIMATE FISH (0.01% - Separate roll!) ============
+        // Golden Starfish is NOT in the weighted pool - checked separately!
+        // Stored here for reference but weight = 0 (uses ultimateFishChance instead)
         Color legendaryGlow = new Color(1f, 0.9f, 0.3f);
         fishDatabase.Add(new FishData {
-            id = "golden_starfish", fishName = "GOLDEN STARFISH", rarity = Rarity.Legendary,
-            coinValue = 0, weight = 0, fishColor = new Color(1f, 0.85f, 0.2f),
+            id = "golden_starfish", fishName = "GOLDEN STARFISH", rarity = Rarity.Mythic,
+            coinValue = 100000, weight = 0, fishColor = new Color(1f, 0.85f, 0.2f),
             isSpecialFish = true, sellToNPC = 100000, xpValue = 100000,
-            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 3600f, // 1 hour
+            healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 3600f,
             glowIntensity = 2f, glowColor = legendaryGlow
         });
     }
+
+    // Ultimate fish chance (0.01%)
+    private const float ULTIMATE_FISH_CHANCE = 0.01f;
 
     // Special fish inventory (for rare/epic/legendary that can't be BBQ'd)
     public List<FishData> specialFishInventory = new List<FishData>();
@@ -2576,49 +2528,21 @@ public class FishingSystem : MonoBehaviour
         // Combine all bonuses
         float totalRareBonus = rodBonus + buffBonus + poolBonus;
 
-        // ========== CHECK FOR SPECIAL FISH FIRST ==========
-
-        // LEGENDARY: 0.02% base chance (+ all bonuses)
-        float legendaryChance = 0.02f * (1f + totalRareBonus);
-        if (Random.Range(0f, 100f) < legendaryChance)
+        // ========== ULTIMATE LOOT TABLE: GOLDEN STARFISH (0.01% chance) ==========
+        // This is checked separately from the main pool!
+        float ultimateChance = ULTIMATE_FISH_CHANCE * (1f + totalRareBonus);
+        if (Random.Range(0f, 100f) < ultimateChance)
         {
-            FishData legendary = fishDatabase.Find(f => f.id == "golden_starfish");
-            if (legendary != null)
+            FishData starfish = fishDatabase.Find(f => f.id == "golden_starfish");
+            if (starfish != null)
             {
-                Debug.Log("!!! LEGENDARY FISH - GOLDEN STARFISH !!!");
-                return legendary;
+                Debug.Log("!!! ULTIMATE CATCH - GOLDEN STARFISH !!! (0.01% chance!)");
+                return starfish;
             }
         }
 
-        // EPIC: 0.5% base chance (+ all bonuses)
-        float epicChance = 0.5f * (1f + totalRareBonus);
-        if (Random.Range(0f, 100f) < epicChance)
-        {
-            string[] epicIds = { "sting_ray", "rainbow_fish", "hammerhead_special", "whale_baby", "seahorse" };
-            string randomEpic = epicIds[Random.Range(0, epicIds.Length)];
-            FishData epic = fishDatabase.Find(f => f.id == randomEpic);
-            if (epic != null)
-            {
-                Debug.Log("!! EPIC FISH - " + epic.fishName + " !!");
-                return epic;
-            }
-        }
-
-        // RARE SPECIAL: 5% base chance (+ all bonuses)
-        float rareSpecialChance = 5f * (1f + rodBonus * 0.5f + buffBonus + poolBonus);
-        if (Random.Range(0f, 100f) < rareSpecialChance)
-        {
-            string[] rareIds = { "red_snapper", "blue_marlin", "rainbow_trout", "sunshore_od", "icelandic_snubnose" };
-            string randomRare = rareIds[Random.Range(0, rareIds.Length)];
-            FishData rare = fishDatabase.Find(f => f.id == randomRare);
-            if (rare != null)
-            {
-                Debug.Log("! RARE SPECIAL FISH - " + rare.fishName + " !");
-                return rare;
-            }
-        }
-
-        // ========== NORMAL FISH SELECTION ==========
+        // ========== MAIN FISH SELECTION (Weighted Pool) ==========
+        // All fish including Rare/Epic buff fish are in the weighted pool now
 
         // Check if salmon quest is active - 40% chance to get salmon
         if (WetsuitPeteQuests.Instance != null && WetsuitPeteQuests.Instance.IsSalmonQuestActive())

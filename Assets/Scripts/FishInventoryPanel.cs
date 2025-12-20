@@ -703,6 +703,30 @@ public class FishInventoryPanel : MonoBehaviour
                 // Rarity
                 GUI.Label(new Rect(itemRect.x + 52, itemRect.y + 24, 100, 16), fish.rarity.ToString(), cachedRarityStyle);
 
+                // Buff indicator - show if fish has a cooking buff or health buff ability
+                bool hasCookBuff = FishBuffSystem.Instance != null && FishBuffSystem.Instance.GetBuffByFishId(fish.id) != null;
+                bool hasHealthBuff = fish.healthBuff != HealthBuffType.None;
+
+                if (hasCookBuff || hasHealthBuff)
+                {
+                    // Draw small buff tag with appropriate label
+                    Rect buffTagRect = new Rect(itemRect.x + 115, itemRect.y + 24, 55, 14);
+                    Color tagColor = hasCookBuff ? new Color(0.5f, 0.3f, 0.7f, 0.9f) : new Color(0.3f, 0.6f, 0.3f, 0.9f);
+                    GUI.DrawTexture(buffTagRect, GetOrCreateColorTexture(tagColor));
+
+                    GUIStyle buffTagStyle = new GUIStyle();
+                    buffTagStyle.fontSize = 8;
+                    buffTagStyle.fontStyle = FontStyle.Bold;
+                    buffTagStyle.alignment = TextAnchor.MiddleCenter;
+                    buffTagStyle.normal.textColor = Color.white;
+
+                    // Show buff type
+                    string buffText = hasCookBuff ? "COOKABLE" :
+                                     fish.healthBuff == HealthBuffType.InstantFullHealth ? "FULL HP" :
+                                     fish.healthBuff == HealthBuffType.MaxHealthTimed ? "MAX HP" : "BUFF";
+                    GUI.Label(buffTagRect, buffText, buffTagStyle);
+                }
+
                 // Count
                 GUI.Label(new Rect(itemRect.x + itemRect.width - 100, itemRect.y + 4, 40, 20), $"x{fish.count}", cachedCountStyle);
 
