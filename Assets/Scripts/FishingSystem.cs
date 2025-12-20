@@ -189,22 +189,21 @@ public class FishingSystem : MonoBehaviour
 
     public void PlayRareFishChime(Rarity rarity)
     {
-        // Play celebration sound via IslandSoundManager (covers all rarities)
+        // Play celebration sound via IslandSoundManager for ALL catches
         if (IslandSoundManager.Instance != null)
         {
             int rarityLevel = 0;
             switch (rarity)
             {
+                case Rarity.Common: rarityLevel = 0; break;  // Simple chime
                 case Rarity.Uncommon: rarityLevel = 1; break;
                 case Rarity.Rare: rarityLevel = 2; break;
                 case Rarity.Epic: rarityLevel = 3; break;
                 case Rarity.Legendary: rarityLevel = 4; break;
                 case Rarity.Mythic: rarityLevel = 5; break;
             }
-            if (rarityLevel > 0)
-            {
-                IslandSoundManager.Instance.PlayCelebration(rarityLevel);
-            }
+            // Play celebration for ALL fish (including common)
+            IslandSoundManager.Instance.PlayCelebration(rarityLevel);
         }
 
         // Also play existing procedural chime for Epic+ (layered sound)
@@ -1175,17 +1174,12 @@ public class FishingSystem : MonoBehaviour
         int coinCount = GetCoinCountForRarity(fish.rarity);
         SpawnGoldCoins(spawnPos, coinCount);
 
-        // Play celebration sounds for Uncommon and Rare fish too (via IslandSoundManager)
-        if (fish.rarity == Rarity.Uncommon || fish.rarity == Rarity.Rare)
-        {
-            PlayRareFishChime(fish.rarity);
-        }
+        // Play celebration sounds for ALL fish catches
+        PlayRareFishChime(fish.rarity);
 
         // Check if epic or legendary - show special glowing golden fish
         if (fish.rarity == Rarity.Epic || fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
         {
-            // Play the chime sound (also handled via IslandSoundManager now)
-            PlayRareFishChime(fish.rarity);
 
             // Create glowing golden fish model
             GameObject fishObj = CreateGlowingRareFish(fish);
@@ -2272,11 +2266,11 @@ public class FishingSystem : MonoBehaviour
         }
         if (!MainMenu.GameStarted) return;
 
-        // Popup dimensions
-        float popupWidth = 200;
-        float popupHeight = 100;
+        // Popup dimensions - larger to fit all info
+        float popupWidth = 240;
+        float popupHeight = 130;
         float popupX = (Screen.width - popupWidth) / 2;
-        float popupY = Screen.height * 0.25f;
+        float popupY = Screen.height * 0.22f;
 
         // Fade based on remaining time
         float alpha = Mathf.Clamp01(catchPopupTimer / 0.5f);
@@ -2290,44 +2284,67 @@ public class FishingSystem : MonoBehaviour
         Texture2D borderTex = new Texture2D(1, 1);
         borderTex.SetPixel(0, 0, rarityCol);
         borderTex.Apply();
-        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, 3), borderTex);
-        GUI.DrawTexture(new Rect(popupX, popupY + popupHeight - 3, popupWidth, 3), borderTex);
-        GUI.DrawTexture(new Rect(popupX, popupY, 3, popupHeight), borderTex);
-        GUI.DrawTexture(new Rect(popupX + popupWidth - 3, popupY, 3, popupHeight), borderTex);
+        // Thicker border for visibility
+        GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, 4), borderTex);
+        GUI.DrawTexture(new Rect(popupX, popupY + popupHeight - 4, popupWidth, 4), borderTex);
+        GUI.DrawTexture(new Rect(popupX, popupY, 4, popupHeight), borderTex);
+        GUI.DrawTexture(new Rect(popupX + popupWidth - 4, popupY, 4, popupHeight), borderTex);
 
         // Fish sprite
-        float spriteSize = 48;
+        float spriteSize = 56;
         Texture2D fishSprite = null;
         if (FishSprites.Instance != null)
             fishSprite = FishSprites.Instance.GetFishTexture(catchPopupFish.id);
 
         if (fishSprite != null)
         {
-            GUI.DrawTexture(new Rect(popupX + 10, popupY + (popupHeight - spriteSize) / 2, spriteSize, spriteSize), fishSprite);
+            GUI.DrawTexture(new Rect(popupX + 12, popupY + (popupHeight - spriteSize) / 2, spriteSize, spriteSize), fishSprite);
         }
 
         GUI.color = new Color(1, 1, 1, alpha);
 
-        // "CAUGHT!" label
+        float textX = popupX + 78;
+
+        // Rarity label at top
+        GUIStyle rarityStyle = new GUIStyle();
+        rarityStyle.fontSize = 11;
+        rarityStyle.fontStyle = FontStyle.Bold;
+        rarityStyle.normal.textColor = rarityCol;
+        string rarityName = catchPopupFish.rarity.ToString().ToUpper();
+        GUI.Label(new Rect(textX, popupY + 10, 150, 16), rarityName, rarityStyle);
+
+        // Fish name - larger and bolder
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 16;
+        nameStyle.fontStyle = FontStyle.Bold;
+        nameStyle.normal.textColor = Color.white;
+        nameStyle.wordWrap = true;
+        GUI.Label(new Rect(textX, popupY + 28, 150, 36), catchPopupFish.fishName, nameStyle);
+
+        // Get XP value for this fish
+        int xpValue = LevelingSystem.GetFishXP(catchPopupFish.rarity);
+
+        // Gold value
+        GUIStyle goldStyle = new GUIStyle();
+        goldStyle.fontSize = 13;
+        goldStyle.fontStyle = FontStyle.Bold;
+        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUI.Label(new Rect(textX, popupY + 72, 75, 20), $"+{catchPopupFish.coinValue}g", goldStyle);
+
+        // XP value
+        GUIStyle xpStyle = new GUIStyle();
+        xpStyle.fontSize = 13;
+        xpStyle.fontStyle = FontStyle.Bold;
+        xpStyle.normal.textColor = new Color(0.4f, 0.9f, 1f);
+        GUI.Label(new Rect(textX + 70, popupY + 72, 75, 20), $"+{xpValue} XP", xpStyle);
+
+        // "CAUGHT!" banner at bottom
         GUIStyle caughtStyle = new GUIStyle();
         caughtStyle.fontSize = 12;
         caughtStyle.fontStyle = FontStyle.Bold;
-        caughtStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
-        GUI.Label(new Rect(popupX + 68, popupY + 12, 120, 20), "CAUGHT!", caughtStyle);
-
-        // Fish name
-        GUIStyle nameStyle = new GUIStyle();
-        nameStyle.fontSize = 14;
-        nameStyle.fontStyle = FontStyle.Bold;
-        nameStyle.normal.textColor = rarityCol;
-        nameStyle.wordWrap = true;
-        GUI.Label(new Rect(popupX + 68, popupY + 30, 120, 40), catchPopupFish.fishName, nameStyle);
-
-        // Value
-        GUIStyle valueStyle = new GUIStyle();
-        valueStyle.fontSize = 12;
-        valueStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-        GUI.Label(new Rect(popupX + 68, popupY + 70, 120, 20), $"Worth {catchPopupFish.coinValue}g", valueStyle);
+        caughtStyle.normal.textColor = new Color(0.6f, 0.8f, 0.6f);
+        caughtStyle.alignment = TextAnchor.MiddleCenter;
+        GUI.Label(new Rect(popupX, popupY + 100, popupWidth, 20), "~ CAUGHT! ~", caughtStyle);
 
         GUI.color = Color.white;
 
