@@ -13,7 +13,7 @@ public class DockRadio : MonoBehaviour
     private static DockRadio currentlyPlaying = null;
 
     [Header("Audio Settings")]
-    public float maxVolume = 0.175f;  // 50% reduced volume
+    public float maxVolume = 0.22f;  // 25% louder than before
 
     [Header("Visual Settings")]
     public Color radioColor = new Color(0.3f, 0.35f, 0.4f);  // Blueish gray

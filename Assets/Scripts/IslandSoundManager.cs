@@ -409,7 +409,7 @@ public class IslandSoundManager : MonoBehaviour
         if (birdTimer >= nextBirdTime)
         {
             birdTimer = 0f;
-            nextBirdTime = Random.Range(2f, 6f); // Frequent tropical birds
+            nextBirdTime = Random.Range(15f, 35f); // Less frequent bird sounds
 
             // Random bird sound
             AudioClip clip = Random.value > 0.5f ? birdChirpClip : birdCallClip;

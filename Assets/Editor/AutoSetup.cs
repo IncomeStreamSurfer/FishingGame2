@@ -2494,8 +2494,8 @@ public class AutoSetup
     {
         // Stats Board Sign on the beach - wooden sign showing player stats
         GameObject sign = new GameObject("StatsBoardSign");
-        sign.transform.position = new Vector3(22f, 1.5f, 10f);  // Right side beach, near beach towel
-        sign.transform.rotation = Quaternion.Euler(0, 270, 0);  // Face toward center of island
+        sign.transform.position = new Vector3(-18f, 1.5f, 15f);  // Far side of island, away from dock
+        sign.transform.rotation = Quaternion.Euler(0, 135, 0);  // Face toward center of island
 
         // Sign board (wooden plank)
         GameObject board = GameObject.CreatePrimitive(PrimitiveType.Cube);
