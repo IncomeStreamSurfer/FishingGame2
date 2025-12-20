@@ -28,11 +28,14 @@ public class DockRadio : MonoBehaviour
     private bool isOn = false;
     private bool playerNearby = false;
     private float interactionDistance = 3.5f;
+    private float autoPlayDistance = 12f;  // Auto-start when player approaches this distance
+    private bool hasAutoStarted = false;   // Track if we've auto-started this session
     private int guiFrameSkip = 0;
-    private float songEndCheckDelay = 0.5f;  // Delay before checking if song ended
 
     // Multiple songs - loaded based on current realm
     private List<AudioClip> songs = new List<AudioClip>();
+    private List<int> shuffledIndices = new List<int>();  // Shuffled song order
+    private int shufflePosition = 0;  // Current position in shuffle
     private List<string> loadedSongNames = new List<string>();
     private string[] songNames = { "EvilBobsIsland", "Venomous", "ScapeOriginal", "Baroque", "Melodrama" }; // Fallback only
     private int currentSongIndex = 0;
@@ -67,7 +70,7 @@ public class DockRadio : MonoBehaviour
         audioSource = gameObject.AddComponent<AudioSource>();
         if (songs.Count > 0)
             audioSource.clip = songs[0];
-        audioSource.loop = true;  // Loop single song
+        audioSource.loop = false;  // Don't loop - we'll shuffle to next song
         audioSource.volume = maxVolume;
         audioSource.spatialBlend = 1f;  // Full 3D sound
         audioSource.minDistance = 1.5f;  // Full volume within 1.5 units
@@ -77,12 +80,33 @@ public class DockRadio : MonoBehaviour
         audioSource.playOnAwake = false;
         audioSource.priority = 0;
 
-        initialized = true;
-        Debug.Log("DockRadio: Ready! Press R to toggle music.");
+        // Initialize shuffle
+        ShuffleSongs();
 
-        // Don't auto-start - let player choose when to turn on radio
-        // IslandSoundManager handles ambient sounds
-        // Invoke("AutoStartMusic", 0.5f);
+        initialized = true;
+        Debug.Log("DockRadio: Ready! Press R to toggle music. Will auto-play when you approach.");
+    }
+
+    void ShuffleSongs()
+    {
+        // Create a shuffled list of song indices
+        shuffledIndices.Clear();
+        for (int i = 0; i < songs.Count; i++)
+        {
+            shuffledIndices.Add(i);
+        }
+
+        // Fisher-Yates shuffle
+        for (int i = shuffledIndices.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            int temp = shuffledIndices[i];
+            shuffledIndices[i] = shuffledIndices[j];
+            shuffledIndices[j] = temp;
+        }
+
+        shufflePosition = 0;
+        Debug.Log("DockRadio: Shuffled " + songs.Count + " songs");
     }
 
     void AutoStartMusic()
@@ -273,15 +297,27 @@ public class DockRadio : MonoBehaviour
         {
             float distance = Vector3.Distance(transform.position, GameCache.Player.position);
             playerNearby = distance < interactionDistance;
+
+            // Auto-start when player approaches the dock area
+            if (!hasAutoStarted && !isOn && distance < autoPlayDistance)
+            {
+                hasAutoStarted = true;
+                StartPlaying();
+                Debug.Log("DockRadio: Auto-started as player approached the dock!");
+            }
         }
 
-        // Press F only when near radio to toggle
+        // Press R when near radio to toggle
         if (playerNearby && Input.GetKeyDown(KeyCode.R))
         {
             ToggleRadio();
         }
 
-        // Song loops automatically now (loop=true)
+        // Check if current song ended - play next shuffled song
+        if (isOn && !audioSource.isPlaying && songs.Count > 0)
+        {
+            PlayNextShuffledSong();
+        }
 
         UpdateLED();
     }
@@ -313,41 +349,74 @@ public class DockRadio : MonoBehaviour
 
     }
 
+    void StartPlaying()
+    {
+        if (isOn) return;  // Already playing
+
+        // Stop ALL other radios first
+        StopAllOtherRadios();
+
+        // Reload songs if realm changed
+        RealmType currentRealm = GameCache.GetCurrentRealm();
+        if (currentRealm != lastLoadedRealm)
+        {
+            LoadSongsForCurrentRealm();
+            ShuffleSongs();
+        }
+
+        if (songs.Count > 0)
+        {
+            isOn = true;
+
+            // Re-shuffle for fresh order
+            ShuffleSongs();
+
+            // Play first song in shuffle
+            currentSongIndex = shuffledIndices[shufflePosition];
+            audioSource.clip = songs[currentSongIndex];
+            audioSource.volume = maxVolume;
+            audioSource.Play();
+            currentlyPlaying = this;
+            Debug.Log("DockRadio: ON - Playing " + songs[currentSongIndex].name + " (shuffled)");
+        }
+    }
+
     void ToggleRadio()
     {
-        isOn = !isOn;
-
-        if (isOn)
+        if (!isOn)
         {
-            // Stop ALL other radios first
-            StopAllOtherRadios();
-
-            // Reload songs if realm changed
-            RealmType currentRealm = GameCache.GetCurrentRealm();
-            if (currentRealm != lastLoadedRealm)
-            {
-                LoadSongsForCurrentRealm();
-            }
-
-            if (songs.Count > 0)
-            {
-                // Start at random song for variety
-                currentSongIndex = Random.Range(0, songs.Count);
-                audioSource.clip = songs[currentSongIndex];
-                audioSource.volume = maxVolume;
-                audioSource.Play();
-                currentlyPlaying = this;
-                songEndCheckDelay = 0.5f;  // Reset delay
-                Debug.Log("DockRadio: ON - Playing " + songs[currentSongIndex].name + " (" + GetMusicFolderForRealm(currentRealm) + ")");
-            }
+            StartPlaying();
         }
         else
         {
             audioSource.Stop();
+            isOn = false;
             if (currentlyPlaying == this)
                 currentlyPlaying = null;
             Debug.Log("DockRadio: OFF");
         }
+    }
+
+    void PlayNextShuffledSong()
+    {
+        if (songs.Count == 0) return;
+
+        // Move to next position in shuffle
+        shufflePosition++;
+
+        // If we've played all songs, reshuffle
+        if (shufflePosition >= shuffledIndices.Count)
+        {
+            ShuffleSongs();
+            Debug.Log("DockRadio: Reshuffled playlist!");
+        }
+
+        // Play the next song
+        currentSongIndex = shuffledIndices[shufflePosition];
+        audioSource.clip = songs[currentSongIndex];
+        audioSource.volume = maxVolume;
+        audioSource.Play();
+        Debug.Log("DockRadio: Now playing " + songs[currentSongIndex].name + " (" + (shufflePosition + 1) + "/" + songs.Count + ")");
     }
 
     void StopAllOtherRadios()
@@ -360,16 +429,6 @@ public class DockRadio : MonoBehaviour
                 radio.isOn = false;
             }
         }
-    }
-
-    void PlayNextSong()
-    {
-        currentSongIndex = (currentSongIndex + 1) % songs.Count;
-        audioSource.clip = songs[currentSongIndex];
-        audioSource.volume = maxVolume;
-        audioSource.Play();
-        songEndCheckDelay = 0.5f;  // Reset delay after starting new song
-        Debug.Log("DockRadio: Now playing " + songs[currentSongIndex].name);
     }
 
     void UpdateLED()
