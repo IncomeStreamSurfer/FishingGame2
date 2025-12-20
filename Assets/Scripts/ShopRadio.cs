@@ -49,17 +49,12 @@ public class ShopRadio : MonoBehaviour
 
     void EnsureAudioListener()
     {
-        // Check if any AudioListener exists
+        // IslandSoundManager handles AudioListener management now
+        // Just verify one exists
         AudioListener listener = FindObjectOfType<AudioListener>();
         if (listener == null)
         {
-            // Add to main camera
-            Camera cam = Camera.main;
-            if (cam != null)
-            {
-                cam.gameObject.AddComponent<AudioListener>();
-                Debug.Log("ShopRadio: Added AudioListener to main camera");
-            }
+            Debug.LogWarning("ShopRadio: No AudioListener found! Waiting for IslandSoundManager...");
         }
     }
 

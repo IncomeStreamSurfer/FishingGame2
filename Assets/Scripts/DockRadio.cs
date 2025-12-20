@@ -80,8 +80,9 @@ public class DockRadio : MonoBehaviour
         initialized = true;
         Debug.Log("DockRadio: Ready! Press R to toggle music.");
 
-        // Auto-start music when game loads
-        Invoke("AutoStartMusic", 0.5f);
+        // Don't auto-start - let player choose when to turn on radio
+        // IslandSoundManager handles ambient sounds
+        // Invoke("AutoStartMusic", 0.5f);
     }
 
     void AutoStartMusic()

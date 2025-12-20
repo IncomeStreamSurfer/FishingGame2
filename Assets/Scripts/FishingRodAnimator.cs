@@ -139,25 +139,16 @@ public class FishingRodAnimator : MonoBehaviour
 
     void EnsureAudioListener()
     {
-        // Check if any AudioListener exists in the scene
+        // IslandSoundManager handles AudioListener management now
+        // Just verify one exists
         AudioListener listener = FindObjectOfType<AudioListener>();
         if (listener == null)
         {
-            // No listener found, add one to main camera
-            Camera mainCam = Camera.main;
-            if (mainCam != null)
-            {
-                mainCam.gameObject.AddComponent<AudioListener>();
-                Debug.Log("FishingRodAnimator: Added AudioListener to Main Camera");
-            }
-            else
-            {
-                Debug.LogWarning("FishingRodAnimator: No Main Camera found to add AudioListener!");
-            }
+            Debug.LogWarning("FishingRodAnimator: No AudioListener found! Waiting for IslandSoundManager...");
         }
         else
         {
-            Debug.Log("FishingRodAnimator: AudioListener already exists on " + listener.gameObject.name);
+            Debug.Log("FishingRodAnimator: AudioListener exists on " + listener.gameObject.name);
         }
     }
 

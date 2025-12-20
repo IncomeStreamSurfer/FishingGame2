@@ -115,11 +115,14 @@ public class IslandSoundManager : MonoBehaviour
         }
         else if (listeners.Length > 1)
         {
-            Debug.LogWarning("[IslandSoundManager] WARNING: Multiple AudioListeners detected! This can cause audio issues.");
-            foreach (var l in listeners)
+            Debug.LogWarning("[IslandSoundManager] WARNING: Multiple AudioListeners detected! Removing extras...");
+            // Keep only the first listener (usually on main camera)
+            for (int i = 1; i < listeners.Length; i++)
             {
-                Debug.LogWarning("  - AudioListener on: " + l.gameObject.name);
+                Debug.LogWarning("  - Removing AudioListener from: " + listeners[i].gameObject.name);
+                Destroy(listeners[i]);
             }
+            Debug.Log("[IslandSoundManager] Kept AudioListener on: " + listeners[0].gameObject.name);
         }
         else
         {
@@ -271,16 +274,52 @@ public class IslandSoundManager : MonoBehaviour
     }
 
     private bool gameStartedLogged = false;
+    private float audioCheckTimer = 0f;
+    private bool wasPlaying = false;
 
     void Update()
     {
-        // Keep waves playing
-        if (waveSource != null && waveClip != null && !waveSource.isPlaying)
+        // Safety check - make sure we still exist and have audio sources
+        if (this == null || gameObject == null)
         {
-            waveSource.clip = waveClip;
-            waveSource.loop = true;
-            waveSource.volume = 0.5f;
-            waveSource.Play();
+            Debug.LogError("[IslandSoundManager] Instance was destroyed!");
+            return;
+        }
+
+        // Periodic audio status check for debugging
+        audioCheckTimer += Time.deltaTime;
+        if (audioCheckTimer >= 5f)
+        {
+            audioCheckTimer = 0f;
+            bool isNowPlaying = waveSource != null && waveSource.isPlaying;
+            if (wasPlaying && !isNowPlaying)
+            {
+                Debug.LogWarning("[IslandSoundManager] AUDIO STOPPED! Wave source was playing but now isn't. Restarting...");
+            }
+            wasPlaying = isNowPlaying;
+
+            // Log full status
+            Debug.Log($"[IslandSoundManager] Status: waves={waveSource?.isPlaying}, enabled={waveSource?.enabled}, volume={waveSource?.volume}");
+        }
+
+        // Keep waves playing - more aggressive restart
+        if (waveSource != null && waveClip != null)
+        {
+            // Make sure audio source is enabled
+            if (!waveSource.enabled)
+            {
+                Debug.LogWarning("[IslandSoundManager] WaveSource was disabled! Re-enabling...");
+                waveSource.enabled = true;
+            }
+
+            if (!waveSource.isPlaying)
+            {
+                Debug.LogWarning("[IslandSoundManager] Waves stopped! Restarting...");
+                waveSource.clip = waveClip;
+                waveSource.loop = true;
+                waveSource.volume = 0.5f;
+                waveSource.Play();
+            }
         }
 
         if (!MainMenu.GameStarted) return;
@@ -290,10 +329,78 @@ public class IslandSoundManager : MonoBehaviour
         {
             gameStartedLogged = true;
             Debug.Log("[IslandSoundManager] Game started - tropical sounds active!");
+
+            // Verify audio is still playing after game start
+            Invoke("VerifyAudioAfterStart", 0.5f);
         }
 
         UpdateBirdSounds();
         UpdateRainState();
+    }
+
+    void VerifyAudioAfterStart()
+    {
+        Debug.Log("[IslandSoundManager] Verifying audio after game start...");
+        if (waveSource == null)
+        {
+            Debug.LogError("[IslandSoundManager] WaveSource is NULL after game start!");
+            CreateAudioSources();
+            GenerateAllAudioClips();
+            StartAmbientSounds();
+            return;
+        }
+
+        if (!waveSource.isPlaying)
+        {
+            Debug.LogWarning("[IslandSoundManager] Waves weren't playing after game start - restarting!");
+            waveSource.clip = waveClip;
+            waveSource.loop = true;
+            waveSource.volume = 0.5f;
+            waveSource.Play();
+        }
+        else
+        {
+            Debug.Log("[IslandSoundManager] Audio verified OK - waves playing at volume " + waveSource.volume);
+        }
+    }
+
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus)
+        {
+            Debug.Log("[IslandSoundManager] Application gained focus - checking audio...");
+            // Restart ambient sounds if they stopped due to focus loss
+            if (waveSource != null && !waveSource.isPlaying && waveClip != null)
+            {
+                Debug.Log("[IslandSoundManager] Restarting waves after focus regain");
+                waveSource.clip = waveClip;
+                waveSource.loop = true;
+                waveSource.volume = 0.5f;
+                waveSource.Play();
+            }
+        }
+    }
+
+    void OnApplicationPause(bool pauseStatus)
+    {
+        if (!pauseStatus)
+        {
+            Debug.Log("[IslandSoundManager] Application unpaused - checking audio...");
+            // Restart ambient sounds if they stopped due to pause
+            Invoke("RestartAmbientIfNeeded", 0.2f);
+        }
+    }
+
+    void RestartAmbientIfNeeded()
+    {
+        if (waveSource != null && !waveSource.isPlaying && waveClip != null)
+        {
+            Debug.Log("[IslandSoundManager] Restarting waves after unpause");
+            waveSource.clip = waveClip;
+            waveSource.loop = true;
+            waveSource.volume = 0.5f;
+            waveSource.Play();
+        }
     }
 
     void UpdateBirdSounds()
