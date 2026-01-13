@@ -1132,6 +1132,18 @@ public class FishingSystem : MonoBehaviour
         // Check if epic or legendary - show special glowing golden fish
         if (fish.rarity == Rarity.Epic || fish.rarity == Rarity.Legendary || fish.rarity == Rarity.Mythic)
         {
+            // Trigger gold particle burst for rare catches
+            if (GoldParticleSystem.Instance != null)
+            {
+                GoldParticleSystem.Instance.SpawnGoldBurst(spawnPos, fish.rarity);
+            }
+
+            // Play casino jackpot sounds for rare catches
+            if (CasinoAudioManager.Instance != null)
+            {
+                CasinoAudioManager.Instance.PlayJackpotSound(fish.rarity);
+                CasinoAudioManager.Instance.PlayCoinCascade();
+            }
 
             // Create glowing golden fish model
             GameObject fishObj = CreateGlowingRareFish(fish);

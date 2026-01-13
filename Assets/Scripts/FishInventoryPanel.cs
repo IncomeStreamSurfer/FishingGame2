@@ -950,7 +950,8 @@ public class FishInventoryPanel : MonoBehaviour
                     coinValue = fishData.coinValue,
                     color = fishData.fishColor,
                     count = count,
-                    isSpecialFish = false
+                    isSpecialFish = false,
+                    healthBuff = fishData.healthBuff
                 });
             }
         }
@@ -983,7 +984,8 @@ public class FishInventoryPanel : MonoBehaviour
                     count = count,
                     isSpecialFish = true,
                     glowColor = fishData.glowColor,
-                    glowIntensity = fishData.glowIntensity
+                    glowIntensity = fishData.glowIntensity,
+                    healthBuff = fishData.healthBuff
                 });
             }
         }
@@ -1123,4 +1125,5 @@ public class FishDisplayData
     public bool isSpecialFish;
     public Color glowColor;
     public float glowIntensity;
+    public HealthBuffType healthBuff;
 }

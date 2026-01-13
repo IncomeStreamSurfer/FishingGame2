@@ -1,24 +1,28 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// Player Health System
 /// - Starts at 100 HP
-/// - Loses 1 HP every 5 seconds (hunger is punishing!)
+/// - Loses 1 HP every 2 seconds (faster timer mode!)
 /// - Loses 1 HP per second when drowning (water below Y=0.85)
 /// - Displays HP bar and heartbeat sensor in top right
-/// - Death resets fish/quests/buffs but keeps gold, cosmetics, and XP
+/// - Death triggers GAME OVER: resets gold to 0 and returns to title screen
 /// - Custom death messages for different death causes (drowning shows special message)
 /// </summary>
 public class PlayerHealth : MonoBehaviour
 {
     public static PlayerHealth Instance { get; private set; }
 
+    // Game Over event for other systems to hook into
+    public static event Action OnGameOver;
+
     // Health
     private float maxHealth = 100f;
     private float currentHealth = 100f;
     private float healthDecayTimer = 0f;
-    private float healthDecayInterval = 5f; // 5 seconds - hunger is punishing!
+    private float healthDecayInterval = 2f; // 2 seconds - faster timer mode!
 
     // Death state
     private bool isDead = false;
@@ -130,7 +134,7 @@ public class PlayerHealth : MonoBehaviour
             return;
         }
 
-        // Health decay - 1 HP every 5 seconds (hunger is punishing!)
+        // Health decay - 1 HP every 2 seconds (faster timer mode!)
         healthDecayTimer += Time.deltaTime;
         if (healthDecayTimer >= healthDecayInterval)
         {
@@ -403,10 +407,72 @@ public class PlayerHealth : MonoBehaviour
 
         if (deathTimer >= respawnDelay)
         {
-            Respawn();
+            TriggerGameOver();
         }
     }
 
+    /// <summary>
+    /// Triggers the game over state - resets gold to 0 and returns to title screen
+    /// </summary>
+    void TriggerGameOver()
+    {
+        Debug.Log("GAME OVER! Player lost all gold and returning to title screen.");
+
+        // Invoke the game over event for other systems to hook into
+        OnGameOver?.Invoke();
+
+        // Reset ALL player resources - player loses everything on game over
+        if (GameManager.Instance != null)
+        {
+            // Reset gold to 0 - player loses all money on death
+            GameManager.Instance.coins = 0;
+            GameManager.Instance.ResetFishStats();
+            Debug.Log("Gold reset to 0!");
+        }
+
+        // Reset XP/Level on game over
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.ResetProgress();
+        }
+
+        // Reset quests
+        if (QuestSystem.Instance != null)
+        {
+            QuestSystem.Instance.ResetQuests();
+        }
+
+        // Clear food inventory
+        if (FoodInventory.Instance != null)
+        {
+            FoodInventory.Instance.ClearInventory();
+        }
+
+        // Clear all active buffs
+        if (FishBuffSystem.Instance != null)
+        {
+            FishBuffSystem.Instance.ClearAllActiveBuffs();
+        }
+
+        // Reset player health state for next game
+        currentHealth = maxHealth;
+        healthDecayTimer = 0f;
+        isDead = false;
+        customDeathMessage = "";
+
+        // Move player back to spawn position
+        if (GameCache.IsPlayerValid())
+        {
+            GameCache.Player.position = new Vector3(0, 2f, -5f);
+        }
+
+        // Return to title screen/main menu
+        MainMenu.GameStarted = false;
+
+        Debug.Log("Returned to title screen. Start a new game to continue.");
+    }
+
+    // Legacy Respawn method kept for backwards compatibility if needed
     void Respawn()
     {
         // Reset stats but keep gold, cosmetics, and XP
