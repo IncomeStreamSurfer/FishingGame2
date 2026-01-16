@@ -186,6 +186,10 @@ public class AutoSetup
         GameObject wetDebuffSystem = new GameObject("WetDebuffSystem");
         wetDebuffSystem.AddComponent<WetDebuffSystem>();
 
+        // Time Alive Tracker - tracks survival time with skull icon
+        GameObject timeAliveTracker = new GameObject("TimeAliveTracker");
+        timeAliveTracker.AddComponent<TimeAliveTracker>();
+
         // Fishing Pool System - spawns special fishing pools in water
         GameObject fishingPoolSystem = new GameObject("FishingPoolSystem");
         fishingPoolSystem.AddComponent<FishingPoolSystem>();

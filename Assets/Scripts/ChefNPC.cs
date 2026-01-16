@@ -168,9 +168,9 @@ public class ChefNPC : MonoBehaviour
 
         if (playerTransform == null) return;
 
-        // Distance check
-        float dist = Vector3.Distance(transform.position, playerTransform.position);
-        playerNearby = dist <= interactionRange;
+        // Distance check - use squared distance for performance
+        float distSq = (transform.position - playerTransform.position).sqrMagnitude;
+        playerNearby = distSq <= (interactionRange * interactionRange);
 
         // Input
         if (playerNearby && Input.GetKeyDown(KeyCode.E) && !showingDialogue)
@@ -179,21 +179,25 @@ public class ChefNPC : MonoBehaviour
         if (showingDialogue && Input.GetKeyDown(KeyCode.Escape))
             showingDialogue = false;
 
-        // Fire flicker (no allocation - reuse vector)
-        flickerTime += Time.deltaTime;
-        float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.1f;
-        fireScaleTemp.x = fireScaleBase.x * flicker;
-        fireScaleTemp.y = fireScaleBase.y * flicker;
-        fireScaleTemp.z = fireScaleBase.z * flicker;
-        cookingFire.transform.localScale = fireScaleTemp;
-
-        // Look at player
-        if (playerNearby)
+        // Only run visual effects when player is within 30 units (900 sqr)
+        if (distSq < 900f)
         {
-            Vector3 dir = playerTransform.position - transform.position;
-            dir.y = 0;
-            if (dir.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 3f);
+            // Fire flicker (no allocation - reuse vector)
+            flickerTime += Time.deltaTime;
+            float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.1f;
+            fireScaleTemp.x = fireScaleBase.x * flicker;
+            fireScaleTemp.y = fireScaleBase.y * flicker;
+            fireScaleTemp.z = fireScaleBase.z * flicker;
+            cookingFire.transform.localScale = fireScaleTemp;
+
+            // Look at player when nearby
+            if (playerNearby)
+            {
+                Vector3 dir = playerTransform.position - transform.position;
+                dir.y = 0;
+                if (dir.sqrMagnitude > 0.01f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 3f);
+            }
         }
     }
 

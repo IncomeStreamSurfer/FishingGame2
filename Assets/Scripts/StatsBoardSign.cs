@@ -350,6 +350,18 @@ public class StatsBoardSign : MonoBehaviour
         GUI.Label(new Rect(panelX + 220, contentY, 160, 20), currentXP.ToString(), cachedStatValueStyle);
         contentY += 25;
 
+        // Time Alive stats
+        float bestTimeAlive = PlayerPrefs.GetFloat("BestTimeAlive", 0f);
+        float lastTimeAlive = PlayerPrefs.GetFloat("LastTimeAlive", 0f);
+
+        GUI.Label(new Rect(panelX + 20, contentY, 200, 20), "Best Survival Time:", cachedStatLabelStyle);
+        GUI.Label(new Rect(panelX + 220, contentY, 160, 20), FormatTimeAlive(bestTimeAlive), cachedStatValueStyle);
+        contentY += 25;
+
+        GUI.Label(new Rect(panelX + 20, contentY, 200, 20), "Last Survival Time:", cachedStatLabelStyle);
+        GUI.Label(new Rect(panelX + 220, contentY, 160, 20), FormatTimeAlive(lastTimeAlive), cachedStatValueStyle);
+        contentY += 25;
+
         GUI.Label(new Rect(panelX + 20, contentY, 200, 20), "Biggest Fish:", cachedStatLabelStyle);
         GUI.Label(new Rect(panelX + 220, contentY, 160, 20), biggestFishWeight.ToString("F1") + " kg", cachedStatValueStyle);
         contentY += 25;
@@ -503,6 +515,20 @@ public class StatsBoardSign : MonoBehaviour
         tex.SetPixels(pixels);
         tex.Apply();
         return tex;
+    }
+
+    string FormatTimeAlive(float seconds)
+    {
+        if (seconds <= 0) return "N/A";
+        int mins = (int)(seconds / 60);
+        int secs = (int)(seconds % 60);
+        if (mins >= 60)
+        {
+            int hours = mins / 60;
+            mins = mins % 60;
+            return $"{hours}h {mins}m {secs}s";
+        }
+        return $"{mins}m {secs}s";
     }
 
     void OnDestroy()

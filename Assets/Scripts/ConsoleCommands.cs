@@ -32,6 +32,7 @@ public class ConsoleCommands : MonoBehaviour
     private Texture2D consoleBg;
     private Texture2D inputBg;
     private Texture2D outputBg;
+    private Texture2D borderTex;  // Cached border texture
     private bool initialized = false;
 
     // Available commands
@@ -109,13 +110,19 @@ public class ConsoleCommands : MonoBehaviour
         outputBg = new Texture2D(1, 1);
         outputBg.SetPixel(0, 0, new Color(0.05f, 0.05f, 0.05f, 0.9f));
         outputBg.Apply();
+
+        // Border texture (white, tinted with GUI.color)
+        borderTex = new Texture2D(1, 1);
+        borderTex.SetPixel(0, 0, Color.white);
+        borderTex.Apply();
     }
 
     void CalculateRects()
     {
-        float consoleWidth = Screen.width * 0.8f;
+        // Reduced width to 60% to make room for quick action buttons on the right
+        float consoleWidth = Screen.width * 0.6f;
         float consoleHeight = 400;
-        float consoleX = (Screen.width - consoleWidth) / 2;
+        float consoleX = (Screen.width - consoleWidth - 150) / 2; // Offset left to center with buttons
         float consoleY = 50;
 
         consoleRect = new Rect(consoleX, consoleY, consoleWidth, consoleHeight);
@@ -654,11 +661,8 @@ public class ConsoleCommands : MonoBehaviour
 
     void DrawBorder(Rect rect, Color color, int thickness)
     {
-        // Create a simple white texture if needed
-        Texture2D borderTex = new Texture2D(1, 1);
-        borderTex.SetPixel(0, 0, color);
-        borderTex.Apply();
-
+        // Use cached texture with color tinting (no allocation!)
+        GUI.color = color;
         // Top
         GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, thickness), borderTex);
         // Bottom
@@ -667,6 +671,7 @@ public class ConsoleCommands : MonoBehaviour
         GUI.DrawTexture(new Rect(rect.x, rect.y, thickness, rect.height), borderTex);
         // Right
         GUI.DrawTexture(new Rect(rect.x + rect.width - thickness, rect.y, thickness, rect.height), borderTex);
+        GUI.color = Color.white;
     }
 
     void DrawOutputLog()
@@ -751,5 +756,6 @@ public class ConsoleCommands : MonoBehaviour
         if (consoleBg != null) Destroy(consoleBg);
         if (inputBg != null) Destroy(inputBg);
         if (outputBg != null) Destroy(outputBg);
+        if (borderTex != null) Destroy(borderTex);
     }
 }
