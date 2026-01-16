@@ -450,11 +450,14 @@ public class FishBuffSystem : MonoBehaviour
         return false;
     }
 
-    // Complete a quest - give buff reward
+    // Complete a quest - give buff reward (XP only on first completion)
     public void CompleteQuest(string fishId)
     {
         FishBuff buff = GetBuffByFishId(fishId);
         if (buff == null) return;
+
+        // Check if this is the first time completing this quest
+        bool isFirstCompletion = !IsQuestCompleted(fishId);
 
         // Mark quest as completed
         completedQuests[fishId] = true;
@@ -462,15 +465,18 @@ public class FishBuffSystem : MonoBehaviour
         // Add buff to inventory
         AddBuffToInventory(buff.type, 1);
 
-        // Award XP
-        if (LevelingSystem.Instance != null)
+        // Award XP only on first completion
+        if (isFirstCompletion && LevelingSystem.Instance != null)
         {
             LevelingSystem.Instance.AddXP(2000);
+            Debug.Log($"Quest completed! Earned {buff.buffName} buff and 2000 XP!");
+        }
+        else
+        {
+            Debug.Log($"Fish handed in! Earned {buff.buffName} buff!");
         }
 
         SaveBuffData();
-
-        Debug.Log($"Quest completed! Earned {buff.buffName} buff and 2000 XP!");
     }
 
     // Check if quest is completed

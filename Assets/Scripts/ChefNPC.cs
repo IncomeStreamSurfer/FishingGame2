@@ -331,11 +331,16 @@ public class ChefNPC : MonoBehaviour
             $"\"Bring me a {currentQuestFishName}!\"", labelStyle);
 
         FishBuff buff = FishBuffSystem.Instance?.GetBuffByFishId(currentQuestFishId);
+        bool isFirstTime = FishBuffSystem.Instance != null && !FishBuffSystem.Instance.IsQuestCompleted(currentQuestFishId);
 
         labelStyle.normal.textColor = dimColor;
         labelStyle.fontSize = 13;
-        GUI.Label(new Rect(x + 30, y + 120, w - 60, 50),
-            $"Reward: {buff?.buffName ?? "Buff"}\n+2000 XP", labelStyle);
+
+        // Show different rewards for first completion vs repeat
+        string rewardText = isFirstTime
+            ? $"Reward: {buff?.buffName ?? "Buff"}\n+2000 XP (First Time Bonus!)"
+            : $"Reward: {buff?.buffName ?? "Buff"} (added to inventory)";
+        GUI.Label(new Rect(x + 30, y + 120, w - 60, 50), rewardText, labelStyle);
 
         bool hasFish = FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasRequiredFish(currentQuestFishId);
 
@@ -367,23 +372,40 @@ public class ChefNPC : MonoBehaviour
             $"\"Magnifique! This {currentQuestFishName} is perfect!\"", labelStyle);
 
         FishBuff buff = FishBuffSystem.Instance?.GetBuffByFishId(currentQuestFishId);
+        bool isFirstTime = FishBuffSystem.Instance != null && !FishBuffSystem.Instance.IsQuestCompleted(currentQuestFishId);
 
         labelStyle.normal.textColor = goldColor;
         labelStyle.fontSize = 18;
         labelStyle.alignment = TextAnchor.MiddleCenter;
         GUI.Label(new Rect(x, y + 140, w, 25), $"Earned: {buff?.buffName ?? "Buff"}!", labelStyle);
 
-        labelStyle.normal.textColor = greenColor;
-        labelStyle.fontSize = 14;
-        GUI.Label(new Rect(x, y + 165, w, 25), "+2000 XP", labelStyle);
+        // Show XP only for first time completion
+        if (isFirstTime)
+        {
+            labelStyle.normal.textColor = greenColor;
+            labelStyle.fontSize = 14;
+            GUI.Label(new Rect(x, y + 165, w, 25), "+2000 XP", labelStyle);
+        }
+        else
+        {
+            labelStyle.normal.textColor = dimColor;
+            labelStyle.fontSize = 12;
+            GUI.Label(new Rect(x, y + 165, w, 25), "(Added to inventory)", labelStyle);
+        }
 
         if (DrawBtn(new Rect(x + w / 2 - 70, y + h - 70, 140, 35), "Claim"))
         {
             FishBuffSystem.Instance?.ConsumeFish(currentQuestFishId);
             FishBuffSystem.Instance?.CompleteQuest(currentQuestFishId);
 
+            // Show different notification based on first time or repeat
             if (UIManager.Instance != null && buff != null)
-                UIManager.Instance.ShowLootNotification($"Earned: {buff.buffName}!", buff.bowlColor);
+            {
+                if (isFirstTime)
+                    UIManager.Instance.ShowLootNotification($"Earned: {buff.buffName} + 2000 XP!", buff.bowlColor);
+                else
+                    UIManager.Instance.ShowLootNotification($"+1 {buff.buffName}!", buff.bowlColor);
+            }
 
             currentQuestFishId = null;
             currentQuestFishName = null;

@@ -568,12 +568,88 @@ public class ConsoleCommands : MonoBehaviour
         GUI.DrawTexture(inputRect, inputBg);
         DrawInputField();
 
+        // Quick action buttons panel
+        DrawQuickButtons();
+
         // Help text
         GUIStyle helpStyle = new GUIStyle(GUI.skin.label);
         helpStyle.fontSize = 10;
         helpStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
         Rect helpRect = new Rect(consoleRect.x + 10, consoleRect.y + consoleRect.height - 15, consoleRect.width - 20, 12);
         GUI.Label(helpRect, "~ or F1 or F12 to close | Enter to execute | Up/Down for history | Type 'help' for commands", helpStyle);
+    }
+
+    void DrawQuickButtons()
+    {
+        // Button panel on right side of console
+        float buttonPanelX = consoleRect.x + consoleRect.width + 10;
+        float buttonPanelY = consoleRect.y;
+        float buttonWidth = 120;
+        float buttonHeight = 30;
+        float buttonSpacing = 5;
+
+        // Panel background
+        float panelWidth = buttonWidth + 20;
+        float panelHeight = 200;
+        GUI.DrawTexture(new Rect(buttonPanelX, buttonPanelY, panelWidth, panelHeight), consoleBg);
+        DrawBorder(new Rect(buttonPanelX, buttonPanelY, panelWidth, panelHeight), new Color(0.3f, 0.8f, 0.3f), 2);
+
+        // Panel title
+        GUIStyle titleStyle = new GUIStyle(GUI.skin.label);
+        titleStyle.fontSize = 12;
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+        titleStyle.normal.textColor = new Color(0.3f, 1f, 0.3f);
+        GUI.Label(new Rect(buttonPanelX, buttonPanelY + 5, panelWidth, 20), "QUICK ACTIONS", titleStyle);
+
+        // Button style
+        GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
+        buttonStyle.fontSize = 11;
+        buttonStyle.fontStyle = FontStyle.Bold;
+
+        float currentY = buttonPanelY + 30;
+
+        // Storm button (yellow/orange for weather)
+        GUI.backgroundColor = new Color(1f, 0.8f, 0.2f);
+        if (GUI.Button(new Rect(buttonPanelX + 10, currentY, buttonWidth, buttonHeight), "STORM", buttonStyle))
+        {
+            CmdStorm(new string[0]);
+        }
+        currentY += buttonHeight + buttonSpacing;
+
+        // End Storm button
+        GUI.backgroundColor = new Color(0.5f, 0.7f, 1f);
+        if (GUI.Button(new Rect(buttonPanelX + 10, currentY, buttonWidth, buttonHeight), "END STORM", buttonStyle))
+        {
+            CmdEndStorm(new string[0]);
+        }
+        currentY += buttonHeight + buttonSpacing;
+
+        // Heal button (green)
+        GUI.backgroundColor = new Color(0.3f, 1f, 0.3f);
+        if (GUI.Button(new Rect(buttonPanelX + 10, currentY, buttonWidth, buttonHeight), "HEAL", buttonStyle))
+        {
+            CmdHeal(new string[0]);
+        }
+        currentY += buttonHeight + buttonSpacing;
+
+        // Give coins button (gold)
+        GUI.backgroundColor = new Color(1f, 0.85f, 0.2f);
+        if (GUI.Button(new Rect(buttonPanelX + 10, currentY, buttonWidth, buttonHeight), "+1000 COINS", buttonStyle))
+        {
+            CmdCoins(new string[] { "1000" });
+        }
+        currentY += buttonHeight + buttonSpacing;
+
+        // Spawn (teleport home) button
+        GUI.backgroundColor = new Color(0.7f, 0.5f, 1f);
+        if (GUI.Button(new Rect(buttonPanelX + 10, currentY, buttonWidth, buttonHeight), "SPAWN", buttonStyle))
+        {
+            CmdSpawn(new string[0]);
+        }
+
+        // Reset background color
+        GUI.backgroundColor = Color.white;
     }
 
     void DrawBorder(Rect rect, Color color, int thickness)

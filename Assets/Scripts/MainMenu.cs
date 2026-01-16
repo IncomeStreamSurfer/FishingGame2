@@ -6,6 +6,7 @@ using System.IO;
 /// <summary>
 /// Main Menu - Landing page for the game
 /// Shows Start New Game, Load Game, Saved Games, Settings
+/// Updated to support SaveGameManager with thumbnails
 /// </summary>
 public class MainMenu : MonoBehaviour
 {
@@ -111,6 +112,7 @@ public class MainMenu : MonoBehaviour
         CacheTexture("darkRed", new Color(0.4f, 0.05f, 0.05f, 1f));
         CacheTexture("lightning", new Color(1f, 1f, 1f, 0.9f));
         CacheTexture("skull", new Color(0.9f, 0.85f, 0.75f, 1f));
+        CacheTexture("thumbnailBg", new Color(0.08f, 0.08f, 0.1f, 1f));
 
         // Initialize fish positions for swimming animation
         for (int i = 0; i < fishPositions.Length; i++)
@@ -504,12 +506,14 @@ public class MainMenu : MonoBehaviour
         }
         if (DrawMenuButton(new Rect(leftX, startY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight), "LOAD GAME"))
         {
+            RefreshSavedGames(); // Refresh before showing
             currentState = MenuState.LoadGame;
         }
 
         // Right column: SAVED GAMES, SETTINGS (symmetrical)
         if (DrawMenuButton(new Rect(rightX, startY, buttonWidth, buttonHeight), "SAVED GAMES"))
         {
+            RefreshSavedGames(); // Refresh before showing
             currentState = MenuState.SavedGames;
         }
         if (DrawMenuButton(new Rect(rightX, startY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight), "SETTINGS"))
@@ -596,8 +600,8 @@ public class MainMenu : MonoBehaviour
 
     void DrawSavedGamesMenu()
     {
-        float panelWidth = 550;
-        float panelHeight = 450;
+        float panelWidth = 600;
+        float panelHeight = 500;
         float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
         float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
 
@@ -617,6 +621,7 @@ public class MainMenu : MonoBehaviour
         }
 
         float contentY = panelY + 70;
+        float slotHeight = 110; // Taller for thumbnails
 
         if (savedGames.Count == 0)
         {
@@ -624,21 +629,21 @@ public class MainMenu : MonoBehaviour
             noSaveStyle.fontSize = 18;
             noSaveStyle.alignment = TextAnchor.MiddleCenter;
             noSaveStyle.normal.textColor = new Color(0.6f, 0.6f, 0.7f);
-            GUI.Label(new Rect(panelX, contentY + 100, panelWidth, 30), "No saved games found", noSaveStyle);
+            GUI.Label(new Rect(panelX, contentY + 150, panelWidth, 30), "No saved games found", noSaveStyle);
         }
         else
         {
-            for (int i = 0; i < Mathf.Min(savedGames.Count, 5); i++)
+            for (int i = 0; i < Mathf.Min(savedGames.Count, 3); i++)
             {
-                DrawSaveSlot(new Rect(panelX + 20, contentY + i * 70, panelWidth - 40, 60), savedGames[i], false);
+                DrawSaveSlotWithThumbnail(new Rect(panelX + 20, contentY + i * (slotHeight + 10), panelWidth - 40, slotHeight), savedGames[i], false);
             }
         }
     }
 
     void DrawLoadGameMenu()
     {
-        float panelWidth = 550;
-        float panelHeight = 450;
+        float panelWidth = 600;
+        float panelHeight = 500;
         float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
         float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
 
@@ -658,6 +663,7 @@ public class MainMenu : MonoBehaviour
         }
 
         float contentY = panelY + 70;
+        float slotHeight = 110; // Taller for thumbnails
 
         if (savedGames.Count == 0)
         {
@@ -665,36 +671,67 @@ public class MainMenu : MonoBehaviour
             noSaveStyle.fontSize = 18;
             noSaveStyle.alignment = TextAnchor.MiddleCenter;
             noSaveStyle.normal.textColor = new Color(0.6f, 0.6f, 0.7f);
-            GUI.Label(new Rect(panelX, contentY + 100, panelWidth, 30), "No saved games to load", noSaveStyle);
+            GUI.Label(new Rect(panelX, contentY + 150, panelWidth, 30), "No saved games to load", noSaveStyle);
         }
         else
         {
-            for (int i = 0; i < Mathf.Min(savedGames.Count, 5); i++)
+            for (int i = 0; i < Mathf.Min(savedGames.Count, 3); i++)
             {
-                DrawSaveSlot(new Rect(panelX + 20, contentY + i * 70, panelWidth - 40, 60), savedGames[i], true);
+                DrawSaveSlotWithThumbnail(new Rect(panelX + 20, contentY + i * (slotHeight + 10), panelWidth - 40, slotHeight), savedGames[i], true);
             }
         }
     }
 
-    void DrawSaveSlot(Rect rect, SavedGameInfo save, bool canLoad)
+    void DrawSaveSlotWithThumbnail(Rect rect, SavedGameInfo save, bool canLoad)
     {
         GUI.DrawTexture(rect, GetTexture("saveSlotBg"));
 
+        // Thumbnail area (left side)
+        float thumbWidth = 144;
+        float thumbHeight = 81;
+        float thumbX = rect.x + 10;
+        float thumbY = rect.y + (rect.height - thumbHeight) / 2;
+
+        // Thumbnail background/border
+        GUI.DrawTexture(new Rect(thumbX - 2, thumbY - 2, thumbWidth + 4, thumbHeight + 4), GetTexture("panelBorder"));
+        GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), GetTexture("thumbnailBg"));
+
+        // Draw thumbnail if available
+        if (save.thumbnail != null)
+        {
+            GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), save.thumbnail);
+        }
+        else
+        {
+            // No thumbnail - show placeholder text
+            GUIStyle placeholderStyle = new GUIStyle(GUI.skin.label);
+            placeholderStyle.fontSize = 11;
+            placeholderStyle.alignment = TextAnchor.MiddleCenter;
+            placeholderStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+            GUI.Label(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), "No Preview", placeholderStyle);
+        }
+
+        // Info area (right of thumbnail)
+        float infoX = thumbX + thumbWidth + 20;
+        float infoWidth = rect.width - thumbWidth - 50;
+
         GUIStyle nameStyle = new GUIStyle(GUI.skin.label);
-        nameStyle.fontSize = 16;
+        nameStyle.fontSize = 18;
         nameStyle.fontStyle = FontStyle.Bold;
         nameStyle.normal.textColor = Color.white;
 
         GUIStyle infoStyle = new GUIStyle(GUI.skin.label);
-        infoStyle.fontSize = 12;
+        infoStyle.fontSize = 13;
         infoStyle.normal.textColor = new Color(0.7f, 0.7f, 0.8f);
 
-        GUI.Label(new Rect(rect.x + 15, rect.y + 8, 300, 22), save.name, nameStyle);
-        GUI.Label(new Rect(rect.x + 15, rect.y + 32, 300, 18), $"Level {save.level} | {save.gold} Gold | {save.playTime}", infoStyle);
+        GUI.Label(new Rect(infoX, rect.y + 15, infoWidth, 24), save.name, nameStyle);
+        GUI.Label(new Rect(infoX, rect.y + 42, infoWidth, 18), $"Level {save.level}", infoStyle);
+        GUI.Label(new Rect(infoX, rect.y + 60, infoWidth, 18), $"{save.gold:N0} Gold | {save.fishCaught} Fish", infoStyle);
+        GUI.Label(new Rect(infoX, rect.y + 78, infoWidth, 18), $"Play Time: {save.playTime}", infoStyle);
 
         if (canLoad)
         {
-            if (GUI.Button(new Rect(rect.x + rect.width - 80, rect.y + 15, 65, 30), "LOAD"))
+            if (GUI.Button(new Rect(rect.x + rect.width - 90, rect.y + rect.height / 2 - 18, 75, 36), "LOAD"))
             {
                 LoadGame(save);
             }
@@ -792,14 +829,20 @@ public class MainMenu : MonoBehaviour
         GameStarted = true;
         EnableGameSystems();
 
-        // Load saved data
-        if (GameManager.Instance != null)
+        // Use SaveGameManager if available
+        if (SaveGameManager.Instance != null && save.slotIndex >= 0)
         {
-            GameManager.Instance.coins = save.gold;
-            GameManager.Instance.totalFishCaught = save.fishCaught;
+            SaveGameManager.Instance.LoadGame(save.slotIndex);
         }
-
-        // TODO: Load XP, level, equipment, etc.
+        else
+        {
+            // Fallback: Load basic data from info
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.coins = save.gold;
+                GameManager.Instance.totalFishCaught = save.fishCaught;
+            }
+        }
 
         Debug.Log($"Loaded game: {save.name}");
     }
@@ -834,36 +877,50 @@ public class MainMenu : MonoBehaviour
     {
         savedGames.Clear();
 
-        // Check for save files
-        string savePath = Application.persistentDataPath;
-        if (Directory.Exists(savePath))
+        // Check SaveGameManager for saves with thumbnails
+        if (SaveGameManager.Instance != null)
         {
-            string[] files = Directory.GetFiles(savePath, "*.sav");
-            foreach (string file in files)
+            for (int i = 0; i < 3; i++)
             {
-                // For now, create placeholder saves
-                savedGames.Add(new SavedGameInfo
+                if (SaveGameManager.Instance.HasSaveData(i))
                 {
-                    name = Path.GetFileNameWithoutExtension(file),
-                    level = 1,
-                    gold = 0,
-                    fishCaught = 0,
-                    playTime = "0:00"
-                });
+                    SaveData data = SaveGameManager.Instance.GetSaveInfo(i);
+                    if (data != null)
+                    {
+                        savedGames.Add(new SavedGameInfo
+                        {
+                            name = data.saveName ?? $"Save {i + 1}",
+                            level = data.level,
+                            gold = data.gold,
+                            fishCaught = data.totalFishCaught,
+                            playTime = data.playTime ?? "0:00",
+                            slotIndex = i,
+                            thumbnail = SaveGameManager.Instance.GetThumbnail(i)
+                        });
+                    }
+                }
             }
         }
 
-        // Add a demo save for testing
+        // Fallback: Check PlayerPrefs for legacy saves
         if (savedGames.Count == 0)
         {
-            savedGames.Add(new SavedGameInfo
+            for (int i = 0; i < 3; i++)
             {
-                name = "Demo Save",
-                level = 15,
-                gold = 2500,
-                fishCaught = 47,
-                playTime = "2:34:12"
-            });
+                if (PlayerPrefs.HasKey($"Save{i}_Gold"))
+                {
+                    savedGames.Add(new SavedGameInfo
+                    {
+                        name = $"Save {i + 1}",
+                        level = PlayerPrefs.GetInt($"Save{i}_Level", 1),
+                        gold = PlayerPrefs.GetInt($"Save{i}_Gold", 0),
+                        fishCaught = PlayerPrefs.GetInt($"Save{i}_FishCaught", 0),
+                        playTime = PlayerPrefs.GetString($"Save{i}_Time", "0:00"),
+                        slotIndex = i,
+                        thumbnail = null
+                    });
+                }
+            }
         }
     }
 
@@ -885,4 +942,6 @@ public class SavedGameInfo
     public int gold;
     public int fishCaught;
     public string playTime;
+    public int slotIndex;
+    public Texture2D thumbnail;
 }

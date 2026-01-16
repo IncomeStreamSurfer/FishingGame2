@@ -235,4 +235,23 @@ public class LevelingSystem : MonoBehaviour
         currentLevel = 1;
         bonusLevels = 0;
     }
+
+    /// <summary>
+    /// Set XP and level directly (used by save/load system)
+    /// </summary>
+    public void SetXPAndLevel(long xp, int level)
+    {
+        currentXP = Math.Min(xp, MAX_XP);
+        currentLevel = Math.Clamp(level, 1, MAX_LEVEL);
+        Debug.Log($"Loaded XP: {currentXP:N0}, Level: {currentLevel}");
+    }
+
+    /// <summary>
+    /// Calculate bonus max health based on level
+    /// +1 HP every 5 levels (Level 5 = +1, Level 10 = +2, etc.)
+    /// </summary>
+    public int GetHealthBonusFromLevel()
+    {
+        return currentLevel / 5;
+    }
 }

@@ -29,7 +29,7 @@ public class ThunderstormSystem : MonoBehaviour
     [Header("Lightning Strike")]
     private float lightningCheckTimer = 0f;
     private float lightningCheckInterval = 1f;  // Check every second
-    private float lightningChancePerSecond = 0.01f; // 1 in 100 chance
+    private float lightningChancePerStorm = 0.25f; // 25% chance per storm // 1 in 100 chance
     private bool lightningWarningShown = false;
     private float warningTime = 2f;             // Show warning 2 seconds before strike
     private bool lightningStrikeQueued = false;
@@ -207,73 +207,43 @@ public class ThunderstormSystem : MonoBehaviour
         {
             rainAudioSource.Play();
         }
+
+        // 25% chance to strike player anywhere during storm
+        if (Random.value <= 0.25f)
+        {
+            lightningStrikeQueued = true;
+            lightningStrikeTimer = Random.Range(stormDuration * 0.3f, stormDuration * 0.7f);
+            Debug.Log("LIGHTNING STRIKE SCHEDULED!");
+        }
     }
 
     void UpdateStorm()
     {
         stormElapsedTime += Time.deltaTime;
 
-        // Check if storm should end
-        if (stormElapsedTime >= stormDuration)
-        {
-            EndStorm();
-            return;
-        }
+        if (stormElapsedTime >= stormDuration) { EndStorm(); return; }
 
-        // Lightning strike logic - only if player is on dock
-        if (IsPlayerOnDock())
+        // Handle scheduled lightning strike (can happen anywhere)
+        if (lightningStrikeQueued)
         {
-            lightningCheckTimer += Time.deltaTime;
+            lightningStrikeTimer -= Time.deltaTime;
 
-            if (lightningCheckTimer >= lightningCheckInterval)
+            // Show warning 2.5s before strike
+            if (lightningStrikeTimer <= 2.5f && !lightningWarningShown)
             {
-                lightningCheckTimer = 0f;
-
-                // Roll for lightning strike
-                if (!lightningStrikeQueued && Random.value <= lightningChancePerSecond)
-                {
-                    // Queue lightning strike with warning
-                    lightningStrikeQueued = true;
-                    lightningStrikeTimer = warningTime;
-                    lightningWarningShown = false;
-                    Debug.Log("LIGHTNING STRIKE QUEUED!");
-                }
+                lightningWarningShown = true;
+                Debug.Log("Thunder rumbles nearby...");
             }
 
-            // Handle queued lightning strike
-            if (lightningStrikeQueued)
+            if (lightningStrikeTimer <= 0f)
             {
-                lightningStrikeTimer -= Time.deltaTime;
-
-                if (lightningStrikeTimer <= 0f)
-                {
-                    // STRIKE!
-                    ExecuteLightningStrike();
-                    lightningStrikeQueued = false;
-                }
-            }
-        }
-        else
-        {
-            // Cancel queued strike if player gets to safety
-            if (lightningStrikeQueued)
-            {
+                ExecuteLightningStrike();
                 lightningStrikeQueued = false;
-                lightningWarningShown = false;
-                Debug.Log("Lightning strike cancelled - player reached safety!");
-
-                if (UIManager.Instance != null)
-                {
-                    UIManager.Instance.ShowLootNotification("Safe on land!", new Color(0.3f, 1f, 0.4f));
-                }
             }
         }
 
-        // Random lightning flashes in the sky (visual only, not dangerous)
-        if (Random.value < 0.005f) // 0.5% chance per frame
-        {
-            StartCoroutine(FlashLightningVisual());
-        }
+        // Random lightning flashes
+        if (Random.value < 0.005f) { StartCoroutine(FlashLightningVisual()); }
     }
 
     void EndStorm()
@@ -297,7 +267,7 @@ public class ThunderstormSystem : MonoBehaviour
 
     void ExecuteLightningStrike()
     {
-        Debug.Log("ZAP! Player struck by lightning!");
+        Debug.Log("ZAP! Player struck by LIGHTNING!");
 
         // Play loud crack sound
         if (lightningCrackSource != null)
@@ -312,12 +282,12 @@ public class ThunderstormSystem : MonoBehaviour
         // Kill player with custom death message
         if (PlayerHealth.Instance != null)
         {
-            PlayerHealth.Instance.TakeDamage(999f); // Instant death
+            float currentHP = PlayerHealth.Instance.GetCurrentHealth(); float damage = currentHP * 0.5f; PlayerHealth.Instance.TakeDamage(damage); Debug.Log("Lightning dealt " + damage + " damage");
         }
 
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowLootNotification("ZAP! You're fried. Killed by lightning.", new Color(1f, 1f, 0.3f));
+            UIManager.Instance.ShowLootNotification("STRUCK BY LIGHTNING!", new Color(1f, 1f, 0.3f));
         }
     }
 
@@ -658,3 +628,4 @@ public class ThunderstormSystem : MonoBehaviour
     public bool IsStormActive() => isStormActive;
     public float GetStormIntensity() => stormIntensity;
 }
+

@@ -360,14 +360,11 @@ public class UIManager : MonoBehaviour
             CheckNearbyNPCs();
         }
 
-        // Handle F key press when near NPC to open fish inventory in sell mode
-        if (isNearNPC && Input.GetKeyDown(KeyCode.F))
+        // NOTE: F key is handled by FishInventoryPanel directly - do NOT duplicate handling here
+        // Enable sell mode automatically when fish inventory is open near an NPC
+        if (isNearNPC && FishInventoryPanel.Instance != null && FishInventoryPanel.Instance.IsOpen() && !FishInventoryPanel.Instance.sellModeEnabled)
         {
-            if (FishInventoryPanel.Instance != null)
-            {
-                FishInventoryPanel.Instance.EnableSellMode(nearbyNPCName);
-                FishInventoryPanel.Instance.OpenPanel(); // Also open the panel!
-            }
+            FishInventoryPanel.Instance.EnableSellMode(nearbyNPCName);
         }
 
         // Disable sell mode when player moves away from NPCs

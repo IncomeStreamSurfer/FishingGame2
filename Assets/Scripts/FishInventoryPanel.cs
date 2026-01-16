@@ -235,8 +235,8 @@ public class FishInventoryPanel : MonoBehaviour
     {
         if (!MainMenu.GameStarted || !initialized) return;
 
-        // Toggle with F key - but NOT when near interactable objects
-        if (Input.GetKeyDown(KeyCode.F) && !IsNearInteractable())
+        // Toggle with F key - ALWAYS available, even near BBQ or other interactables
+        if (Input.GetKeyDown(KeyCode.F))
         {
             isOpen = !isOpen;
             scrollPos = 0f;

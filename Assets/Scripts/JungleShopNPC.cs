@@ -223,6 +223,14 @@ public class JungleShopNPC : MonoBehaviour
         GUI.DrawTexture(new Rect(x, y, windowWidth, windowHeight), bgTex);
         Object.Destroy(bgTex);
 
+        // Gold border - consistent with CharacterPanel style
+        GUI.color = new Color(1f, 0.85f, 0.4f);
+        GUI.DrawTexture(new Rect(x - 2, y - 2, windowWidth + 4, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x - 2, y + windowHeight, windowWidth + 4, 2), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x - 2, y, 2, windowHeight), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(x + windowWidth, y, 2, windowHeight), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
         // Header - smaller
         GUI.Label(new Rect(x, y + 6, windowWidth, 26), "Tribal Trader", headerStyle);
 

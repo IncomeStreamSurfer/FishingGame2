@@ -19,6 +19,7 @@ public class PlayerHealth : MonoBehaviour
     public static event Action OnGameOver;
 
     // Health
+    private const float BASE_MAX_HEALTH = 100f;
     private float maxHealth = 100f;
     private float currentHealth = 100f;
     private float healthDecayTimer = 0f;
@@ -73,9 +74,16 @@ public class PlayerHealth : MonoBehaviour
 
     void Start()
     {
+        RecalculateMaxHealth();
         currentHealth = maxHealth;
         InitializeECG();
         Invoke("Initialize", 0.5f);
+
+        // Subscribe to level up event to recalculate max health
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.OnLevelUp += OnPlayerLevelUp;
+        }
     }
 
     void Initialize()
@@ -395,9 +403,68 @@ public class PlayerHealth : MonoBehaviour
         deathTimer = 0f;
         Debug.Log("PLAYER DIED! Stats will be reset...");
 
+        // Save cosmetics before death - these will be restored after respawn
+        SaveCosmeticsBeforeDeath();
+
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowLootNotification("YOU DIED!", Color.red);
+        }
+    }
+
+    /// <summary>
+    /// Saves current cosmetics to PlayerPrefs so they persist through death
+    /// </summary>
+    void SaveCosmeticsBeforeDeath()
+    {
+        // Save currently equipped clothing items
+        if (PlayerClothingVisuals.Instance != null)
+        {
+            PlayerPrefs.SetString("DeathSave_HeadItem", PlayerClothingVisuals.Instance.GetCurrentHeadItem());
+            PlayerPrefs.SetString("DeathSave_TopItem", PlayerClothingVisuals.Instance.GetCurrentTopItem());
+            PlayerPrefs.SetString("DeathSave_LegsItem", PlayerClothingVisuals.Instance.GetCurrentLegsItem());
+            PlayerPrefs.SetString("DeathSave_Accessory", PlayerClothingVisuals.Instance.GetCurrentAccessory());
+            PlayerPrefs.Save();
+            Debug.Log("Saved equipped cosmetics before death");
+        }
+
+        // Save owned items list
+        if (ClothingShopNPC.Instance != null)
+        {
+            ClothingShopNPC.Instance.SaveOwnedItems();
+        }
+    }
+
+    /// <summary>
+    /// Restores cosmetics from PlayerPrefs after respawn
+    /// </summary>
+    void RestoreCosmeticsAfterRespawn()
+    {
+        // Load owned items first
+        if (ClothingShopNPC.Instance != null)
+        {
+            ClothingShopNPC.Instance.LoadOwnedItems();
+        }
+
+        // Restore equipped clothing items
+        if (PlayerClothingVisuals.Instance != null)
+        {
+            string headItem = PlayerPrefs.GetString("DeathSave_HeadItem", "None");
+            string topItem = PlayerPrefs.GetString("DeathSave_TopItem", "None");
+            string legsItem = PlayerPrefs.GetString("DeathSave_LegsItem", "None");
+            string accessory = PlayerPrefs.GetString("DeathSave_Accessory", "None");
+
+            // Re-equip saved items
+            if (headItem != "None")
+                PlayerClothingVisuals.Instance.EquipClothing("Head", headItem, Color.white);
+            if (topItem != "None")
+                PlayerClothingVisuals.Instance.EquipClothing("Top", topItem, Color.white);
+            if (legsItem != "None")
+                PlayerClothingVisuals.Instance.EquipClothing("Legs", legsItem, Color.white);
+            if (accessory != "None")
+                PlayerClothingVisuals.Instance.EquipClothing("Accessory", accessory, Color.white);
+
+            Debug.Log("Restored equipped cosmetics after respawn");
         }
     }
 
@@ -407,33 +474,33 @@ public class PlayerHealth : MonoBehaviour
 
         if (deathTimer >= respawnDelay)
         {
-            TriggerGameOver();
+            RespawnPlayer();
         }
     }
 
     /// <summary>
-    /// Triggers the game over state - resets gold to 0 and returns to title screen
+    /// Respawns the player in-game - loses gold, fish, XP but KEEPS cosmetics
     /// </summary>
-    void TriggerGameOver()
+    void RespawnPlayer()
     {
-        Debug.Log("GAME OVER! Player lost all gold and returning to title screen.");
+        Debug.Log("Respawning player - losing gold, fish, XP but keeping cosmetics!");
 
         // Invoke the game over event for other systems to hook into
         OnGameOver?.Invoke();
 
-        // Reset ALL player resources - player loses everything on game over
+        // Reset gold to 0 - player loses all money on death
         if (GameManager.Instance != null)
         {
-            // Reset gold to 0 - player loses all money on death
             GameManager.Instance.coins = 0;
             GameManager.Instance.ResetFishStats();
-            Debug.Log("Gold reset to 0!");
+            Debug.Log("Gold and fish reset to 0!");
         }
 
-        // Reset XP/Level on game over
+        // Reset XP/Level on death
         if (LevelingSystem.Instance != null)
         {
             LevelingSystem.Instance.ResetProgress();
+            Debug.Log("XP and level reset!");
         }
 
         // Reset quests
@@ -454,7 +521,7 @@ public class PlayerHealth : MonoBehaviour
             FishBuffSystem.Instance.ClearAllActiveBuffs();
         }
 
-        // Reset player health state for next game
+        // Reset player health state
         currentHealth = maxHealth;
         healthDecayTimer = 0f;
         isDead = false;
@@ -466,10 +533,22 @@ public class PlayerHealth : MonoBehaviour
             GameCache.Player.position = new Vector3(0, 2f, -5f);
         }
 
-        // Return to title screen/main menu
-        MainMenu.GameStarted = false;
+        // RESTORE COSMETICS after resetting everything else
+        RestoreCosmeticsAfterRespawn();
 
-        Debug.Log("Returned to title screen. Start a new game to continue.");
+        // Show respawn notification - STAY IN GAME (don't return to main menu)
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("Respawned! Cosmetics preserved, resources lost.", new Color(0.3f, 0.8f, 1f));
+        }
+
+        Debug.Log("Player respawned in-game with cosmetics preserved!");
+    }
+
+    // Legacy TriggerGameOver - now redirects to RespawnPlayer
+    void TriggerGameOver()
+    {
+        RespawnPlayer();
     }
 
     // Legacy Respawn method kept for backwards compatibility if needed
@@ -881,10 +960,43 @@ public class PlayerHealth : MonoBehaviour
 
     void OnDestroy()
     {
+        // Unsubscribe from level up event
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.OnLevelUp -= OnPlayerLevelUp;
+        }
+
         foreach (var tex in textureCache.Values)
         {
             if (tex != null) Destroy(tex);
         }
         textureCache.Clear();
     }
+
+    /// <summary>
+    /// Called when player levels up - recalculate max health
+    /// </summary>
+    private void OnPlayerLevelUp(int oldLevel, int newLevel)
+    {
+        RecalculateMaxHealth();
+        Debug.Log($"Level up! Max health is now {maxHealth}");
+    }
+
+    /// <summary>
+    /// Recalculate max health based on current level
+    /// Base: 100 HP, +1 HP every 5 levels
+    /// </summary>
+    public void RecalculateMaxHealth()
+    {
+        int healthBonus = 0;
+        if (LevelingSystem.Instance != null)
+        {
+            healthBonus = LevelingSystem.Instance.GetHealthBonusFromLevel();
+        }
+        maxHealth = BASE_MAX_HEALTH + healthBonus;
+    }
 }
+
+
+
+

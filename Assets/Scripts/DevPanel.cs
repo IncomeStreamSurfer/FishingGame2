@@ -57,14 +57,15 @@ public class DevPanel : MonoBehaviour
 
     void CreateCachedTextures()
     {
-        CacheTexture("panelBg", new Color(0.08f, 0.08f, 0.12f, 0.98f));
+        // Consistent UI style matching CharacterPanel
+        CacheTexture("panelBg", new Color(0.1f, 0.1f, 0.12f, 0.95f));
         CacheTexture("headerBg", new Color(0.6f, 0.2f, 0.2f, 1f));
-        CacheTexture("sectionBg", new Color(0.12f, 0.12f, 0.18f, 0.95f));
+        CacheTexture("sectionBg", new Color(0.15f, 0.15f, 0.17f, 0.95f));
         CacheTexture("buttonNormal", new Color(0.2f, 0.4f, 0.6f, 1f));
         CacheTexture("buttonHover", new Color(0.3f, 0.5f, 0.7f, 1f));
         CacheTexture("buttonDanger", new Color(0.6f, 0.2f, 0.2f, 1f));
         CacheTexture("inputBg", new Color(0.05f, 0.05f, 0.08f, 1f));
-        CacheTexture("divider", new Color(0.4f, 0.4f, 0.5f, 0.5f));
+        CacheTexture("divider", new Color(1f, 0.85f, 0.4f, 0.8f)); // Gold divider
         CacheTexture("sliderTrack", new Color(0.15f, 0.15f, 0.2f, 1f));
         CacheTexture("sliderFill", new Color(1f, 0.7f, 0.2f, 1f));
     }

@@ -203,16 +203,17 @@ public class ClothingShopNPC : MonoBehaviour
 
     void CreateCachedTextures()
     {
-        CacheTexture("panelBg", new Color(0.15f, 0.1f, 0.08f, 0.98f));
-        CacheTexture("panelBorder", new Color(0.6f, 0.4f, 0.2f, 1f));
-        CacheTexture("slotBg", new Color(0.1f, 0.08f, 0.06f, 0.95f));
-        CacheTexture("slotSelected", new Color(0.3f, 0.2f, 0.1f, 0.95f));
-        CacheTexture("itemBg", new Color(0.12f, 0.1f, 0.08f, 0.9f));
-        CacheTexture("itemHover", new Color(0.2f, 0.15f, 0.1f, 0.95f));
+        // Consistent UI style matching CharacterPanel
+        CacheTexture("panelBg", new Color(0.1f, 0.1f, 0.12f, 0.95f));
+        CacheTexture("panelBorder", new Color(1f, 0.85f, 0.4f, 1f)); // Gold border
+        CacheTexture("slotBg", new Color(0.15f, 0.15f, 0.17f, 0.9f));
+        CacheTexture("slotSelected", new Color(0.2f, 0.2f, 0.22f, 0.95f));
+        CacheTexture("itemBg", new Color(0.15f, 0.15f, 0.17f, 0.9f));
+        CacheTexture("itemHover", new Color(0.2f, 0.2f, 0.22f, 0.95f));
         CacheTexture("buttonBuy", new Color(0.2f, 0.5f, 0.3f, 1f));
         CacheTexture("buttonEquip", new Color(0.3f, 0.4f, 0.6f, 1f));
         CacheTexture("equipped", new Color(0.4f, 0.6f, 0.3f, 1f));
-        CacheTexture("divider", new Color(0.5f, 0.4f, 0.3f, 0.6f));
+        CacheTexture("divider", new Color(1f, 0.85f, 0.4f, 0.8f)); // Gold divider
         CacheTexture("white", Color.white);
     }
 
@@ -1089,6 +1090,30 @@ public class ClothingShopNPC : MonoBehaviour
     bool IsItemOwned(string itemName)
     {
         return ownedItems.Contains(itemName);
+    }
+
+    /// <summary>
+    /// Saves all owned clothing items to PlayerPrefs for persistence through death
+    /// </summary>
+    public void SaveOwnedItems()
+    {
+        string owned = string.Join(",", ownedItems);
+        PlayerPrefs.SetString("OwnedClothingItems", owned);
+        PlayerPrefs.Save();
+        Debug.Log($"Saved {ownedItems.Count} owned clothing items");
+    }
+
+    /// <summary>
+    /// Loads owned clothing items from PlayerPrefs after respawn
+    /// </summary>
+    public void LoadOwnedItems()
+    {
+        string owned = PlayerPrefs.GetString("OwnedClothingItems", "");
+        if (!string.IsNullOrEmpty(owned))
+        {
+            ownedItems = new List<string>(owned.Split(','));
+            Debug.Log($"Loaded {ownedItems.Count} owned clothing items");
+        }
     }
 
     void BuyItem(ClothingItem item)
