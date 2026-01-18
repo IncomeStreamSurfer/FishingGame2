@@ -517,6 +517,36 @@ public class AchievementSystem : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    // Reset all achievements for new game
+    public void ResetAllAchievements()
+    {
+        // Reset all achievement unlock status
+        foreach (var achievement in achievements)
+        {
+            achievement.isUnlocked = false;
+            achievement.unlockDate = "";
+            PlayerPrefs.DeleteKey($"Achievement_{achievement.id}");
+            PlayerPrefs.DeleteKey($"Achievement_{achievement.id}_Date");
+        }
+
+        // Reset tracking variables
+        totalFishCooked = 0;
+        rastaQuestsCompleted = 0;
+        uniqueBuffsUsed = 0;
+        usedBuffTypes.Clear();
+
+        // Reset PlayerPrefs tracking data
+        PlayerPrefs.DeleteKey("Achievement_TotalFishCooked");
+        PlayerPrefs.DeleteKey("Achievement_RastaQuests");
+        PlayerPrefs.DeleteKey("Achievement_UsedBuffs");
+        PlayerPrefs.DeleteKey("Achievement_CaughtGoldenStarfish");
+        PlayerPrefs.DeleteKey("Achievement_DiedByLightning");
+        PlayerPrefs.DeleteKey("Achievement_DiedByDrowning");
+
+        PlayerPrefs.Save();
+        Debug.Log("[AchievementSystem] All achievements reset for new game");
+    }
+
     // Public methods for UI
     public void OpenPanel()
     {

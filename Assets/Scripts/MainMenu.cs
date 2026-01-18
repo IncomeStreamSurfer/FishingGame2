@@ -869,6 +869,12 @@ public class MainMenu : MonoBehaviour
             TimeAliveTracker.Instance.ResetTimer();
         }
 
+        // Reset all achievements for new game
+        if (AchievementSystem.Instance != null)
+        {
+            AchievementSystem.Instance.ResetAllAchievements();
+        }
+
         PlayerPrefs.Save();
 
         Debug.Log("Starting new game!");
