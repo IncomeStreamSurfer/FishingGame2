@@ -413,7 +413,7 @@ public class ChefNPC : MonoBehaviour
         // Play cooking sound
         if (IslandSoundManager.Instance != null)
         {
-            IslandSoundManager.Instance.PlayUIClick();
+            IslandSoundManager.Instance.PlayChime();
         }
 
         // Show notification
@@ -456,11 +456,23 @@ public class ChefNPC : MonoBehaviour
         showingCookingMenu = true;
         scrollPosition = Vector2.zero;
 
-        // Play fire crackle or UI sound
+        // Play sound when opening menu
         if (IslandSoundManager.Instance != null)
         {
-            IslandSoundManager.Instance.PlayUIClick();
+            IslandSoundManager.Instance.PlayChime();
         }
+    }
+
+    // Legacy compatibility methods
+    public static bool IsPlayerNearChef()
+    {
+        return IsPlayerNearFire();
+    }
+
+    public static bool HasCompletedFirstQuest()
+    {
+        // Cooking is always available now (no quest required)
+        return true;
     }
 
     public static bool IsPlayerNearFire()
