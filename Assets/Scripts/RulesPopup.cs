@@ -257,7 +257,7 @@ public class RulesPopup : MonoBehaviour
         {
             "Hold left mouse for power cast!",
             "F to open fish inventory",
-            "Cook at BBQ for HP",
+            "Cook special fish at the fire!",
             "Sell rare fish to NPCs",
         };
 

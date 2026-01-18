@@ -982,10 +982,36 @@ public class FishingSystem : MonoBehaviour
     // Special fish inventory (for rare/epic/legendary that can't be BBQ'd)
     public List<FishData> specialFishInventory = new List<FishData>();
 
+    // Cookable fish IDs (can be turned into buffs at cooking fire)
+    private static readonly HashSet<string> cookableFishIds = new HashSet<string>
+    {
+        "red_snapper", "blue_marlin", "rainbow_trout",
+        "sunshore_od", "icelandic_snubnose", "seahorse"
+    };
+
     public void AddSpecialFish(FishData fish)
     {
         specialFishInventory.Add(fish);
         Debug.Log($"Added {fish.fishName} to special fish inventory!");
+
+        // Check if this is a cookable fish and show first-time discovery message
+        if (cookableFishIds.Contains(fish.id))
+        {
+            string discoveryKey = $"CookableFishDiscovered_{fish.id}";
+            if (PlayerPrefs.GetInt(discoveryKey, 0) == 0)
+            {
+                // First time catching this cookable fish!
+                PlayerPrefs.SetInt(discoveryKey, 1);
+                PlayerPrefs.Save();
+
+                // Show discovery notification
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowSpecialFishDiscovery(fish.fishName);
+                }
+                Debug.Log($"First time discovering cookable fish: {fish.fishName}!");
+            }
+        }
     }
 
     public bool SellSpecialFish(int index)

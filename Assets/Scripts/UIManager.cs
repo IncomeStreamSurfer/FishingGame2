@@ -348,6 +348,7 @@ public class UIManager : MonoBehaviour
         if (levelUpNotificationTime > 0) levelUpNotificationTime -= Time.deltaTime;
         if (lootNotificationTime > 0) lootNotificationTime -= Time.deltaTime;
         if (rodUnlockNotificationTime > 0) rodUnlockNotificationTime -= Time.deltaTime;
+        if (specialFishDiscoveryTime > 0) specialFishDiscoveryTime -= Time.deltaTime;
 
         // Check for nearby NPCs periodically
         npcCheckTimer += Time.deltaTime;
@@ -421,6 +422,16 @@ public class UIManager : MonoBehaviour
         lootNotificationText = text;
         lootNotificationColor = color;
         lootNotificationTime = 3f;
+    }
+
+    // Special fish discovery notification (for cookable fish)
+    private string specialFishDiscoveryText = "";
+    private float specialFishDiscoveryTime = 0f;
+
+    public void ShowSpecialFishDiscovery(string fishName)
+    {
+        specialFishDiscoveryText = $"You've found a special fish!\nCook the {fishName} at the fire\non the beach for a special buff!";
+        specialFishDiscoveryTime = 5f; // Show for 5 seconds
     }
 
     public void ShowRodUnlockNotification()
@@ -979,6 +990,41 @@ public class UIManager : MonoBehaviour
 
             float y = Screen.height / 2.5f;
             GUI.Label(new Rect(0, y, Screen.width, 35), "Well done matey! Try out this new rod, you've earned it!", rodUnlockStyle);
+        }
+
+        // Special fish discovery notification (cookable fish)
+        if (specialFishDiscoveryTime > 0)
+        {
+            float alpha = Mathf.Min(1f, specialFishDiscoveryTime);
+
+            // Draw a nice panel background
+            float panelW = 380;
+            float panelH = 90;
+            float panelX = (Screen.width - panelW) / 2;
+            float panelY = Screen.height / 3f;
+
+            // Background
+            GUI.color = new Color(0.1f, 0.08f, 0.05f, 0.9f * alpha);
+            GUI.DrawTexture(new Rect(panelX, panelY, panelW, panelH), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // Gold border
+            GUI.color = new Color(1f, 0.7f, 0.3f, alpha);
+            GUI.DrawTexture(new Rect(panelX, panelY, panelW, 3), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panelX, panelY + panelH - 3, panelW, 3), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panelX, panelY, 3, panelH), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panelX + panelW - 3, panelY, 3, panelH), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // Text
+            GUIStyle discoveryStyle = new GUIStyle();
+            discoveryStyle.normal.textColor = new Color(1f, 0.85f, 0.4f, alpha);
+            discoveryStyle.fontSize = 16;
+            discoveryStyle.fontStyle = FontStyle.Bold;
+            discoveryStyle.alignment = TextAnchor.MiddleCenter;
+            discoveryStyle.wordWrap = true;
+
+            GUI.Label(new Rect(panelX + 10, panelY + 10, panelW - 20, panelH - 20), specialFishDiscoveryText, discoveryStyle);
         }
     }
 

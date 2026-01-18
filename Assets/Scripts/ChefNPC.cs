@@ -2,61 +2,62 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Chef Gusteau NPC - Cooks fish into buff meals
-/// Optimized for maximum performance
+/// Cooking Fire - Cook special fish into buff meals
+/// Standalone fire interaction (no NPC)
 /// </summary>
 public class ChefNPC : MonoBehaviour
 {
     public static ChefNPC Instance { get; private set; }
 
     // State
-    private bool questStarted = false;
     private bool playerNearby = false;
-    private bool showingDialogue = false;
-    private int dialogueState = 0;
-    private string currentQuestFishId = null;
-    private string currentQuestFishName = null;
+    private bool showingCookingMenu = false;
 
     // References
     private Transform playerTransform;
     private GameObject cookingFire;
+    private GameObject cookingPot;
     private Light fireLight;
 
     // Performance: Pre-allocated
-    private static readonly float interactionRange = 4f;
-    private static readonly Vector3 fireScaleBase = new Vector3(0.8f, 0.4f, 0.8f);
-    private Vector3 fireScaleTemp = new Vector3(0.8f, 0.4f, 0.8f);
+    private static readonly float interactionRange = 3.5f;
+    private static readonly Vector3 fireScaleBase = new Vector3(0.9f, 0.5f, 0.9f);
+    private Vector3 fireScaleTemp = new Vector3(0.9f, 0.5f, 0.9f);
     private float flickerTime = 0f;
 
     // Cached textures (created once)
     private Texture2D bgTex;
     private Texture2D btnTex;
     private Texture2D btnHoverTex;
+    private Texture2D headerTex;
 
     // Cached GUIStyle (single style, reused)
     private GUIStyle labelStyle;
     private bool stylesReady = false;
 
     // Static colors (cached to avoid GC allocations)
-    private static readonly Color titleColor = new Color(1f, 0.9f, 0.7f);
+    private static readonly Color titleColor = new Color(1f, 0.7f, 0.3f);
     private static readonly Color textColor = new Color(0.9f, 0.85f, 0.7f);
     private static readonly Color dimColor = new Color(0.7f, 0.7f, 0.6f);
     private static readonly Color greenColor = new Color(0.3f, 1f, 0.4f);
     private static readonly Color goldColor = new Color(1f, 0.85f, 0.3f);
     private static readonly Color grayColor = new Color(0.5f, 0.5f, 0.5f);
-    private static readonly Color overlayColor = new Color(0, 0, 0, 0.5f);
-    private static readonly Color questBlueColor = new Color(0.4f, 0.7f, 1f);
+    private static readonly Color overlayColor = new Color(0, 0, 0, 0.6f);
+    private static readonly Color buffBlueColor = new Color(0.5f, 0.8f, 1f);
 
     // Performance
     private int guiFrameSkip = 0;
     private int fireFrameSkip = 0;
+
+    // Scroll position for cooking menu
+    private Vector2 scrollPosition = Vector2.zero;
 
     void Awake()
     {
         // Strict singleton - destroy duplicates immediately
         if (Instance != null && Instance != this)
         {
-            Debug.LogWarning("ChefNPC: Duplicate detected, destroying.");
+            Debug.LogWarning("CookingFire: Duplicate detected, destroying.");
             Destroy(gameObject);
             return;
         }
@@ -67,73 +68,78 @@ public class ChefNPC : MonoBehaviour
     {
         CreateVisuals();
         CreateTextures();
-        LoadQuestState();
     }
 
     void CreateTextures()
     {
         bgTex = new Texture2D(1, 1);
-        bgTex.SetPixel(0, 0, new Color(0.1f, 0.08f, 0.06f, 0.95f));
+        bgTex.SetPixel(0, 0, new Color(0.08f, 0.06f, 0.04f, 0.95f));
         bgTex.Apply();
 
         btnTex = new Texture2D(1, 1);
-        btnTex.SetPixel(0, 0, new Color(0.3f, 0.25f, 0.2f, 1f));
+        btnTex.SetPixel(0, 0, new Color(0.25f, 0.18f, 0.12f, 1f));
         btnTex.Apply();
 
         btnHoverTex = new Texture2D(1, 1);
-        btnHoverTex.SetPixel(0, 0, new Color(0.5f, 0.4f, 0.3f, 1f));
+        btnHoverTex.SetPixel(0, 0, new Color(0.4f, 0.28f, 0.18f, 1f));
         btnHoverTex.Apply();
+
+        headerTex = new Texture2D(1, 1);
+        headerTex.SetPixel(0, 0, new Color(0.15f, 0.1f, 0.06f, 1f));
+        headerTex.Apply();
     }
 
     void CreateVisuals()
     {
-        // Simple chef body
-        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        body.name = "Body";
-        body.transform.SetParent(transform);
-        body.transform.localPosition = new Vector3(0, 1f, 0);
-        body.transform.localScale = new Vector3(0.8f, 1f, 0.5f);
-        Destroy(body.GetComponent<Collider>());
-        body.GetComponent<Renderer>().material = MakeMat(new Color(0.2f, 0.2f, 0.25f));
+        // Fire pit base (stones in a circle)
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * Mathf.PI * 2f / 8f;
+            GameObject stone = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            stone.name = $"Stone_{i}";
+            stone.transform.SetParent(transform);
+            stone.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.6f, 0.1f, Mathf.Sin(angle) * 0.6f);
+            stone.transform.localScale = new Vector3(0.25f, 0.2f, 0.25f);
+            Destroy(stone.GetComponent<Collider>());
+            stone.GetComponent<Renderer>().material = MakeMat(new Color(0.3f, 0.28f, 0.25f));
+        }
 
-        // White apron
-        GameObject apron = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        apron.name = "Apron";
-        apron.transform.SetParent(transform);
-        apron.transform.localPosition = new Vector3(0, 0.9f, 0.2f);
-        apron.transform.localScale = new Vector3(0.7f, 1.1f, 0.1f);
-        Destroy(apron.GetComponent<Collider>());
-        apron.GetComponent<Renderer>().material = MakeMat(new Color(0.95f, 0.95f, 0.9f));
+        // Logs under the fire
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject log = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            log.name = $"Log_{i}";
+            log.transform.SetParent(transform);
+            log.transform.localPosition = new Vector3(0, 0.12f, 0);
+            log.transform.localRotation = Quaternion.Euler(90f, i * 60f, 0);
+            log.transform.localScale = new Vector3(0.12f, 0.4f, 0.12f);
+            Destroy(log.GetComponent<Collider>());
+            log.GetComponent<Renderer>().material = MakeMat(new Color(0.35f, 0.2f, 0.1f));
+        }
 
-        // Head
-        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        head.name = "Head";
-        head.transform.SetParent(transform);
-        head.transform.localPosition = new Vector3(0, 2.1f, 0);
-        head.transform.localScale = new Vector3(0.5f, 0.55f, 0.5f);
-        Destroy(head.GetComponent<Collider>());
-        head.GetComponent<Renderer>().material = MakeMat(new Color(0.9f, 0.75f, 0.6f));
-
-        // Chef hat
-        GameObject hat = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        hat.name = "Hat";
-        hat.transform.SetParent(transform);
-        hat.transform.localPosition = new Vector3(0, 2.5f, 0);
-        hat.transform.localScale = new Vector3(0.4f, 0.3f, 0.4f);
-        Destroy(hat.GetComponent<Collider>());
-        hat.GetComponent<Renderer>().material = MakeMat(new Color(0.98f, 0.98f, 0.95f));
-
-        // Cooking fire (simple)
+        // Cooking fire (flames)
         cookingFire = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         cookingFire.name = "Fire";
         cookingFire.transform.SetParent(transform);
-        cookingFire.transform.localPosition = new Vector3(1.5f, 0.4f, 0);
+        cookingFire.transform.localPosition = new Vector3(0, 0.4f, 0);
         cookingFire.transform.localScale = fireScaleBase;
         Destroy(cookingFire.GetComponent<Collider>());
-        Material fireMat = MakeMat(new Color(1f, 0.4f, 0.1f));
+        Material fireMat = MakeMat(new Color(1f, 0.5f, 0.1f));
         fireMat.EnableKeyword("_EMISSION");
-        fireMat.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.1f) * 2f);
+        fireMat.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.1f) * 2.5f);
         cookingFire.GetComponent<Renderer>().material = fireMat;
+
+        // Inner flame (brighter)
+        GameObject innerFlame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        innerFlame.name = "InnerFlame";
+        innerFlame.transform.SetParent(cookingFire.transform);
+        innerFlame.transform.localPosition = new Vector3(0, 0.1f, 0);
+        innerFlame.transform.localScale = new Vector3(0.6f, 0.7f, 0.6f);
+        Destroy(innerFlame.GetComponent<Collider>());
+        Material innerMat = MakeMat(new Color(1f, 0.8f, 0.2f));
+        innerMat.EnableKeyword("_EMISSION");
+        innerMat.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.3f) * 3f);
+        innerFlame.GetComponent<Renderer>().material = innerMat;
 
         // Fire light - optimized for performance
         GameObject lightObj = new GameObject("FireLight");
@@ -142,21 +148,46 @@ public class ChefNPC : MonoBehaviour
         fireLight = lightObj.AddComponent<Light>();
         fireLight.type = LightType.Point;
         fireLight.color = new Color(1f, 0.6f, 0.2f);
-        fireLight.intensity = 1.2f;
-        fireLight.range = 3f; // Reduced range for performance
-        fireLight.renderMode = LightRenderMode.ForceVertex; // Much cheaper rendering
-        fireLight.shadows = LightShadows.None; // No shadows for performance
+        fireLight.intensity = 1.5f;
+        fireLight.range = 5f;
+        fireLight.renderMode = LightRenderMode.ForceVertex;
+        fireLight.shadows = LightShadows.None;
+
+        // Cooking pot on tripod
+        // Tripod legs
+        for (int i = 0; i < 3; i++)
+        {
+            float angle = i * Mathf.PI * 2f / 3f + Mathf.PI / 6f;
+            GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            leg.name = $"TripodLeg_{i}";
+            leg.transform.SetParent(transform);
+            leg.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.3f, 0.5f, Mathf.Sin(angle) * 0.3f);
+            leg.transform.localRotation = Quaternion.Euler(15f * Mathf.Cos(angle), 0, 15f * Mathf.Sin(angle));
+            leg.transform.localScale = new Vector3(0.04f, 0.5f, 0.04f);
+            Destroy(leg.GetComponent<Collider>());
+            leg.GetComponent<Renderer>().material = MakeMat(new Color(0.15f, 0.12f, 0.1f));
+        }
 
         // Cooking pot
-        GameObject pot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        pot.name = "Pot";
-        pot.transform.SetParent(transform);
-        pot.transform.localPosition = new Vector3(1.5f, 0.8f, 0);
-        pot.transform.localScale = new Vector3(0.6f, 0.3f, 0.6f);
-        Destroy(pot.GetComponent<Collider>());
-        Material potMat = MakeMat(new Color(0.2f, 0.2f, 0.22f));
-        potMat.SetFloat("_Metallic", 0.7f);
-        pot.GetComponent<Renderer>().material = potMat;
+        cookingPot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        cookingPot.name = "Pot";
+        cookingPot.transform.SetParent(transform);
+        cookingPot.transform.localPosition = new Vector3(0, 0.75f, 0);
+        cookingPot.transform.localScale = new Vector3(0.5f, 0.25f, 0.5f);
+        Destroy(cookingPot.GetComponent<Collider>());
+        Material potMat = MakeMat(new Color(0.15f, 0.15f, 0.18f));
+        potMat.SetFloat("_Metallic", 0.8f);
+        potMat.SetFloat("_Smoothness", 0.4f);
+        cookingPot.GetComponent<Renderer>().material = potMat;
+
+        // Pot rim
+        GameObject potRim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        potRim.name = "PotRim";
+        potRim.transform.SetParent(cookingPot.transform);
+        potRim.transform.localPosition = new Vector3(0, 0.45f, 0);
+        potRim.transform.localScale = new Vector3(1.1f, 0.1f, 1.1f);
+        Destroy(potRim.GetComponent<Collider>());
+        potRim.GetComponent<Renderer>().material = potMat;
     }
 
     Material MakeMat(Color c)
@@ -181,11 +212,11 @@ public class ChefNPC : MonoBehaviour
         playerNearby = distSq <= (interactionRange * interactionRange);
 
         // Input
-        if (playerNearby && Input.GetKeyDown(KeyCode.E) && !showingDialogue)
-            OpenDialogue();
+        if (playerNearby && Input.GetKeyDown(KeyCode.E) && !showingCookingMenu)
+            OpenCookingMenu();
 
-        if (showingDialogue && Input.GetKeyDown(KeyCode.Escape))
-            showingDialogue = false;
+        if (showingCookingMenu && Input.GetKeyDown(KeyCode.Escape))
+            showingCookingMenu = false;
 
         // Only run visual effects when player is within 30 units (900 sqr)
         if (distSq < 900f)
@@ -194,21 +225,18 @@ public class ChefNPC : MonoBehaviour
             fireFrameSkip++;
             if (fireFrameSkip % 3 == 0)
             {
-                flickerTime += Time.deltaTime * 3f; // Compensate for skipped frames
-                float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.1f;
+                flickerTime += Time.deltaTime * 3f;
+                float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.12f + Mathf.Sin(flickerTime * 15f) * 0.05f;
                 fireScaleTemp.x = fireScaleBase.x * flicker;
-                fireScaleTemp.y = fireScaleBase.y * flicker;
+                fireScaleTemp.y = fireScaleBase.y * (flicker + Mathf.Sin(flickerTime * 8f) * 0.1f);
                 fireScaleTemp.z = fireScaleBase.z * flicker;
                 cookingFire.transform.localScale = fireScaleTemp;
-            }
 
-            // Look at player when nearby - also skip frames
-            if (playerNearby && fireFrameSkip % 2 == 0)
-            {
-                Vector3 dir = playerTransform.position - transform.position;
-                dir.y = 0;
-                if (dir.sqrMagnitude > 0.01f)
-                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 6f);
+                // Flicker light intensity
+                if (fireLight != null)
+                {
+                    fireLight.intensity = 1.3f + Mathf.Sin(flickerTime * 12f) * 0.3f;
+                }
             }
         }
     }
@@ -217,10 +245,10 @@ public class ChefNPC : MonoBehaviour
     {
         // Skip entirely if not needed
         if (!MainMenu.GameStarted) return;
-        if (!playerNearby && !showingDialogue) return;
+        if (!playerNearby && !showingCookingMenu) return;
 
-        // Frame skipping when just showing prompt (not dialogue)
-        if (!showingDialogue)
+        // Frame skipping when just showing prompt (not menu)
+        if (!showingCookingMenu)
         {
             guiFrameSkip++;
             if (guiFrameSkip % 3 != 0) return;
@@ -233,11 +261,11 @@ public class ChefNPC : MonoBehaviour
             stylesReady = true;
         }
 
-        if (playerNearby && !showingDialogue)
+        if (playerNearby && !showingCookingMenu)
             DrawPrompt();
 
-        if (showingDialogue)
-            DrawDialogue();
+        if (showingCookingMenu)
+            DrawCookingMenu();
     }
 
     void DrawPrompt()
@@ -246,195 +274,158 @@ public class ChefNPC : MonoBehaviour
         labelStyle.fontStyle = FontStyle.Bold;
         labelStyle.alignment = TextAnchor.MiddleCenter;
         labelStyle.normal.textColor = titleColor;
-        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 120, 200, 30), "Chef Gusteau", labelStyle);
+        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 120, 200, 30), "Cooking Fire", labelStyle);
 
         labelStyle.fontSize = 14;
         labelStyle.fontStyle = FontStyle.Normal;
         labelStyle.normal.textColor = Color.gray;
-        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 95, 200, 25), "[E] Talk", labelStyle);
+        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 95, 200, 25), "[E] Cook", labelStyle);
     }
 
-    void DrawDialogue()
+    void DrawCookingMenu()
     {
-        // Overlay (use cached color)
+        // Overlay
         GUI.color = overlayColor;
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        float w = 480, h = 320;
+        float w = 420, h = 400;
         float x = (Screen.width - w) / 2;
         float y = (Screen.height - h) / 2;
 
+        // Background
         GUI.DrawTexture(new Rect(x, y, w, h), bgTex);
 
+        // Header
+        GUI.DrawTexture(new Rect(x, y, w, 50), headerTex);
+
         // Title
-        labelStyle.fontSize = 22;
+        labelStyle.fontSize = 20;
         labelStyle.fontStyle = FontStyle.Bold;
         labelStyle.alignment = TextAnchor.MiddleCenter;
         labelStyle.normal.textColor = titleColor;
-        GUI.Label(new Rect(x, y + 15, w, 30), "Chef Gusteau", labelStyle);
+        GUI.Label(new Rect(x, y + 10, w, 30), "Cooking Fire", labelStyle);
 
         // Close button
         if (GUI.Button(new Rect(x + w - 35, y + 10, 25, 25), "X"))
-            showingDialogue = false;
+            showingCookingMenu = false;
 
-        // Content based on state
-        labelStyle.fontSize = 15;
-        labelStyle.fontStyle = FontStyle.Normal;
-        labelStyle.wordWrap = true;
-        labelStyle.alignment = TextAnchor.UpperCenter;
-        labelStyle.normal.textColor = textColor;
+        // Subtitle
+        labelStyle.fontSize = 12;
+        labelStyle.fontStyle = FontStyle.Italic;
+        labelStyle.normal.textColor = dimColor;
+        GUI.Label(new Rect(x, y + 55, w, 20), "Cook special fish into powerful buffs", labelStyle);
 
-        switch (dialogueState)
-        {
-            case 0: DrawIntro(x, y, w, h); break;
-            case 1: DrawQuestList(x, y, w, h); break;
-            case 2: DrawActiveQuest(x, y, w, h); break;
-            case 3: DrawComplete(x, y, w, h); break;
-        }
-    }
+        // Fish list area
+        float listY = y + 85;
+        float listHeight = h - 130;
 
-    void DrawIntro(float x, float y, float w, float h)
-    {
-        GUI.Label(new Rect(x + 30, y + 60, w - 60, 100),
-            "\"Ah, a fisher! I am Chef Gusteau. Bring me special fish and I will cook you something... magical!\"", labelStyle);
-
-        if (DrawBtn(new Rect(x + w / 2 - 70, y + h - 70, 140, 35), "Accept"))
-        {
-            questStarted = true;
-            dialogueState = 1;
-            SaveState();
-        }
-    }
-
-    void DrawQuestList(float x, float y, float w, float h)
-    {
-        GUI.Label(new Rect(x + 20, y + 55, w - 40, 35),
-            "\"Which fish shall I prepare for you?\"", labelStyle);
-
-        float qy = y + 100;
         if (FishBuffSystem.Instance != null)
         {
-            labelStyle.fontSize = 13;
-            labelStyle.alignment = TextAnchor.MiddleLeft;
-            labelStyle.normal.textColor = questBlueColor; // Blue for all quests
-
+            // Check if player has any cookable fish
+            bool hasAnyCookableFish = false;
             foreach (var buff in FishBuffSystem.Instance.allBuffs)
             {
-                bool completedBefore = FishBuffSystem.Instance.IsQuestCompleted(buff.requiredFishId);
-                Rect r = new Rect(x + 25, qy, w - 50, 32);
-
-                GUI.DrawTexture(r, btnTex);
-
-                // Show "Repeatable" only after completing quest once
-                string questText = completedBefore
-                    ? $"{buff.requiredFishName} -> {buff.buffName} (Repeatable)"
-                    : $"{buff.requiredFishName} -> {buff.buffName}";
-
-                GUI.Label(new Rect(r.x + 10, r.y, r.width - 20, r.height), questText, labelStyle);
-
-                if (GUI.Button(r, "", GUIStyle.none))
+                if (FishBuffSystem.Instance.HasRequiredFish(buff.requiredFishId))
                 {
-                    currentQuestFishId = buff.requiredFishId;
-                    currentQuestFishName = buff.requiredFishName;
-                    dialogueState = 2;
-                    SaveState();
+                    hasAnyCookableFish = true;
+                    break;
                 }
-
-                qy += 38;
             }
-        }
-    }
 
-    void DrawActiveQuest(float x, float y, float w, float h)
-    {
-        labelStyle.alignment = TextAnchor.UpperCenter;
-        labelStyle.normal.textColor = textColor;
-        GUI.Label(new Rect(x + 30, y + 60, w - 60, 50),
-            $"\"Bring me a {currentQuestFishName}!\"", labelStyle);
-
-        FishBuff buff = FishBuffSystem.Instance?.GetBuffByFishId(currentQuestFishId);
-        bool isFirstTime = FishBuffSystem.Instance != null && !FishBuffSystem.Instance.IsQuestCompleted(currentQuestFishId);
-
-        labelStyle.normal.textColor = dimColor;
-        labelStyle.fontSize = 13;
-
-        // Show different rewards for first completion vs repeat
-        string rewardText = isFirstTime
-            ? $"Reward: {buff?.buffName ?? "Buff"}\n+2000 XP (First Time Bonus!)"
-            : $"Reward: {buff?.buffName ?? "Buff"} (added to inventory)";
-        GUI.Label(new Rect(x + 30, y + 120, w - 60, 50), rewardText, labelStyle);
-
-        bool hasFish = FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasRequiredFish(currentQuestFishId);
-
-        if (hasFish)
-        {
-            labelStyle.normal.textColor = greenColor;
-            labelStyle.fontSize = 16;
-            labelStyle.alignment = TextAnchor.MiddleCenter;
-            GUI.Label(new Rect(x, y + 180, w, 25), "You have the fish!", labelStyle);
-
-            if (DrawBtn(new Rect(x + w / 2 - 70, y + h - 70, 140, 35), "Turn In"))
-                dialogueState = 3;
-        }
-
-        if (DrawBtn(new Rect(x + w / 2 - 50, y + h - 30, 100, 25), "Cancel"))
-        {
-            currentQuestFishId = null;
-            currentQuestFishName = null;
-            dialogueState = 1;
-            SaveState();
-        }
-    }
-
-    void DrawComplete(float x, float y, float w, float h)
-    {
-        labelStyle.alignment = TextAnchor.UpperCenter;
-        labelStyle.normal.textColor = textColor;
-        GUI.Label(new Rect(x + 30, y + 60, w - 60, 60),
-            $"\"Magnifique! This {currentQuestFishName} is perfect!\"", labelStyle);
-
-        FishBuff buff = FishBuffSystem.Instance?.GetBuffByFishId(currentQuestFishId);
-        bool isFirstTime = FishBuffSystem.Instance != null && !FishBuffSystem.Instance.IsQuestCompleted(currentQuestFishId);
-
-        labelStyle.normal.textColor = goldColor;
-        labelStyle.fontSize = 18;
-        labelStyle.alignment = TextAnchor.MiddleCenter;
-        GUI.Label(new Rect(x, y + 140, w, 25), $"Earned: {buff?.buffName ?? "Buff"}!", labelStyle);
-
-        // Show XP only for first time completion
-        if (isFirstTime)
-        {
-            labelStyle.normal.textColor = greenColor;
-            labelStyle.fontSize = 14;
-            GUI.Label(new Rect(x, y + 165, w, 25), "+2000 XP", labelStyle);
-        }
-        else
-        {
-            labelStyle.normal.textColor = dimColor;
-            labelStyle.fontSize = 12;
-            GUI.Label(new Rect(x, y + 165, w, 25), "(Added to inventory)", labelStyle);
-        }
-
-        if (DrawBtn(new Rect(x + w / 2 - 70, y + h - 70, 140, 35), "Claim"))
-        {
-            FishBuffSystem.Instance?.ConsumeFish(currentQuestFishId);
-            FishBuffSystem.Instance?.CompleteQuest(currentQuestFishId);
-
-            // Show different notification based on first time or repeat
-            if (UIManager.Instance != null && buff != null)
+            if (!hasAnyCookableFish)
             {
-                if (isFirstTime)
-                    UIManager.Instance.ShowLootNotification($"Earned: {buff.buffName} + 2000 XP!", buff.bowlColor);
-                else
-                    UIManager.Instance.ShowLootNotification($"+1 {buff.buffName}!", buff.bowlColor);
+                // No fish to cook
+                labelStyle.fontSize = 14;
+                labelStyle.fontStyle = FontStyle.Normal;
+                labelStyle.alignment = TextAnchor.MiddleCenter;
+                labelStyle.normal.textColor = grayColor;
+                GUI.Label(new Rect(x, listY + 80, w, 60), "No special fish to cook.\n\nCatch special fish while fishing\nand bring them here!", labelStyle);
             }
+            else
+            {
+                // Draw cookable fish list
+                labelStyle.fontSize = 13;
+                labelStyle.alignment = TextAnchor.MiddleLeft;
 
-            currentQuestFishId = null;
-            currentQuestFishName = null;
-            dialogueState = 1;
-            SaveState();
+                float itemHeight = 70;
+                float itemY = listY;
+
+                foreach (var buff in FishBuffSystem.Instance.allBuffs)
+                {
+                    bool hasFish = FishBuffSystem.Instance.HasRequiredFish(buff.requiredFishId);
+                    if (!hasFish) continue;
+
+                    // Item background
+                    Rect itemRect = new Rect(x + 15, itemY, w - 30, itemHeight);
+                    bool hover = itemRect.Contains(Event.current.mousePosition);
+                    GUI.DrawTexture(itemRect, hover ? btnHoverTex : btnTex);
+
+                    // Fish name
+                    labelStyle.fontSize = 15;
+                    labelStyle.fontStyle = FontStyle.Bold;
+                    labelStyle.normal.textColor = buff.bowlColor;
+                    GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 8, itemRect.width - 100, 22), buff.requiredFishName, labelStyle);
+
+                    // Arrow and buff name
+                    labelStyle.fontSize = 13;
+                    labelStyle.fontStyle = FontStyle.Normal;
+                    labelStyle.normal.textColor = goldColor;
+                    GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 30, itemRect.width - 100, 18), $"→ {buff.buffName}", labelStyle);
+
+                    // Buff description
+                    labelStyle.fontSize = 11;
+                    labelStyle.normal.textColor = dimColor;
+                    GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 48, itemRect.width - 100, 16), buff.description, labelStyle);
+
+                    // Cook button
+                    Rect cookBtn = new Rect(itemRect.x + itemRect.width - 75, itemRect.y + 20, 65, 30);
+                    if (DrawBtn(cookBtn, "COOK"))
+                    {
+                        CookFish(buff);
+                    }
+
+                    itemY += itemHeight + 8;
+                }
+            }
         }
+
+        // Footer hint
+        labelStyle.fontSize = 11;
+        labelStyle.fontStyle = FontStyle.Normal;
+        labelStyle.alignment = TextAnchor.MiddleCenter;
+        labelStyle.normal.textColor = grayColor;
+        GUI.Label(new Rect(x, y + h - 35, w, 20), "Buffs are added to your inventory (TAB to use)", labelStyle);
+    }
+
+    void CookFish(FishBuff buff)
+    {
+        if (FishBuffSystem.Instance == null) return;
+
+        bool isFirstTime = !FishBuffSystem.Instance.IsQuestCompleted(buff.requiredFishId);
+
+        // Consume the fish
+        FishBuffSystem.Instance.ConsumeFish(buff.requiredFishId);
+
+        // Complete the "quest" (gives buff + XP on first time)
+        FishBuffSystem.Instance.CompleteQuest(buff.requiredFishId);
+
+        // Play cooking sound
+        if (IslandSoundManager.Instance != null)
+        {
+            IslandSoundManager.Instance.PlayUIClick();
+        }
+
+        // Show notification
+        if (UIManager.Instance != null)
+        {
+            if (isFirstTime)
+                UIManager.Instance.ShowLootNotification($"Cooked: {buff.buffName} + 2000 XP!", buff.bowlColor);
+            else
+                UIManager.Instance.ShowLootNotification($"Cooked: {buff.buffName}!", buff.bowlColor);
+        }
+
+        Debug.Log($"Cooked {buff.requiredFishName} into {buff.buffName}!");
     }
 
     bool DrawBtn(Rect r, string text)
@@ -442,70 +433,40 @@ public class ChefNPC : MonoBehaviour
         bool hover = r.Contains(Event.current.mousePosition);
         GUI.DrawTexture(r, hover ? btnHoverTex : btnTex);
 
-        labelStyle.fontSize = 14;
+        // Border on hover
+        if (hover)
+        {
+            GUI.color = goldColor;
+            GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(r.x, r.y + r.height - 2, r.width, 2), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        labelStyle.fontSize = 12;
         labelStyle.fontStyle = FontStyle.Bold;
         labelStyle.alignment = TextAnchor.MiddleCenter;
-        labelStyle.normal.textColor = Color.white;
+        labelStyle.normal.textColor = hover ? goldColor : Color.white;
         GUI.Label(r, text, labelStyle);
 
         return GUI.Button(r, "", GUIStyle.none);
     }
 
-    void OpenDialogue()
+    void OpenCookingMenu()
     {
-        showingDialogue = true;
+        showingCookingMenu = true;
+        scrollPosition = Vector2.zero;
 
-        // Play NPC voice greeting
+        // Play fire crackle or UI sound
         if (IslandSoundManager.Instance != null)
         {
-            IslandSoundManager.Instance.PlayNPCVoice("ooh");
-        }
-
-        if (!questStarted)
-            dialogueState = 0;
-        else if (currentQuestFishId != null)
-        {
-            if (FishBuffSystem.Instance != null && FishBuffSystem.Instance.HasRequiredFish(currentQuestFishId))
-                dialogueState = 3;
-            else
-                dialogueState = 2;
-        }
-        else
-            dialogueState = 1;
-    }
-
-    void SaveState()
-    {
-        PlayerPrefs.SetInt("ChefQuestStarted", questStarted ? 1 : 0);
-        PlayerPrefs.SetString("ChefQuestFish", currentQuestFishId ?? "");
-        PlayerPrefs.SetString("ChefQuestName", currentQuestFishName ?? "");
-        PlayerPrefs.Save();
-    }
-
-    void LoadQuestState()
-    {
-        questStarted = PlayerPrefs.GetInt("ChefQuestStarted", 0) == 1;
-        currentQuestFishId = PlayerPrefs.GetString("ChefQuestFish", "");
-        currentQuestFishName = PlayerPrefs.GetString("ChefQuestName", "");
-        if (string.IsNullOrEmpty(currentQuestFishId))
-        {
-            currentQuestFishId = null;
-            currentQuestFishName = null;
+            IslandSoundManager.Instance.PlayUIClick();
         }
     }
 
-    public static bool IsPlayerNearChef()
+    public static bool IsPlayerNearFire()
     {
         if (Instance == null || !GameCache.IsPlayerValid()) return false;
-        return Vector3.Distance(Instance.transform.position, GameCache.Player.position) <= 5f;
-    }
-
-    public static bool HasCompletedFirstQuest()
-    {
-        if (FishBuffSystem.Instance == null) return false;
-        foreach (var kvp in FishBuffSystem.Instance.completedQuests)
-            if (kvp.Value) return true;
-        return false;
+        return Vector3.Distance(Instance.transform.position, GameCache.Player.position) <= 4f;
     }
 
     void OnDestroy()
@@ -513,6 +474,7 @@ public class ChefNPC : MonoBehaviour
         if (bgTex != null) Destroy(bgTex);
         if (btnTex != null) Destroy(btnTex);
         if (btnHoverTex != null) Destroy(btnHoverTex);
+        if (headerTex != null) Destroy(headerTex);
         if (Instance == this) Instance = null;
     }
 }
