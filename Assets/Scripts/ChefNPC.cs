@@ -2,8 +2,8 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Cooking Fire - Cook special fish into buff meals
-/// Standalone fire interaction (no NPC)
+/// Chef Gusteau - Cooks special fish into buff meals
+/// Simple static chef model (no fire effects for performance)
 /// </summary>
 public class ChefNPC : MonoBehaviour
 {
@@ -15,15 +15,9 @@ public class ChefNPC : MonoBehaviour
 
     // References
     private Transform playerTransform;
-    private GameObject cookingFire;
-    private GameObject cookingPot;
-    private Light fireLight;
 
     // Performance: Pre-allocated
-    private static readonly float interactionRange = 3.5f;
-    private static readonly Vector3 fireScaleBase = new Vector3(0.9f, 0.5f, 0.9f);
-    private Vector3 fireScaleTemp = new Vector3(0.9f, 0.5f, 0.9f);
-    private float flickerTime = 0f;
+    private static readonly float interactionRange = 4f;
 
     // Cached textures (created once)
     private Texture2D bgTex;
@@ -36,28 +30,19 @@ public class ChefNPC : MonoBehaviour
     private bool stylesReady = false;
 
     // Static colors (cached to avoid GC allocations)
-    private static readonly Color titleColor = new Color(1f, 0.7f, 0.3f);
-    private static readonly Color textColor = new Color(0.9f, 0.85f, 0.7f);
+    private static readonly Color titleColor = new Color(1f, 0.9f, 0.7f);
     private static readonly Color dimColor = new Color(0.7f, 0.7f, 0.6f);
-    private static readonly Color greenColor = new Color(0.3f, 1f, 0.4f);
     private static readonly Color goldColor = new Color(1f, 0.85f, 0.3f);
     private static readonly Color grayColor = new Color(0.5f, 0.5f, 0.5f);
     private static readonly Color overlayColor = new Color(0, 0, 0, 0.6f);
-    private static readonly Color buffBlueColor = new Color(0.5f, 0.8f, 1f);
 
     // Performance
     private int guiFrameSkip = 0;
-    private int fireFrameSkip = 0;
-
-    // Scroll position for cooking menu
-    private Vector2 scrollPosition = Vector2.zero;
 
     void Awake()
     {
-        // Strict singleton - destroy duplicates immediately
         if (Instance != null && Instance != this)
         {
-            Debug.LogWarning("CookingFire: Duplicate detected, destroying.");
             Destroy(gameObject);
             return;
         }
@@ -73,121 +58,70 @@ public class ChefNPC : MonoBehaviour
     void CreateTextures()
     {
         bgTex = new Texture2D(1, 1);
-        bgTex.SetPixel(0, 0, new Color(0.08f, 0.06f, 0.04f, 0.95f));
+        bgTex.SetPixel(0, 0, new Color(0.1f, 0.08f, 0.06f, 0.95f));
         bgTex.Apply();
 
         btnTex = new Texture2D(1, 1);
-        btnTex.SetPixel(0, 0, new Color(0.25f, 0.18f, 0.12f, 1f));
+        btnTex.SetPixel(0, 0, new Color(0.3f, 0.25f, 0.2f, 1f));
         btnTex.Apply();
 
         btnHoverTex = new Texture2D(1, 1);
-        btnHoverTex.SetPixel(0, 0, new Color(0.4f, 0.28f, 0.18f, 1f));
+        btnHoverTex.SetPixel(0, 0, new Color(0.5f, 0.4f, 0.3f, 1f));
         btnHoverTex.Apply();
 
         headerTex = new Texture2D(1, 1);
-        headerTex.SetPixel(0, 0, new Color(0.15f, 0.1f, 0.06f, 1f));
+        headerTex.SetPixel(0, 0, new Color(0.15f, 0.12f, 0.08f, 1f));
         headerTex.Apply();
     }
 
     void CreateVisuals()
     {
-        // Fire pit base (stones in a circle)
-        for (int i = 0; i < 8; i++)
-        {
-            float angle = i * Mathf.PI * 2f / 8f;
-            GameObject stone = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            stone.name = $"Stone_{i}";
-            stone.transform.SetParent(transform);
-            stone.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.6f, 0.1f, Mathf.Sin(angle) * 0.6f);
-            stone.transform.localScale = new Vector3(0.25f, 0.2f, 0.25f);
-            Destroy(stone.GetComponent<Collider>());
-            stone.GetComponent<Renderer>().material = MakeMat(new Color(0.3f, 0.28f, 0.25f));
-        }
+        // Simple chef body - dark uniform
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(transform);
+        body.transform.localPosition = new Vector3(0, 1f, 0);
+        body.transform.localScale = new Vector3(0.8f, 1f, 0.5f);
+        Destroy(body.GetComponent<Collider>());
+        body.GetComponent<Renderer>().material = MakeMat(new Color(0.2f, 0.2f, 0.25f));
 
-        // Logs under the fire
-        for (int i = 0; i < 3; i++)
-        {
-            GameObject log = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            log.name = $"Log_{i}";
-            log.transform.SetParent(transform);
-            log.transform.localPosition = new Vector3(0, 0.12f, 0);
-            log.transform.localRotation = Quaternion.Euler(90f, i * 60f, 0);
-            log.transform.localScale = new Vector3(0.12f, 0.4f, 0.12f);
-            Destroy(log.GetComponent<Collider>());
-            log.GetComponent<Renderer>().material = MakeMat(new Color(0.35f, 0.2f, 0.1f));
-        }
+        // White apron
+        GameObject apron = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        apron.name = "Apron";
+        apron.transform.SetParent(transform);
+        apron.transform.localPosition = new Vector3(0, 0.9f, 0.2f);
+        apron.transform.localScale = new Vector3(0.7f, 1.1f, 0.1f);
+        Destroy(apron.GetComponent<Collider>());
+        apron.GetComponent<Renderer>().material = MakeMat(new Color(0.95f, 0.95f, 0.9f));
 
-        // Cooking fire (flames)
-        cookingFire = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        cookingFire.name = "Fire";
-        cookingFire.transform.SetParent(transform);
-        cookingFire.transform.localPosition = new Vector3(0, 0.4f, 0);
-        cookingFire.transform.localScale = fireScaleBase;
-        Destroy(cookingFire.GetComponent<Collider>());
-        Material fireMat = MakeMat(new Color(1f, 0.5f, 0.1f));
-        fireMat.EnableKeyword("_EMISSION");
-        fireMat.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.1f) * 2.5f);
-        cookingFire.GetComponent<Renderer>().material = fireMat;
+        // Head
+        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.name = "Head";
+        head.transform.SetParent(transform);
+        head.transform.localPosition = new Vector3(0, 2.1f, 0);
+        head.transform.localScale = new Vector3(0.5f, 0.55f, 0.5f);
+        Destroy(head.GetComponent<Collider>());
+        head.GetComponent<Renderer>().material = MakeMat(new Color(0.9f, 0.75f, 0.6f));
 
-        // Inner flame (brighter)
-        GameObject innerFlame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        innerFlame.name = "InnerFlame";
-        innerFlame.transform.SetParent(cookingFire.transform);
-        innerFlame.transform.localPosition = new Vector3(0, 0.1f, 0);
-        innerFlame.transform.localScale = new Vector3(0.6f, 0.7f, 0.6f);
-        Destroy(innerFlame.GetComponent<Collider>());
-        Material innerMat = MakeMat(new Color(1f, 0.8f, 0.2f));
-        innerMat.EnableKeyword("_EMISSION");
-        innerMat.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.3f) * 3f);
-        innerFlame.GetComponent<Renderer>().material = innerMat;
+        // Chef hat
+        GameObject hat = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        hat.name = "Hat";
+        hat.transform.SetParent(transform);
+        hat.transform.localPosition = new Vector3(0, 2.5f, 0);
+        hat.transform.localScale = new Vector3(0.4f, 0.3f, 0.4f);
+        Destroy(hat.GetComponent<Collider>());
+        hat.GetComponent<Renderer>().material = MakeMat(new Color(0.98f, 0.98f, 0.95f));
 
-        // Fire light - optimized for performance
-        GameObject lightObj = new GameObject("FireLight");
-        lightObj.transform.SetParent(cookingFire.transform);
-        lightObj.transform.localPosition = Vector3.up * 0.5f;
-        fireLight = lightObj.AddComponent<Light>();
-        fireLight.type = LightType.Point;
-        fireLight.color = new Color(1f, 0.6f, 0.2f);
-        fireLight.intensity = 1.5f;
-        fireLight.range = 5f;
-        fireLight.renderMode = LightRenderMode.ForceVertex;
-        fireLight.shadows = LightShadows.None;
-
-        // Cooking pot on tripod
-        // Tripod legs
-        for (int i = 0; i < 3; i++)
-        {
-            float angle = i * Mathf.PI * 2f / 3f + Mathf.PI / 6f;
-            GameObject leg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            leg.name = $"TripodLeg_{i}";
-            leg.transform.SetParent(transform);
-            leg.transform.localPosition = new Vector3(Mathf.Cos(angle) * 0.3f, 0.5f, Mathf.Sin(angle) * 0.3f);
-            leg.transform.localRotation = Quaternion.Euler(15f * Mathf.Cos(angle), 0, 15f * Mathf.Sin(angle));
-            leg.transform.localScale = new Vector3(0.04f, 0.5f, 0.04f);
-            Destroy(leg.GetComponent<Collider>());
-            leg.GetComponent<Renderer>().material = MakeMat(new Color(0.15f, 0.12f, 0.1f));
-        }
-
-        // Cooking pot
-        cookingPot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        cookingPot.name = "Pot";
-        cookingPot.transform.SetParent(transform);
-        cookingPot.transform.localPosition = new Vector3(0, 0.75f, 0);
-        cookingPot.transform.localScale = new Vector3(0.5f, 0.25f, 0.5f);
-        Destroy(cookingPot.GetComponent<Collider>());
-        Material potMat = MakeMat(new Color(0.15f, 0.15f, 0.18f));
-        potMat.SetFloat("_Metallic", 0.8f);
-        potMat.SetFloat("_Smoothness", 0.4f);
-        cookingPot.GetComponent<Renderer>().material = potMat;
-
-        // Pot rim
-        GameObject potRim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        potRim.name = "PotRim";
-        potRim.transform.SetParent(cookingPot.transform);
-        potRim.transform.localPosition = new Vector3(0, 0.45f, 0);
-        potRim.transform.localScale = new Vector3(1.1f, 0.1f, 1.1f);
-        Destroy(potRim.GetComponent<Collider>());
-        potRim.GetComponent<Renderer>().material = potMat;
+        // Simple cooking pot next to chef (no fire, no light)
+        GameObject pot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        pot.name = "Pot";
+        pot.transform.SetParent(transform);
+        pot.transform.localPosition = new Vector3(1.5f, 0.4f, 0);
+        pot.transform.localScale = new Vector3(0.6f, 0.3f, 0.6f);
+        Destroy(pot.GetComponent<Collider>());
+        Material potMat = MakeMat(new Color(0.2f, 0.2f, 0.22f));
+        potMat.SetFloat("_Metallic", 0.7f);
+        pot.GetComponent<Renderer>().material = potMat;
     }
 
     Material MakeMat(Color c)
@@ -207,9 +141,9 @@ public class ChefNPC : MonoBehaviour
 
         if (playerTransform == null) return;
 
-        // Distance check - use squared distance for performance
-        float distSq = (transform.position - playerTransform.position).sqrMagnitude;
-        playerNearby = distSq <= (interactionRange * interactionRange);
+        // Distance check
+        float dist = Vector3.Distance(transform.position, playerTransform.position);
+        playerNearby = dist <= interactionRange;
 
         // Input
         if (playerNearby && Input.GetKeyDown(KeyCode.E) && !showingCookingMenu)
@@ -218,36 +152,22 @@ public class ChefNPC : MonoBehaviour
         if (showingCookingMenu && Input.GetKeyDown(KeyCode.Escape))
             showingCookingMenu = false;
 
-        // Only run visual effects when player is within 30 units (900 sqr)
-        if (distSq < 900f)
+        // Look at player when nearby (simple, no frame skip needed for rotation)
+        if (playerNearby)
         {
-            // Fire flicker - only update every 3rd frame for performance
-            fireFrameSkip++;
-            if (fireFrameSkip % 3 == 0)
-            {
-                flickerTime += Time.deltaTime * 3f;
-                float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.12f + Mathf.Sin(flickerTime * 15f) * 0.05f;
-                fireScaleTemp.x = fireScaleBase.x * flicker;
-                fireScaleTemp.y = fireScaleBase.y * (flicker + Mathf.Sin(flickerTime * 8f) * 0.1f);
-                fireScaleTemp.z = fireScaleBase.z * flicker;
-                cookingFire.transform.localScale = fireScaleTemp;
-
-                // Flicker light intensity
-                if (fireLight != null)
-                {
-                    fireLight.intensity = 1.3f + Mathf.Sin(flickerTime * 12f) * 0.3f;
-                }
-            }
+            Vector3 dir = playerTransform.position - transform.position;
+            dir.y = 0;
+            if (dir.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 3f);
         }
     }
 
     void OnGUI()
     {
-        // Skip entirely if not needed
         if (!MainMenu.GameStarted) return;
         if (!playerNearby && !showingCookingMenu) return;
 
-        // Frame skipping when just showing prompt (not menu)
+        // Frame skipping when just showing prompt
         if (!showingCookingMenu)
         {
             guiFrameSkip++;
@@ -274,7 +194,7 @@ public class ChefNPC : MonoBehaviour
         labelStyle.fontStyle = FontStyle.Bold;
         labelStyle.alignment = TextAnchor.MiddleCenter;
         labelStyle.normal.textColor = titleColor;
-        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 120, 200, 30), "Cooking Fire", labelStyle);
+        GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 120, 200, 30), "Chef Gusteau", labelStyle);
 
         labelStyle.fontSize = 14;
         labelStyle.fontStyle = FontStyle.Normal;
@@ -304,7 +224,7 @@ public class ChefNPC : MonoBehaviour
         labelStyle.fontStyle = FontStyle.Bold;
         labelStyle.alignment = TextAnchor.MiddleCenter;
         labelStyle.normal.textColor = titleColor;
-        GUI.Label(new Rect(x, y + 10, w, 30), "Cooking Fire", labelStyle);
+        GUI.Label(new Rect(x, y + 10, w, 30), "Chef Gusteau's Kitchen", labelStyle);
 
         // Close button
         if (GUI.Button(new Rect(x + w - 35, y + 10, 25, 25), "X"))
@@ -314,11 +234,10 @@ public class ChefNPC : MonoBehaviour
         labelStyle.fontSize = 12;
         labelStyle.fontStyle = FontStyle.Italic;
         labelStyle.normal.textColor = dimColor;
-        GUI.Label(new Rect(x, y + 55, w, 20), "Cook special fish into powerful buffs", labelStyle);
+        GUI.Label(new Rect(x, y + 55, w, 20), "\"Bring me special fish and I cook for you!\"", labelStyle);
 
         // Fish list area
         float listY = y + 85;
-        float listHeight = h - 130;
 
         if (FishBuffSystem.Instance != null)
         {
@@ -335,7 +254,6 @@ public class ChefNPC : MonoBehaviour
 
             if (!hasAnyCookableFish)
             {
-                // No fish to cook
                 labelStyle.fontSize = 14;
                 labelStyle.fontStyle = FontStyle.Normal;
                 labelStyle.alignment = TextAnchor.MiddleCenter;
@@ -344,7 +262,6 @@ public class ChefNPC : MonoBehaviour
             }
             else
             {
-                // Draw cookable fish list
                 labelStyle.fontSize = 13;
                 labelStyle.alignment = TextAnchor.MiddleLeft;
 
@@ -356,7 +273,6 @@ public class ChefNPC : MonoBehaviour
                     bool hasFish = FishBuffSystem.Instance.HasRequiredFish(buff.requiredFishId);
                     if (!hasFish) continue;
 
-                    // Item background
                     Rect itemRect = new Rect(x + 15, itemY, w - 30, itemHeight);
                     bool hover = itemRect.Contains(Event.current.mousePosition);
                     GUI.DrawTexture(itemRect, hover ? btnHoverTex : btnTex);
@@ -404,28 +320,27 @@ public class ChefNPC : MonoBehaviour
 
         bool isFirstTime = !FishBuffSystem.Instance.IsQuestCompleted(buff.requiredFishId);
 
-        // Consume the fish
         FishBuffSystem.Instance.ConsumeFish(buff.requiredFishId);
-
-        // Complete the "quest" (gives buff + XP on first time)
         FishBuffSystem.Instance.CompleteQuest(buff.requiredFishId);
 
-        // Play cooking sound
+        // Award 500 XP for repeat cooks (first time already gives 2000 XP via CompleteQuest)
+        if (!isFirstTime && LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.AddXP(500);
+        }
+
         if (IslandSoundManager.Instance != null)
         {
             IslandSoundManager.Instance.PlayChime();
         }
 
-        // Show notification
         if (UIManager.Instance != null)
         {
             if (isFirstTime)
                 UIManager.Instance.ShowLootNotification($"Cooked: {buff.buffName} + 2000 XP!", buff.bowlColor);
             else
-                UIManager.Instance.ShowLootNotification($"Cooked: {buff.buffName}!", buff.bowlColor);
+                UIManager.Instance.ShowLootNotification($"Cooked: {buff.buffName} + 500 XP!", buff.bowlColor);
         }
-
-        Debug.Log($"Cooked {buff.requiredFishName} into {buff.buffName}!");
     }
 
     bool DrawBtn(Rect r, string text)
@@ -433,7 +348,6 @@ public class ChefNPC : MonoBehaviour
         bool hover = r.Contains(Event.current.mousePosition);
         GUI.DrawTexture(r, hover ? btnHoverTex : btnTex);
 
-        // Border on hover
         if (hover)
         {
             GUI.color = goldColor;
@@ -454,12 +368,10 @@ public class ChefNPC : MonoBehaviour
     void OpenCookingMenu()
     {
         showingCookingMenu = true;
-        scrollPosition = Vector2.zero;
 
-        // Play sound when opening menu
         if (IslandSoundManager.Instance != null)
         {
-            IslandSoundManager.Instance.PlayChime();
+            IslandSoundManager.Instance.PlayNPCVoice("ooh");
         }
     }
 
@@ -471,14 +383,13 @@ public class ChefNPC : MonoBehaviour
 
     public static bool HasCompletedFirstQuest()
     {
-        // Cooking is always available now (no quest required)
         return true;
     }
 
     public static bool IsPlayerNearFire()
     {
         if (Instance == null || !GameCache.IsPlayerValid()) return false;
-        return Vector3.Distance(Instance.transform.position, GameCache.Player.position) <= 4f;
+        return Vector3.Distance(Instance.transform.position, GameCache.Player.position) <= 5f;
     }
 
     void OnDestroy()
