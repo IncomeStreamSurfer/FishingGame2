@@ -15,6 +15,18 @@ public class SaveGameManager : MonoBehaviour
 
     // Save file constants
     private const int MAX_SAVE_SLOTS = 3;
+
+    // Auto-create on scene load
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void AutoCreate()
+    {
+        if (Instance == null)
+        {
+            GameObject go = new GameObject("SaveGameManager");
+            go.AddComponent<SaveGameManager>();
+            Debug.Log("[SaveGameManager] Auto-created");
+        }
+    }
     private const string SAVE_FILE_PREFIX = "savegame_";
     private const string SAVE_FILE_EXTENSION = ".json";
     private const string SCREENSHOT_PREFIX = "screenshot_";
@@ -244,7 +256,7 @@ public class SaveGameManager : MonoBehaviour
             if (AccessorySystem.Instance != null)
             {
                 data.ownedAccessories = new List<string>();
-                data.equippedAccessories = new Dictionary<string, string>();
+                data.equippedAccessories = new List<EquippedAccessoryEntry>();
 
                 foreach (var acc in AccessorySystem.Instance.GetOwnedAccessories())
                 {
@@ -253,7 +265,7 @@ public class SaveGameManager : MonoBehaviour
 
                 foreach (var kvp in AccessorySystem.Instance.GetEquippedAccessories())
                 {
-                    data.equippedAccessories[kvp.Key] = kvp.Value.name;
+                    data.equippedAccessories.Add(new EquippedAccessoryEntry { slot = kvp.Key, accessoryName = kvp.Value.name });
                 }
             }
 
@@ -548,7 +560,7 @@ public class SaveData
     // Equipment/Cosmetics
     public List<string> equipment;
     public List<string> ownedAccessories;
-    public Dictionary<string, string> equippedAccessories;
+    public List<EquippedAccessoryEntry> equippedAccessories; // Changed from Dictionary
 }
 
 /// <summary>
@@ -559,4 +571,14 @@ public class FishInventoryEntry
 {
     public string fishId;
     public int count;
+}
+
+/// <summary>
+/// Equipped accessory entry for serialization (replaces Dictionary)
+/// </summary>
+[System.Serializable]
+public class EquippedAccessoryEntry
+{
+    public string slot;
+    public string accessoryName;
 }
