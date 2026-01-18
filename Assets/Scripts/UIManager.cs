@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour
     // Wardrobe data - tracks owned clothing items
     private List<WardrobeItem> ownedClothing = new List<WardrobeItem>();
     private float wardrobeScrollPos = 0f;
+    private float scoresScrollPos = 0f;
 
     private List<HighscoreEntry> highscores = new List<HighscoreEntry>();
 
@@ -114,11 +115,7 @@ public class UIManager : MonoBehaviour
             Destroy(gameObject);
         }
 
-        highscores.Add(new HighscoreEntry("FishMaster99", 15420));
-        highscores.Add(new HighscoreEntry("ProAngler", 12350));
-        highscores.Add(new HighscoreEntry("CatchKing", 9870));
-        highscores.Add(new HighscoreEntry("ReelDeal", 7650));
-        highscores.Add(new HighscoreEntry("HookLine", 5200));
+        // Highscores now only show player's own stats - no example entries
     }
 
     void Start()
@@ -1018,11 +1015,12 @@ public class UIManager : MonoBehaviour
         }
 
         // Tabs - smaller
-        string[] tabs = { "Equipment", "Quests", "Buffs", "Wardrobe", "Melee" };
+        string[] tabs = { "Equipment", "Quests", "Buffs", "Wardrobe", "Melee", "Scores" };
+        float tabWidth = 43f; // Slightly smaller to fit 6 tabs
         for (int i = 0; i < tabs.Length; i++)
         {
             GUIStyle style = (i == currentTab) ? tabActiveStyle : tabStyle;
-            if (GUI.Button(new Rect(panelX + 4 + i * 52, panelY + 6, 50, 18), tabs[i], style))
+            if (GUI.Button(new Rect(panelX + 4 + i * (tabWidth + 1), panelY + 6, tabWidth, 18), tabs[i], style))
             {
                 currentTab = i;
             }
@@ -1038,6 +1036,7 @@ public class UIManager : MonoBehaviour
             case 2: DrawFishBuffsTab(contentRect); break;
             case 3: DrawWardrobeTab(contentRect); break;
             case 4: DrawMeleeWeaponsTab(contentRect); break;
+            case 5: DrawScoresTab(contentRect); break;
         }
     }
 
@@ -1091,9 +1090,6 @@ public class UIManager : MonoBehaviour
             }
         }
 
-        // Highscores
-        GUI.Label(new Rect(rightX, rect.y + 180, 120, 18), "HIGHSCORES", headerStyle);
-        DrawHighscores(new Rect(rightX, rect.y + 200, 250, 100));
     }
 
     void DrawRodSlot(Rect rect, int rodIndex)
@@ -1402,29 +1398,174 @@ public class UIManager : MonoBehaviour
         Debug.Log($"Purchased: {item.name}");
     }
 
-    void DrawHighscores(Rect rect)
+    // =============== SCORES TAB ===============
+
+    void DrawScoresTab(Rect rect)
     {
-        GUI.DrawTexture(rect, MakeTexture(2, 2, new Color(0.1f, 0.08f, 0.06f, 0.9f)));
+        // Title
+        GUI.Label(new Rect(rect.x, rect.y, 200, 14), "YOUR SCORES", headerStyle);
 
-        GUIStyle scoreStyle = new GUIStyle();
-        scoreStyle.fontSize = 11;
+        // Scrollable area
+        Rect listRect = new Rect(rect.x, rect.y + 18, rect.width, rect.height - 22);
+        float contentHeight = 320f; // Total height of all content
 
-        for (int i = 0; i < highscores.Count && i < 5; i++)
+        // Handle scroll wheel
+        if (listRect.Contains(Event.current.mousePosition))
         {
-            Color rankColor = i == 0 ? new Color(1f, 0.85f, 0.2f) :
-                              i == 1 ? new Color(0.8f, 0.8f, 0.85f) :
-                              i == 2 ? new Color(0.8f, 0.5f, 0.2f) :
-                              new Color(0.7f, 0.7f, 0.7f);
-
-            scoreStyle.normal.textColor = rankColor;
-            GUI.Label(new Rect(rect.x + 8, rect.y + 5 + i * 22, 20, 20), $"{i + 1}.", scoreStyle);
-
-            scoreStyle.normal.textColor = new Color(0.85f, 0.85f, 0.8f);
-            GUI.Label(new Rect(rect.x + 30, rect.y + 5 + i * 22, 120, 20), highscores[i].playerName, scoreStyle);
-
-            scoreStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
-            GUI.Label(new Rect(rect.x + 160, rect.y + 5 + i * 22, 80, 20), highscores[i].score.ToString("N0"), scoreStyle);
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                scoresScrollPos += Event.current.delta.y * 15f;
+                scoresScrollPos = Mathf.Clamp(scoresScrollPos, 0, Mathf.Max(0, contentHeight - listRect.height));
+                Event.current.Use();
+            }
         }
+
+        // Background
+        GUI.DrawTexture(listRect, MakeTexture(2, 2, new Color(0.08f, 0.08f, 0.1f, 0.9f)));
+
+        // Begin scroll view
+        GUI.BeginGroup(listRect);
+
+        GUIStyle statLabelStyle = new GUIStyle();
+        statLabelStyle.fontSize = 10;
+        statLabelStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f);
+
+        GUIStyle statValueStyle = new GUIStyle();
+        statValueStyle.fontSize = 11;
+        statValueStyle.fontStyle = FontStyle.Bold;
+
+        GUIStyle sectionStyle = new GUIStyle();
+        sectionStyle.fontSize = 9;
+        sectionStyle.fontStyle = FontStyle.Bold;
+        sectionStyle.normal.textColor = new Color(0.5f, 0.8f, 1f);
+
+        float y = 8 - scoresScrollPos;
+        float labelX = 10;
+        float valueX = 115;
+
+        // FISHING STATS
+        GUI.Label(new Rect(labelX, y, 100, 14), "FISHING STATS", sectionStyle);
+        y += 16;
+
+        int totalFish = GameManager.Instance != null ? GameManager.Instance.GetTotalFishCaught() : 0;
+        statLabelStyle.normal.textColor = new Color(0.8f, 0.8f, 0.85f);
+        GUI.Label(new Rect(labelX, y, 100, 14), "Total Caught:", statLabelStyle);
+        statValueStyle.normal.textColor = new Color(1f, 0.95f, 0.5f);
+        GUI.Label(new Rect(valueX, y, 80, 14), totalFish.ToString("N0"), statValueStyle);
+        y += 16;
+
+        // Divider
+        GUI.DrawTexture(new Rect(labelX, y, listRect.width - 20, 1), MakeTexture(1, 1, new Color(0.3f, 0.3f, 0.35f, 0.5f)));
+        y += 6;
+
+        // Get fish by rarity
+        int commonFish = 0, uncommonFish = 0, rareFish = 0, epicFish = 0, legendaryFish = 0, mythicFish = 0;
+        if (GameManager.Instance != null && FishingSystem.Instance != null)
+        {
+            foreach (var kvp in GameManager.Instance.fishInventory)
+            {
+                var fishData = FishingSystem.Instance.GetFishById(kvp.Key);
+                if (fishData != null)
+                {
+                    switch (fishData.rarity)
+                    {
+                        case Rarity.Common: commonFish += kvp.Value; break;
+                        case Rarity.Uncommon: uncommonFish += kvp.Value; break;
+                        case Rarity.Rare: rareFish += kvp.Value; break;
+                        case Rarity.Epic: epicFish += kvp.Value; break;
+                        case Rarity.Legendary: legendaryFish += kvp.Value; break;
+                        case Rarity.Mythic: mythicFish += kvp.Value; break;
+                    }
+                }
+            }
+        }
+
+        // Fish by rarity - compact layout
+        DrawScoreLine(ref y, labelX, valueX, "Common:", commonFish, new Color(0.6f, 0.6f, 0.6f), statLabelStyle, statValueStyle);
+        DrawScoreLine(ref y, labelX, valueX, "Uncommon:", uncommonFish, new Color(0.3f, 0.85f, 0.3f), statLabelStyle, statValueStyle);
+        DrawScoreLine(ref y, labelX, valueX, "Rare:", rareFish, new Color(0.4f, 0.6f, 1f), statLabelStyle, statValueStyle);
+        DrawScoreLine(ref y, labelX, valueX, "Epic:", epicFish, new Color(0.8f, 0.4f, 1f), statLabelStyle, statValueStyle);
+        DrawScoreLine(ref y, labelX, valueX, "Legendary:", legendaryFish, new Color(1f, 0.75f, 0.2f), statLabelStyle, statValueStyle);
+        DrawScoreLine(ref y, labelX, valueX, "Mythic:", mythicFish, new Color(1f, 0.35f, 0.35f), statLabelStyle, statValueStyle);
+        y += 8;
+
+        // ECONOMY
+        GUI.Label(new Rect(labelX, y, 100, 14), "ECONOMY", sectionStyle);
+        y += 16;
+
+        int totalGold = GameManager.Instance != null ? GameManager.Instance.GetCoins() : 0;
+        DrawScoreLine(ref y, labelX, valueX, "Current Gold:", totalGold, new Color(1f, 0.85f, 0.2f), statLabelStyle, statValueStyle);
+        y += 8;
+
+        // PROGRESSION
+        GUI.Label(new Rect(labelX, y, 100, 14), "PROGRESSION", sectionStyle);
+        y += 16;
+
+        int level = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetEffectiveLevel() : 1;
+        long xp = LevelingSystem.Instance != null ? LevelingSystem.Instance.GetCurrentXP() : 0;
+        int questsDone = QuestSystem.Instance != null ? QuestSystem.Instance.GetCompletedQuestCount() : 0;
+
+        DrawScoreLine(ref y, labelX, valueX, "Level:", level, new Color(0.5f, 0.9f, 1f), statLabelStyle, statValueStyle);
+        statLabelStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f);
+        GUI.Label(new Rect(labelX, y, 100, 14), "Total XP:", statLabelStyle);
+        statValueStyle.normal.textColor = new Color(0.5f, 0.9f, 1f);
+        GUI.Label(new Rect(valueX, y, 80, 14), FormatNumber(xp), statValueStyle);
+        y += 14;
+        DrawScoreLine(ref y, labelX, valueX, "Quests Done:", questsDone, new Color(0.5f, 0.9f, 1f), statLabelStyle, statValueStyle);
+        y += 8;
+
+        // SPECIAL ITEMS
+        GUI.Label(new Rect(labelX, y, 100, 14), "SPECIAL ITEMS", sectionStyle);
+        y += 16;
+
+        if (BottleEventSystem.Instance != null)
+        {
+            if (BottleEventSystem.Instance.hasGoldenFishingHat)
+            {
+                statLabelStyle.normal.textColor = new Color(1f, 0.85f, 0.2f);
+                GUI.Label(new Rect(labelX, y, 150, 14), "Golden Fishing Hat", statLabelStyle);
+                y += 14;
+            }
+            if (BottleEventSystem.Instance.hasGroovyMarlinRing)
+            {
+                statLabelStyle.normal.textColor = new Color(0.3f, 1f, 0.8f);
+                GUI.Label(new Rect(labelX, y, 150, 14), "Groovy Marlin Ring", statLabelStyle);
+                y += 14;
+            }
+            if (BottleEventSystem.Instance.hasEpicFishingRod)
+            {
+                statLabelStyle.normal.textColor = new Color(0.8f, 0.4f, 1f);
+                GUI.Label(new Rect(labelX, y, 150, 14), "Epic Fishing Rod", statLabelStyle);
+                y += 14;
+            }
+        }
+
+        if (ShoulderParrot.Instance != null && ShoulderParrot.Instance.HasParrotUnlocked())
+        {
+            statLabelStyle.normal.textColor = new Color(0.4f, 1f, 0.5f);
+            GUI.Label(new Rect(labelX, y, 150, 14), "Shoulder Parrot", statLabelStyle);
+            y += 14;
+        }
+
+        GUI.EndGroup();
+
+        // Scrollbar
+        if (contentHeight > listRect.height)
+        {
+            float scrollBarHeight = listRect.height * (listRect.height / contentHeight);
+            float scrollBarY = (scoresScrollPos / (contentHeight - listRect.height)) * (listRect.height - scrollBarHeight);
+            GUI.DrawTexture(new Rect(listRect.x + listRect.width - 6, listRect.y + scrollBarY, 4, scrollBarHeight),
+                MakeTexture(1, 1, new Color(0.5f, 0.5f, 0.55f, 0.8f)));
+        }
+    }
+
+    void DrawScoreLine(ref float y, float labelX, float valueX, string label, int value, Color color, GUIStyle labelStyle, GUIStyle valueStyle)
+    {
+        labelStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f);
+        GUI.Label(new Rect(labelX, y, 100, 14), label, labelStyle);
+        valueStyle.normal.textColor = color;
+        GUI.Label(new Rect(valueX, y, 80, 14), value.ToString("N0"), valueStyle);
+        y += 14;
     }
 
     string FormatNumber(long num)

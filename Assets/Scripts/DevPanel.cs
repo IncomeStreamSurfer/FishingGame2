@@ -12,7 +12,7 @@ public class DevPanel : MonoBehaviour
     private bool isOpen = false;
     private bool isDragging = false;
     private Vector2 dragOffset;
-    private Rect windowRect = new Rect(20, 20, 320, 550);
+    private Rect windowRect = new Rect(20, 20, 320, 620);
 
     // Input fields
     private string goldInput = "1000";
@@ -363,6 +363,26 @@ public class DevPanel : MonoBehaviour
         }
         contentY += 30;
 
+        // Weather Control Section
+        GUI.DrawTexture(new Rect(windowRect.x + padding, contentY, contentWidth, 1), GetTexture("divider"));
+        contentY += 10;
+
+        prevColor = cachedSectionTitle.normal.textColor;
+        cachedSectionTitle.normal.textColor = new Color(0.8f, 0.6f, 1f); // Purple for weather
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "WEATHER EVENTS", cachedSectionTitle);
+        cachedSectionTitle.normal.textColor = prevColor;
+        contentY += 22;
+
+        if (DrawButton(new Rect(windowRect.x + padding, contentY, btnWidth, 25), "Lightning Strike"))
+        {
+            TriggerLightningStrike();
+        }
+        if (DrawButton(new Rect(windowRect.x + padding + btnWidth + 10, contentY, btnWidth, 25), "Find Parrot"))
+        {
+            TriggerParrotFind();
+        }
+        contentY += 35;
+
         // Danger zone - use section title with different color
         prevColor = cachedSectionTitle.normal.textColor;
         cachedSectionTitle.normal.textColor = new Color(1f, 0.4f, 0.4f);
@@ -468,6 +488,59 @@ public class DevPanel : MonoBehaviour
             GameManager.Instance.fishInventory.Clear();
         }
         Debug.Log("[DEV] Reset all progress");
+    }
+
+    void TriggerLightningStrike()
+    {
+        if (ThunderstormSystem.Instance != null)
+        {
+            // Use reflection to call StartStorm since it's private
+            var startStormMethod = typeof(ThunderstormSystem).GetMethod("StartStorm",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (startStormMethod != null)
+            {
+                startStormMethod.Invoke(ThunderstormSystem.Instance, null);
+                Debug.Log("[DEV] Thunderstorm triggered!");
+
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowLootNotification("DEV: Thunderstorm triggered!", new Color(0.8f, 0.6f, 1f));
+                }
+            }
+            else
+            {
+                Debug.LogError("[DEV] Could not find StartStorm method");
+            }
+        }
+        else
+        {
+            Debug.LogError("[DEV] ThunderstormSystem not found in scene");
+        }
+    }
+
+    void TriggerParrotFind()
+    {
+        if (ShoulderParrot.Instance != null)
+        {
+            // Check if already unlocked
+            if (ShoulderParrot.Instance.HasParrotUnlocked())
+            {
+                Debug.Log("[DEV] Parrot already unlocked! Re-triggering animation anyway.");
+            }
+
+            ShoulderParrot.Instance.OnParrotFishedUp();
+            Debug.Log("[DEV] Parrot find triggered!");
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("DEV: Parrot find triggered!", new Color(0.4f, 1f, 0.5f));
+            }
+        }
+        else
+        {
+            Debug.LogError("[DEV] ShoulderParrot not found in scene");
+        }
     }
 
     string GetTimeString(float timeValue)

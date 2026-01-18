@@ -728,6 +728,15 @@ public class PauseMenu : MonoBehaviour
         Time.timeScale = 1f;
         IsPaused = false;
 
+        // Immediately hide pause overlay to prevent flickering
+        fadeAlpha = 0f;
+        targetAlpha = 0f;
+
+        // Reset pause menu state for next game
+        currentState = PauseState.Main;
+        selectedSlot = -1;
+        statusMessage = "";
+
         // Reset MainMenu state to show menu again
         MainMenu.GameStarted = false;
 

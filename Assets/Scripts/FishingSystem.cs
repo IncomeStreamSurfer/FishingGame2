@@ -64,6 +64,24 @@ public class FishingSystem : MonoBehaviour
     private const float JACKPOT_DURATION = 5f;
     private AudioSource jackpotAudioSource;
 
+    // Gold Find system (fishing up gold instead of fish)
+    private const float GOLD_FIND_CHANCE = 15f; // 15% chance to find gold instead of fish
+    private const float RARE_CHEST_CHANCE = 1f; // 1% of gold finds = 1000g rare chest
+    private bool showingGoldFindPopup = false;
+    private string goldFindText = "";
+    private int goldFindAmount = 0;
+    private bool isRareChest = false;
+    private float goldFindPopupTimer = 0f;
+    private const float GOLD_FIND_POPUP_DURATION = 3f;
+    private AudioSource goldFindAudioSource;
+    private AudioClip rareChestSound;
+
+    // Rare Parrot Find system (1 in 500,000 chance!)
+    private const int PARROT_FIND_ODDS = 500000; // 1 in 500,000
+    private bool showingParrotFindPopup = false;
+    private float parrotFindPopupTimer = 0f;
+    private const float PARROT_FIND_POPUP_DURATION = 5f;
+
     // Cached textures for OnGUI performance
     private Texture2D popupBgTex;
     private Texture2D bottleBgTex;
@@ -78,6 +96,7 @@ public class FishingSystem : MonoBehaviour
         InitializeFish();
         InitializeRareFishAudio();
         InitializeJackpotAudio();
+        InitializeGoldFindAudio();
         InitializeCachedTextures();
     }
 
@@ -425,6 +444,376 @@ public class FishingSystem : MonoBehaviour
         return clip;
     }
 
+    // ========== GOLD FIND SYSTEM ==========
+    // Sometimes players fish up gold instead of fish!
+
+    void InitializeGoldFindAudio()
+    {
+        goldFindAudioSource = gameObject.AddComponent<AudioSource>();
+        goldFindAudioSource.playOnAwake = false;
+        goldFindAudioSource.spatialBlend = 0f;
+        goldFindAudioSource.volume = 0.8f;
+
+        // Generate casino jackpot sound for rare chest
+        rareChestSound = GenerateCasinoJackpotSound();
+    }
+
+    AudioClip GenerateCasinoJackpotSound()
+    {
+        int sampleRate = 44100;
+        float duration = 2.5f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        // Casino-style winning sound: slot machine bells + coin cascade
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+
+            // Bell chimes (ascending)
+            float bellFreq1 = 880f + (t * 200f); // Rising pitch
+            float bellFreq2 = 1100f + (t * 150f);
+            float bellFreq3 = 1320f + (t * 100f);
+
+            float bell1 = Mathf.Sin(2f * Mathf.PI * bellFreq1 * t) * Mathf.Exp(-t * 2f);
+            float bell2 = Mathf.Sin(2f * Mathf.PI * bellFreq2 * t) * Mathf.Exp(-t * 1.5f);
+            float bell3 = Mathf.Sin(2f * Mathf.PI * bellFreq3 * t) * Mathf.Exp(-t * 1f);
+
+            // Coin jingle overlay
+            float coinJingle = 0f;
+            for (int j = 0; j < 8; j++)
+            {
+                float coinT = t - (j * 0.15f);
+                if (coinT > 0 && coinT < 0.3f)
+                {
+                    float coinFreq = 2000f + (j * 300f);
+                    coinJingle += Mathf.Sin(2f * Mathf.PI * coinFreq * coinT) * Mathf.Exp(-coinT * 10f) * 0.15f;
+                }
+            }
+
+            // Triumphant chord at the end
+            float chordEnvelope = Mathf.Max(0, (t - 1.5f)) * Mathf.Exp(-(t - 1.5f) * 2f);
+            float chord = (Mathf.Sin(2f * Mathf.PI * 523f * t) + // C5
+                          Mathf.Sin(2f * Mathf.PI * 659f * t) + // E5
+                          Mathf.Sin(2f * Mathf.PI * 784f * t)) * chordEnvelope * 0.2f; // G5
+
+            samples[i] = (bell1 * 0.3f + bell2 * 0.25f + bell3 * 0.2f + coinJingle + chord) * 0.5f;
+        }
+
+        AudioClip clip = AudioClip.Create("CasinoJackpot", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateSmallCoinSound()
+    {
+        int sampleRate = 44100;
+        float duration = 0.4f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float envelope = Mathf.Exp(-t * 8f);
+
+            // High-pitched coin clink
+            float freq1 = 1800f;
+            float freq2 = 2400f;
+            samples[i] = (Mathf.Sin(2f * Mathf.PI * freq1 * t) * 0.5f +
+                         Mathf.Sin(2f * Mathf.PI * freq2 * t) * 0.3f) * envelope * 0.4f;
+        }
+
+        AudioClip clip = AudioClip.Create("SmallCoin", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    // Returns true if gold was found (caller should skip fish catch)
+    bool TryGoldFind()
+    {
+        // Check if we find gold instead of fish
+        if (Random.Range(0f, 100f) >= GOLD_FIND_CHANCE)
+            return false;
+
+        // Determine gold amount
+        bool isRare = Random.Range(0f, 100f) < RARE_CHEST_CHANCE;
+
+        if (isRare)
+        {
+            // RARE CHEST! 1000 gold!
+            TriggerRareChestFind();
+        }
+        else
+        {
+            // Normal gold find: 1-50 gold
+            int goldAmount = Random.Range(1, 51);
+            TriggerNormalGoldFind(goldAmount);
+        }
+
+        return true;
+    }
+
+    void TriggerNormalGoldFind(int amount)
+    {
+        Debug.Log($"Gold Find! Found {amount} gold!");
+
+        // Add gold
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.AddCoins(amount);
+        }
+
+        // Show notification
+        goldFindAmount = amount;
+        goldFindText = $"+{amount} Gold";
+        isRareChest = false;
+        showingGoldFindPopup = true;
+        goldFindPopupTimer = GOLD_FIND_POPUP_DURATION;
+        StartCoroutine(GoldFindPopupCountdown());
+
+        // Play small coin sound
+        if (goldFindAudioSource != null)
+        {
+            goldFindAudioSource.PlayOneShot(GenerateSmallCoinSound(), 0.6f);
+        }
+
+        // Spawn gold coins from water
+        // Small amount (<25): few coins, 25+: more coins
+        int coinCount = amount < 25 ? 5 : 10;
+        SpawnGoldCoinsFromWater(coinCount);
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification($"Found {amount} Gold!", new Color(1f, 0.85f, 0.3f));
+        }
+
+        // Reset fishing state
+        isFishing = false;
+        StartCoroutine(ResetCooldown());
+    }
+
+    void TriggerRareChestFind()
+    {
+        Debug.Log("RARE CHEST FOUND! 1000 GOLD!");
+
+        // Add gold
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.AddCoins(1000);
+        }
+
+        // Show special popup
+        goldFindAmount = 1000;
+        goldFindText = "RARE CHEST FOUND!\n1000 GOLD!";
+        isRareChest = true;
+        showingGoldFindPopup = true;
+        goldFindPopupTimer = GOLD_FIND_POPUP_DURATION + 1f; // Longer display for rare
+        StartCoroutine(GoldFindPopupCountdown());
+
+        // Play casino jackpot sound
+        if (goldFindAudioSource != null && rareChestSound != null)
+        {
+            goldFindAudioSource.PlayOneShot(rareChestSound, 1.0f);
+        }
+
+        // Spawn stream of gold coins from water
+        StartCoroutine(SpawnGoldCoinStream());
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("RARE CHEST! +1000 GOLD!", new Color(1f, 0.7f, 0.1f));
+        }
+
+        // Reset fishing state
+        isFishing = false;
+        StartCoroutine(ResetCooldown());
+    }
+
+    void SpawnGoldCoinsFromWater(int coinCount)
+    {
+        // Get bobber position (where coins should emerge from)
+        Vector3 spawnPos = Vector3.zero;
+
+        if (GameCache.IsPlayerValid())
+        {
+            FishingRodAnimator rodAnimator = GameCache.PlayerObject.GetComponent<FishingRodAnimator>();
+            if (rodAnimator != null && rodAnimator.IsLineOut())
+            {
+                spawnPos = rodAnimator.GetBobberPosition();
+            }
+            else
+            {
+                // Fallback: spawn in front of player in water
+                spawnPos = GameCache.Player.position + GameCache.Player.forward * 8f;
+                spawnPos.y = 0.5f;
+            }
+        }
+
+        // Spawn coins bursting upward from water
+        for (int i = 0; i < coinCount; i++)
+        {
+            StartCoroutine(SpawnSingleGoldCoin(spawnPos, false));
+        }
+    }
+
+    IEnumerator SpawnGoldCoinStream()
+    {
+        // Get bobber position
+        Vector3 spawnPos = Vector3.zero;
+
+        if (GameCache.IsPlayerValid())
+        {
+            FishingRodAnimator rodAnimator = GameCache.PlayerObject.GetComponent<FishingRodAnimator>();
+            if (rodAnimator != null && rodAnimator.IsLineOut())
+            {
+                spawnPos = rodAnimator.GetBobberPosition();
+            }
+            else
+            {
+                spawnPos = GameCache.Player.position + GameCache.Player.forward * 8f;
+                spawnPos.y = 0.5f;
+            }
+        }
+
+        // Spawn a stream of 30 coins over 1.5 seconds
+        for (int i = 0; i < 30; i++)
+        {
+            StartCoroutine(SpawnSingleGoldCoin(spawnPos, true));
+            yield return new WaitForSeconds(0.05f);
+        }
+    }
+
+    IEnumerator SpawnSingleGoldCoin(Vector3 basePos, bool isStream)
+    {
+        GameObject coin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        coin.name = "GoldCoin";
+        coin.transform.localScale = new Vector3(0.15f, 0.02f, 0.15f);
+
+        // Random offset from base position
+        Vector3 spawnPos = basePos;
+        spawnPos.x += Random.Range(-0.3f, 0.3f);
+        spawnPos.z += Random.Range(-0.3f, 0.3f);
+        coin.transform.position = spawnPos;
+
+        // Remove collider
+        Object.Destroy(coin.GetComponent<Collider>());
+
+        // Gold material
+        Material mat = new Material(Shader.Find("Standard"));
+        mat.color = new Color(1f, 0.85f, 0.2f);
+        mat.SetFloat("_Metallic", 0.9f);
+        mat.SetFloat("_Glossiness", 0.8f);
+        coin.GetComponent<Renderer>().material = mat;
+
+        // Physics-like movement
+        float upVelocity = isStream ? Random.Range(4f, 7f) : Random.Range(3f, 5f);
+        float horizontalVelocity = Random.Range(-1f, 1f);
+        float rotationSpeed = Random.Range(300f, 600f);
+        float lifetime = 2f;
+        float t = 0;
+
+        Vector3 velocity = new Vector3(horizontalVelocity, upVelocity, Random.Range(-1f, 1f));
+
+        while (t < lifetime && coin != null)
+        {
+            t += Time.deltaTime;
+
+            // Apply gravity
+            velocity.y -= 9.8f * Time.deltaTime;
+
+            // Move coin
+            coin.transform.position += velocity * Time.deltaTime;
+
+            // Spin
+            coin.transform.Rotate(rotationSpeed * Time.deltaTime, 0, rotationSpeed * 0.5f * Time.deltaTime);
+
+            // Fade out near end
+            if (t > lifetime - 0.5f)
+            {
+                float alpha = (lifetime - t) / 0.5f;
+                mat.color = new Color(1f, 0.85f, 0.2f, alpha);
+            }
+
+            yield return null;
+        }
+
+        if (coin != null)
+            Object.Destroy(coin);
+    }
+
+    IEnumerator GoldFindPopupCountdown()
+    {
+        while (goldFindPopupTimer > 0)
+        {
+            goldFindPopupTimer -= Time.deltaTime;
+            yield return null;
+        }
+        showingGoldFindPopup = false;
+    }
+
+    // ========== RARE PARROT FIND SYSTEM ==========
+    // 1 in 500,000 chance to find a shoulder parrot while fishing!
+
+    bool TryParrotFind()
+    {
+        // Don't trigger if player already has the parrot
+        if (ShoulderParrot.Instance != null && ShoulderParrot.Instance.HasParrotUnlocked())
+        {
+            return false;
+        }
+
+        // 1 in 500,000 chance
+        if (Random.Range(0, PARROT_FIND_ODDS) != 0)
+        {
+            return false;
+        }
+
+        // RARE PARROT FOUND!
+        TriggerParrotFind();
+        return true;
+    }
+
+    void TriggerParrotFind()
+    {
+        Debug.Log("ULTRA RARE! Player found the Shoulder Parrot while fishing!");
+
+        // Show the special message popup
+        showingParrotFindPopup = true;
+        parrotFindPopupTimer = PARROT_FIND_POPUP_DURATION;
+        StartCoroutine(ParrotFindPopupCountdown());
+
+        // Trigger the parrot falling from the sky and permanent unlock
+        if (ShoulderParrot.Instance != null)
+        {
+            ShoulderParrot.Instance.OnParrotFishedUp();
+        }
+        else
+        {
+            Debug.LogWarning("ShoulderParrot.Instance is null - cannot spawn parrot");
+        }
+
+        // Show loot notification
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("A rare bird eats your fish, but wants to say hello.", new Color(0.4f, 1f, 0.5f));
+        }
+
+        // Reset fishing state
+        isFishing = false;
+        StartCoroutine(ResetCooldown());
+    }
+
+    IEnumerator ParrotFindPopupCountdown()
+    {
+        while (parrotFindPopupTimer > 0)
+        {
+            parrotFindPopupTimer -= Time.deltaTime;
+            yield return null;
+        }
+        showingParrotFindPopup = false;
+    }
+
     void SpawnConfetti(int count)
     {
         if (!GameCache.IsPlayerValid()) return;
@@ -541,38 +930,38 @@ public class FishingSystem : MonoBehaviour
         fishDatabase.Add(new FishData { id = "baby_turtle", fishName = "Baby Sea Turtle", rarity = Rarity.Uncommon, coinValue = 50, weight = 70f, fishColor = new Color(0.2f, 0.5f, 0.3f) });
         fishDatabase.Add(new FishData { id = "jellyfish", fishName = "Jellyfish", rarity = Rarity.Uncommon, coinValue = 35, weight = 70f, fishColor = new Color(0.8f, 0.6f, 0.9f) });
 
-        // ============ RARE FISH (12% total) ============
-        // 9 fish at ~13.3 weight each = 120 total
+        // ============ RARE FISH (5% total) ============
+        // 9 fish at ~4.9 weight each = 44 total
         // Original rare fish
-        fishDatabase.Add(new FishData { id = "tuna", fishName = "Tuna", rarity = Rarity.Rare, coinValue = 75, weight = 13.3f, fishColor = new Color(0.2f, 0.3f, 0.6f) });
-        fishDatabase.Add(new FishData { id = "swordfish", fishName = "Swordfish", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.4f, 0.4f, 0.8f) });
-        fishDatabase.Add(new FishData { id = "hammerhead", fishName = "Hammerhead", rarity = Rarity.Rare, coinValue = 120, weight = 13.3f, fishColor = new Color(0.45f, 0.45f, 0.5f) });
-        fishDatabase.Add(new FishData { id = "ocean_eel", fishName = "Ocean Sprinter Eel", rarity = Rarity.Rare, coinValue = 90, weight = 13.3f, fishColor = new Color(0.2f, 0.25f, 0.3f) });
+        fishDatabase.Add(new FishData { id = "tuna", fishName = "Tuna", rarity = Rarity.Rare, coinValue = 75, weight = 4.9f, fishColor = new Color(0.2f, 0.3f, 0.6f) });
+        fishDatabase.Add(new FishData { id = "swordfish", fishName = "Swordfish", rarity = Rarity.Rare, coinValue = 100, weight = 4.9f, fishColor = new Color(0.4f, 0.4f, 0.8f) });
+        fishDatabase.Add(new FishData { id = "hammerhead", fishName = "Hammerhead", rarity = Rarity.Rare, coinValue = 120, weight = 4.9f, fishColor = new Color(0.45f, 0.45f, 0.5f) });
+        fishDatabase.Add(new FishData { id = "ocean_eel", fishName = "Ocean Sprinter Eel", rarity = Rarity.Rare, coinValue = 90, weight = 4.9f, fishColor = new Color(0.2f, 0.25f, 0.3f) });
         // Former special rare fish - now in main pool with buff abilities (isSpecialFish for Chef quests)
-        fishDatabase.Add(new FishData { id = "red_snapper", fishName = "Red Snapper", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.9f, 0.3f, 0.3f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
-        fishDatabase.Add(new FishData { id = "blue_marlin", fishName = "Blue Marlin", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.2f, 0.4f, 0.9f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
-        fishDatabase.Add(new FishData { id = "rainbow_trout", fishName = "Rainbow Trout", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(0.9f, 0.5f, 0.7f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
-        fishDatabase.Add(new FishData { id = "sunshore_od", fishName = "Sunshore Cod", rarity = Rarity.Rare, coinValue = 100, weight = 13.3f, fishColor = new Color(1f, 0.8f, 0.3f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
-        fishDatabase.Add(new FishData { id = "icelandic_snubnose", fishName = "Icelandic Grey Finned Snubnose", rarity = Rarity.Rare, coinValue = 100, weight = 13.4f, fishColor = new Color(0.6f, 0.65f, 0.7f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "red_snapper", fishName = "Red Snapper", rarity = Rarity.Rare, coinValue = 100, weight = 4.9f, fishColor = new Color(0.9f, 0.3f, 0.3f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "blue_marlin", fishName = "Blue Marlin", rarity = Rarity.Rare, coinValue = 100, weight = 4.9f, fishColor = new Color(0.2f, 0.4f, 0.9f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "rainbow_trout", fishName = "Rainbow Trout", rarity = Rarity.Rare, coinValue = 100, weight = 4.9f, fishColor = new Color(0.9f, 0.5f, 0.7f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "sunshore_od", fishName = "Sunshore Cod", rarity = Rarity.Rare, coinValue = 100, weight = 4.9f, fishColor = new Color(1f, 0.8f, 0.3f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
+        fishDatabase.Add(new FishData { id = "icelandic_snubnose", fishName = "Icelandic Grey Finned Snubnose", rarity = Rarity.Rare, coinValue = 100, weight = 4.9f, fishColor = new Color(0.6f, 0.65f, 0.7f), isSpecialFish = true, healthBuff = HealthBuffType.InstantFullHealth });
 
-        // ============ EPIC FISH (4% total) - 1000 GOLD EACH! ============
-        // 8 fish at 5 weight each = 40 total
+        // ============ EPIC FISH (1% total) - 1000 GOLD EACH! ============
+        // 8 fish at 1.1 weight each = 8.8 total
         // Original epic fish
-        fishDatabase.Add(new FishData { id = "shark", fishName = "Shark", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.5f, 0.5f, 0.6f) });
-        fishDatabase.Add(new FishData { id = "vampire_sealfish", fishName = "Vampire Sealfish", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.3f, 0.1f, 0.15f) });
-        fishDatabase.Add(new FishData { id = "icelandic_sunscale", fishName = "Icelandic Sunscale", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.9f, 0.8f, 0.3f) });
+        fishDatabase.Add(new FishData { id = "shark", fishName = "Shark", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(0.5f, 0.5f, 0.6f) });
+        fishDatabase.Add(new FishData { id = "vampire_sealfish", fishName = "Vampire Sealfish", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(0.3f, 0.1f, 0.15f) });
+        fishDatabase.Add(new FishData { id = "icelandic_sunscale", fishName = "Icelandic Sunscale", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(0.9f, 0.8f, 0.3f) });
         // Former special epic fish - now in main pool with buff abilities
-        fishDatabase.Add(new FishData { id = "sting_ray", fishName = "Sting Ray", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.5f, 0.4f, 0.6f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
-        fishDatabase.Add(new FishData { id = "rainbow_fish", fishName = "Rainbow Fish", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(1f, 0.5f, 0.8f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
-        fishDatabase.Add(new FishData { id = "hammerhead_shark", fishName = "Giant Hammerhead", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.4f, 0.45f, 0.5f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
-        fishDatabase.Add(new FishData { id = "whale_baby", fishName = "Whale Baby", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(0.35f, 0.45f, 0.7f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
-        fishDatabase.Add(new FishData { id = "seahorse", fishName = "Seahorse", rarity = Rarity.Epic, coinValue = 1000, weight = 5f, fishColor = new Color(1f, 0.6f, 0.3f), isSpecialFish = true, healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "sting_ray", fishName = "Sting Ray", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(0.5f, 0.4f, 0.6f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "rainbow_fish", fishName = "Rainbow Fish", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(1f, 0.5f, 0.8f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "hammerhead_shark", fishName = "Giant Hammerhead", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(0.4f, 0.45f, 0.5f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "whale_baby", fishName = "Whale Baby", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(0.35f, 0.45f, 0.7f), healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
+        fishDatabase.Add(new FishData { id = "seahorse", fishName = "Seahorse", rarity = Rarity.Epic, coinValue = 1000, weight = 1.1f, fishColor = new Color(1f, 0.6f, 0.3f), isSpecialFish = true, healthBuff = HealthBuffType.MaxHealthTimed, healthBuffDuration = 600f });
 
         // ============ LEGENDARY FISH (0.1% total) ============
-        // 3 fish at ~0.33 weight each = 1 total (0.1% of 1000)
-        fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.33f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
-        fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.33f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
-        fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.34f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
+        // 3 fish at ~0.29 weight each = 0.87 total (0.1% of 884)
+        fishDatabase.Add(new FishData { id = "whale", fishName = "Whale", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.29f, fishColor = new Color(0.3f, 0.4f, 0.7f) });
+        fishDatabase.Add(new FishData { id = "dorgush_wrangler", fishName = "Dorgush Cross-Eyed Wrangler", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.29f, fishColor = new Color(0.6f, 0.4f, 0.2f) });
+        fishDatabase.Add(new FishData { id = "danish_warblecock", fishName = "Danish Warblecock", rarity = Rarity.Legendary, coinValue = 5000, weight = 0.29f, fishColor = new Color(0.8f, 0.2f, 0.4f) });
 
         // ============ ULTIMATE FISH (0.01% - Separate roll!) ============
         // Golden Starfish is NOT in the weighted pool - checked separately!
@@ -816,6 +1205,18 @@ public class FishingSystem : MonoBehaviour
         {
             TriggerMillionGoldJackpot();
             return; // Skip normal fish
+        }
+
+        // Check for RARE PARROT - 1 in 500,000 chance to find the shoulder parrot!
+        if (TryParrotFind())
+        {
+            return; // Skip fish catch - player found a parrot!
+        }
+
+        // Check for GOLD FIND - 15% chance to find gold instead of fish!
+        if (TryGoldFind())
+        {
+            return; // Skip fish catch - player found gold!
         }
 
         // Check if player should find tackle box (10% chance during quest)

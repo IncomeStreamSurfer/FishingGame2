@@ -312,7 +312,7 @@ public class DropRatesSign : MonoBehaviour
         Rect listArea = new Rect(panelX + 15, contentY, panelWidth - 30, listHeight);
 
         // Calculate total content height
-        float totalContentHeight = 650f; // Approximate height of all content
+        float totalContentHeight = 850f; // Approximate height of all content (including ultra rare events section)
         float maxScroll = Mathf.Max(0, totalContentHeight - listHeight);
 
         if (listArea.Contains(Event.current.mousePosition))
@@ -333,12 +333,26 @@ public class DropRatesSign : MonoBehaviour
         GUI.Label(new Rect(0, y, listArea.width, 20), "FISH RARITY DROP RATES", cachedSectionStyle);
         y += 25;
 
-        DrawDropItem(0, y, listArea.width, "Common Fish", "60%", new Color(0.7f, 0.7f, 0.7f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Uncommon Fish", "25%", new Color(0.3f, 0.9f, 0.3f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Rare Fish", "10%", new Color(0.4f, 0.6f, 1f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Epic Fish", "4%", new Color(0.8f, 0.4f, 1f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Legendary Fish", "0.9%", new Color(1f, 0.75f, 0.2f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Mythic Fish", "0.1%", new Color(1f, 0.35f, 0.35f)); y += 30;
+        DrawDropItem(0, y, listArea.width, "Common Fish", "62%", new Color(0.7f, 0.7f, 0.7f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "Uncommon Fish", "32%", new Color(0.3f, 0.9f, 0.3f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "Rare Fish", "5%", new Color(0.4f, 0.6f, 1f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "Epic Fish", "1%", new Color(0.8f, 0.4f, 1f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "Legendary Fish", "0.1%", new Color(1f, 0.75f, 0.2f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "Golden Starfish", "0.01%", new Color(1f, 0.35f, 0.35f)); y += 30;
+
+        // GOLD FIND (instead of fish)
+        GUI.Label(new Rect(0, y, listArea.width, 20), "GOLD FIND (15% of casts)", cachedSectionStyle);
+        y += 25;
+
+        DrawDropItem(0, y, listArea.width, "Small Gold (1-50g)", "99%", new Color(1f, 0.9f, 0.3f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "RARE CHEST (1000g!)", "1%", new Color(1f, 0.7f, 0.1f)); y += 30;
+
+        // ULTRA RARE EVENTS
+        GUI.Label(new Rect(0, y, listArea.width, 20), "ULTRA RARE EVENTS", cachedSectionStyle);
+        y += 25;
+
+        DrawDropItem(0, y, listArea.width, "Million Gold Jackpot", "1 in 100,000", new Color(1f, 0.85f, 0.2f)); y += 20;
+        DrawDropItem(0, y, listArea.width, "Shoulder Parrot Pet", "1 in 500,000", new Color(0.4f, 1f, 0.5f)); y += 30;
 
         // ROD BONUS
         GUI.Label(new Rect(0, y, listArea.width, 20), "ROD RARITY BONUSES", cachedSectionStyle);

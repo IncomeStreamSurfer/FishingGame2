@@ -79,6 +79,15 @@ public class FishConnoisseurNPC : MonoBehaviour
     private GUIStyle buttonStyle;
     private bool stylesInitialized = false;
 
+    // Performance optimization
+    private int guiFrameSkip = 0;
+
+    // Cached colors to avoid GC allocations every frame
+    private static readonly Color promptNameColor = new Color(0.9f, 0.85f, 1f);
+    private static readonly Color promptTalkColor = new Color(0.8f, 0.8f, 0.8f);
+    private static readonly Color overlayColor = new Color(0, 0, 0, 0.5f);
+    private static readonly Color borderColor = new Color(0.8f, 0.7f, 0.3f);
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -261,6 +270,16 @@ public class FishConnoisseurNPC : MonoBehaviour
 
     void CreateVisuals()
     {
+        // Cache shader once for performance
+        Shader standardShader = Shader.Find("Standard");
+
+        // Pre-create shared materials to reduce draw calls
+        Material shirtMat = new Material(standardShader);
+        shirtMat.color = new Color(0.9f, 0.9f, 0.9f); // White base
+
+        Material stripeMat = new Material(standardShader);
+        stripeMat.color = new Color(0.1f, 0.1f, 0.15f); // Shared for all stripes
+
         // Body with striped shirt (black and white horizontal stripes)
         body = new GameObject("Body");
         body.transform.SetParent(transform);
@@ -273,13 +292,9 @@ public class FishConnoisseurNPC : MonoBehaviour
         torso.transform.localPosition = Vector3.zero;
         torso.transform.localScale = new Vector3(0.7f, 0.9f, 0.45f);
         Object.Destroy(torso.GetComponent<Collider>());
-
-        // Create striped material (approximate with base color)
-        Material shirtMat = new Material(Shader.Find("Standard"));
-        shirtMat.color = new Color(0.9f, 0.9f, 0.9f); // White base
         torso.GetComponent<Renderer>().material = shirtMat;
 
-        // Add black stripes as thin cubes
+        // Add black stripes as thin cubes (reuse same material)
         for (int i = 0; i < 5; i++)
         {
             GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -288,13 +303,10 @@ public class FishConnoisseurNPC : MonoBehaviour
             stripe.transform.localPosition = new Vector3(0, -0.35f + i * 0.18f, 0.23f);
             stripe.transform.localScale = new Vector3(0.72f, 0.06f, 0.02f);
             Object.Destroy(stripe.GetComponent<Collider>());
-
-            Material stripeMat = new Material(Shader.Find("Standard"));
-            stripeMat.color = new Color(0.1f, 0.1f, 0.15f);
-            stripe.GetComponent<Renderer>().material = stripeMat;
+            stripe.GetComponent<Renderer>().sharedMaterial = stripeMat; // Use sharedMaterial
         }
 
-        // Back stripes
+        // Back stripes (reuse same material)
         for (int i = 0; i < 5; i++)
         {
             GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -303,10 +315,7 @@ public class FishConnoisseurNPC : MonoBehaviour
             stripe.transform.localPosition = new Vector3(0, -0.35f + i * 0.18f, -0.23f);
             stripe.transform.localScale = new Vector3(0.72f, 0.06f, 0.02f);
             Object.Destroy(stripe.GetComponent<Collider>());
-
-            Material stripeMat = new Material(Shader.Find("Standard"));
-            stripeMat.color = new Color(0.1f, 0.1f, 0.15f);
-            stripe.GetComponent<Renderer>().material = stripeMat;
+            stripe.GetComponent<Renderer>().sharedMaterial = stripeMat; // Use sharedMaterial
         }
 
         // Legs (dark pants)
@@ -630,8 +639,18 @@ public class FishConnoisseurNPC : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Performance: Skip frames when not actively interacting
+        if (!showingDialogue && !playerNearby)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 5 != 0) return;
+        }
+
         // Initialize styles once (must be done in OnGUI context)
-        InitializeGUIStyles();
+        if (!stylesInitialized)
+        {
+            InitializeGUIStyles();
+        }
 
         if (playerNearby && !showingDialogue)
         {
@@ -646,20 +665,20 @@ public class FishConnoisseurNPC : MonoBehaviour
 
     void DrawInteractionPrompt()
     {
-        // Use cached nameStyle
+        // Use cached nameStyle with cached colors (avoid GC allocations)
         nameStyle.fontSize = 16;
-        nameStyle.normal.textColor = new Color(0.9f, 0.85f, 1f);
+        nameStyle.normal.textColor = promptNameColor;
         GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 120, 200, 30), "Pierre le Connoisseur", nameStyle);
 
         nameStyle.fontSize = 14;
-        nameStyle.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
+        nameStyle.normal.textColor = promptTalkColor;
         GUI.Label(new Rect(Screen.width / 2 - 100, Screen.height - 95, 200, 25), "[E] Talk", nameStyle);
     }
 
     void DrawDialogue()
     {
-        // Dark overlay
-        GUI.color = new Color(0, 0, 0, 0.5f);
+        // Dark overlay (use cached color)
+        GUI.color = overlayColor;
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
@@ -670,8 +689,8 @@ public class FishConnoisseurNPC : MonoBehaviour
 
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), dialogueBgTex);
 
-        // Gold border
-        GUI.color = new Color(0.8f, 0.7f, 0.3f);
+        // Gold border (use cached color)
+        GUI.color = borderColor;
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, 3), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelX, panelY + panelHeight - 3, panelWidth, 3), Texture2D.whiteTexture);
         GUI.DrawTexture(new Rect(panelX, panelY, 3, panelHeight), Texture2D.whiteTexture);
@@ -885,6 +904,23 @@ public class FishConnoisseurNPC : MonoBehaviour
         completeStyle.fontSize = 14;
         completeStyle.normal.textColor = new Color(0.7f, 0.7f, 0.75f);
         GUI.Label(new Rect(panelX, panelY + 230, panelWidth, 25), "Total earned: 40,000 Gold", completeStyle);
+
+        // Start Over button - allows repeating all quests
+        dialogueStyle.fontSize = 12;
+        dialogueStyle.normal.textColor = new Color(0.6f, 0.6f, 0.65f);
+        GUI.Label(new Rect(panelX, panelY + 270, panelWidth, 20), "\"But if you find more legendary fish...\"", dialogueStyle);
+
+        if (DrawButton(new Rect(panelX + panelWidth / 2 - 80, panelY + panelHeight - 70, 160, 35), "START OVER"))
+        {
+            // Reset all quests so player can do them again
+            ResetAllQuests();
+            dialogueState = 0; // Go back to quest select
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification("Pierre's quests are available again!", new Color(0.9f, 0.8f, 1f));
+            }
+        }
     }
 
     bool DrawButton(Rect rect, string text)
@@ -916,6 +952,32 @@ public class FishConnoisseurNPC : MonoBehaviour
         {
             legendaryQuests[i].isCompleted = PlayerPrefs.GetInt($"ConnoisseurQuest_{i}", 0) == 1;
         }
+    }
+
+    /// <summary>
+    /// Reset all quest progress - called on new game start
+    /// </summary>
+    public void ResetAllQuests()
+    {
+        currentQuestIndex = -1;
+        foreach (var quest in legendaryQuests)
+        {
+            quest.isCompleted = false;
+        }
+        SaveQuestProgress();
+        Debug.Log("FishConnoisseur: All quests reset!");
+    }
+
+    /// <summary>
+    /// Check if all quests are completed
+    /// </summary>
+    public bool AllQuestsCompleted()
+    {
+        foreach (var quest in legendaryQuests)
+        {
+            if (!quest.isCompleted) return false;
+        }
+        return true;
     }
 
     void OnDestroy()

@@ -37,13 +37,19 @@ public class ChefNPC : MonoBehaviour
     private GUIStyle labelStyle;
     private bool stylesReady = false;
 
-    // Static colors
+    // Static colors (cached to avoid GC allocations)
     private static readonly Color titleColor = new Color(1f, 0.9f, 0.7f);
     private static readonly Color textColor = new Color(0.9f, 0.85f, 0.7f);
     private static readonly Color dimColor = new Color(0.7f, 0.7f, 0.6f);
     private static readonly Color greenColor = new Color(0.3f, 1f, 0.4f);
     private static readonly Color goldColor = new Color(1f, 0.85f, 0.3f);
     private static readonly Color grayColor = new Color(0.5f, 0.5f, 0.5f);
+    private static readonly Color overlayColor = new Color(0, 0, 0, 0.5f);
+    private static readonly Color questBlueColor = new Color(0.4f, 0.7f, 1f);
+
+    // Performance
+    private int guiFrameSkip = 0;
+    private int fireFrameSkip = 0;
 
     void Awake()
     {
@@ -129,15 +135,17 @@ public class ChefNPC : MonoBehaviour
         fireMat.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.1f) * 2f);
         cookingFire.GetComponent<Renderer>().material = fireMat;
 
-        // Fire light
+        // Fire light - optimized for performance
         GameObject lightObj = new GameObject("FireLight");
         lightObj.transform.SetParent(cookingFire.transform);
         lightObj.transform.localPosition = Vector3.up * 0.5f;
         fireLight = lightObj.AddComponent<Light>();
         fireLight.type = LightType.Point;
         fireLight.color = new Color(1f, 0.6f, 0.2f);
-        fireLight.intensity = 1.5f;
-        fireLight.range = 5f;
+        fireLight.intensity = 1.2f;
+        fireLight.range = 3f; // Reduced range for performance
+        fireLight.renderMode = LightRenderMode.ForceVertex; // Much cheaper rendering
+        fireLight.shadows = LightShadows.None; // No shadows for performance
 
         // Cooking pot
         GameObject pot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -182,21 +190,25 @@ public class ChefNPC : MonoBehaviour
         // Only run visual effects when player is within 30 units (900 sqr)
         if (distSq < 900f)
         {
-            // Fire flicker (no allocation - reuse vector)
-            flickerTime += Time.deltaTime;
-            float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.1f;
-            fireScaleTemp.x = fireScaleBase.x * flicker;
-            fireScaleTemp.y = fireScaleBase.y * flicker;
-            fireScaleTemp.z = fireScaleBase.z * flicker;
-            cookingFire.transform.localScale = fireScaleTemp;
+            // Fire flicker - only update every 3rd frame for performance
+            fireFrameSkip++;
+            if (fireFrameSkip % 3 == 0)
+            {
+                flickerTime += Time.deltaTime * 3f; // Compensate for skipped frames
+                float flicker = 1f + Mathf.Sin(flickerTime * 10f) * 0.1f;
+                fireScaleTemp.x = fireScaleBase.x * flicker;
+                fireScaleTemp.y = fireScaleBase.y * flicker;
+                fireScaleTemp.z = fireScaleBase.z * flicker;
+                cookingFire.transform.localScale = fireScaleTemp;
+            }
 
-            // Look at player when nearby
-            if (playerNearby)
+            // Look at player when nearby - also skip frames
+            if (playerNearby && fireFrameSkip % 2 == 0)
             {
                 Vector3 dir = playerTransform.position - transform.position;
                 dir.y = 0;
                 if (dir.sqrMagnitude > 0.01f)
-                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 3f);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), Time.deltaTime * 6f);
             }
         }
     }
@@ -206,6 +218,13 @@ public class ChefNPC : MonoBehaviour
         // Skip entirely if not needed
         if (!MainMenu.GameStarted) return;
         if (!playerNearby && !showingDialogue) return;
+
+        // Frame skipping when just showing prompt (not dialogue)
+        if (!showingDialogue)
+        {
+            guiFrameSkip++;
+            if (guiFrameSkip % 3 != 0) return;
+        }
 
         // Init style once
         if (!stylesReady)
@@ -237,8 +256,8 @@ public class ChefNPC : MonoBehaviour
 
     void DrawDialogue()
     {
-        // Overlay
-        GUI.color = new Color(0, 0, 0, 0.5f);
+        // Overlay (use cached color)
+        GUI.color = overlayColor;
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
@@ -298,7 +317,7 @@ public class ChefNPC : MonoBehaviour
         {
             labelStyle.fontSize = 13;
             labelStyle.alignment = TextAnchor.MiddleLeft;
-            labelStyle.normal.textColor = new Color(0.4f, 0.7f, 1f); // Blue for all quests
+            labelStyle.normal.textColor = questBlueColor; // Blue for all quests
 
             foreach (var buff in FishBuffSystem.Instance.allBuffs)
             {

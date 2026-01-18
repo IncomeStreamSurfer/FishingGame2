@@ -800,6 +800,300 @@ public class ShoulderParrot : MonoBehaviour
     public bool IsEquipped() => isEquipped;
 
     /// <summary>
+    /// Check if player owns the parrot (permanently unlocked)
+    /// </summary>
+    public bool HasParrotUnlocked()
+    {
+        return PlayerPrefs.GetInt("ParrotUnlocked", 0) == 1;
+    }
+
+    /// <summary>
+    /// Permanently unlock the parrot - called when fished up (1 in 500,000 chance!)
+    /// </summary>
+    public void UnlockParrotPermanently()
+    {
+        PlayerPrefs.SetInt("ParrotUnlocked", 1);
+        PlayerPrefs.Save();
+        Debug.Log("PARROT PERMANENTLY UNLOCKED!");
+    }
+
+    /// <summary>
+    /// Called when player fishes up the rare parrot!
+    /// Plays giant squawk, parrot falls from sky, permanently unlocked
+    /// </summary>
+    public void OnParrotFishedUp()
+    {
+        // Permanently unlock
+        UnlockParrotPermanently();
+
+        // Find player
+        if (!GameCache.IsPlayerValid()) return;
+        playerTransform = GameCache.Player;
+
+        // Hide cosmetic parrot if any
+        HideCosmeticParrot();
+
+        // Create parrot model if not exists
+        if (parrotModel == null)
+        {
+            CreateParrotModel();
+        }
+
+        // Start the special fishing discovery animation
+        StartCoroutine(ParrotFishedUpAnimation());
+    }
+
+    IEnumerator ParrotFishedUpAnimation()
+    {
+        isFlying = true;
+
+        // Play GIANT SQUAWK sound - much louder and longer than normal
+        StartCoroutine(GenerateGiantSquawkSound());
+
+        // Also play celebratory casino sounds!
+        StartCoroutine(GenerateCasinoCelebrationSound());
+
+        // Start parrot very high in the sky, directly above the bobber/player
+        Vector3 startPos = playerTransform.position + new Vector3(0, 30f, 0);
+        parrotModel.transform.position = startPos;
+        parrotModel.transform.localScale = Vector3.one * 0.8f;
+
+        // Make parrot visible
+        parrotModel.SetActive(true);
+
+        // Calculate target position on shoulder
+        Vector3 targetPos = playerTransform.position + playerTransform.TransformDirection(shoulderOffset);
+
+        float fallTime = 3f; // Longer fall time for dramatic effect
+        float t = 0f;
+
+        // Get wing reference for flapping
+        Transform leftWing = null;
+        foreach (Transform child in parrotModel.transform)
+        {
+            if (child.name == "ParrotWing")
+            {
+                leftWing = child;
+                break;
+            }
+        }
+
+        // Fall with tumbling motion
+        float tumbleSpeed = 720f; // 2 full rotations per second
+        Vector3 tumbleAxis = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)).normalized;
+
+        while (t < fallTime)
+        {
+            t += Time.deltaTime;
+            float progress = t / fallTime;
+
+            // Accelerating fall (gravity effect)
+            float fallProgress = EaseInQuad(progress);
+
+            // Update target in case player moved
+            Vector3 currentTarget = playerTransform.position + playerTransform.TransformDirection(shoulderOffset);
+
+            // Fall from sky with slight drift
+            Vector3 pos = Vector3.Lerp(startPos, currentTarget, fallProgress);
+
+            // Add tumbling/spinning during fall (slows down near end)
+            float tumbleFactor = 1f - progress;
+            parrotModel.transform.Rotate(tumbleAxis, tumbleSpeed * Time.deltaTime * tumbleFactor);
+
+            // Add wobble
+            pos.x += Mathf.Sin(t * 5f) * 0.5f * (1f - progress);
+            pos.z += Mathf.Cos(t * 4f) * 0.5f * (1f - progress);
+
+            parrotModel.transform.position = pos;
+
+            // Frantic wing flapping
+            if (leftWing != null)
+            {
+                float flapAngle = Mathf.Sin(t * 40f) * 60f; // Very fast flapping
+                leftWing.localRotation = Quaternion.Euler(0, 0, -20 + flapAngle);
+            }
+
+            yield return null;
+        }
+
+        // Snap to correct position and rotation on shoulder
+        parrotModel.transform.position = playerTransform.position + playerTransform.TransformDirection(shoulderOffset);
+        parrotModel.transform.rotation = playerTransform.rotation * Quaternion.Euler(0, 30, 0);
+
+        // Reset wing
+        if (leftWing != null)
+        {
+            leftWing.localRotation = Quaternion.Euler(0, 0, -20);
+        }
+
+        // Land on shoulder
+        isFlying = false;
+        isEquipped = true;
+        canInteract = true;
+
+        // Set first fly off time
+        nextFlyOffTime = Time.time + Random.Range(flyOffMinInterval, flyOffMaxInterval);
+
+        // Play happy chirp after landing
+        yield return new WaitForSeconds(0.3f);
+        PlayParrotSound(false);
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification("The parrot is now your friend forever!", new Color(0.3f, 0.9f, 0.4f));
+        }
+    }
+
+    float EaseInQuad(float t)
+    {
+        return t * t;
+    }
+
+    IEnumerator GenerateGiantSquawkSound()
+    {
+        int sampleRate = 44100;
+        float duration = 1.5f; // Longer than normal squawk
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip squawkClip = AudioClip.Create("GiantSquawk", sampleCount, 1, sampleRate, false);
+
+        float[] samples = new float[sampleCount];
+
+        // GIANT multi-layered squawk
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            float call = 0f;
+
+            // Three overlapping squawks for dramatic effect
+            // First squawk (main)
+            if (progress < 0.5f)
+            {
+                float p = progress / 0.5f;
+                float freq = Mathf.Lerp(600f, 1400f, p) + Mathf.Sin(t * 80f) * 200f;
+                float squawk = Mathf.Sin(2 * Mathf.PI * freq * t);
+                squawk += Mathf.Sin(2 * Mathf.PI * freq * 2f * t) * 0.4f;
+                squawk += Mathf.Sin(2 * Mathf.PI * freq * 3f * t) * 0.2f;
+                squawk *= Mathf.Sin(p * Mathf.PI);
+                call += squawk * 0.5f;
+            }
+
+            // Second squawk (echo)
+            if (progress > 0.3f && progress < 0.8f)
+            {
+                float p = (progress - 0.3f) / 0.5f;
+                float freq = Mathf.Lerp(700f, 1500f, p) + Mathf.Sin(t * 70f) * 180f;
+                float squawk = Mathf.Sin(2 * Mathf.PI * freq * t);
+                squawk += Mathf.Sin(2 * Mathf.PI * freq * 2f * t) * 0.35f;
+                squawk *= Mathf.Sin(p * Mathf.PI);
+                call += squawk * 0.4f;
+            }
+
+            // Third squawk (trailing)
+            if (progress > 0.6f)
+            {
+                float p = (progress - 0.6f) / 0.4f;
+                float freq = Mathf.Lerp(500f, 1200f, p) + Mathf.Sin(t * 60f) * 150f;
+                float squawk = Mathf.Sin(2 * Mathf.PI * freq * t);
+                squawk += Mathf.Sin(2 * Mathf.PI * freq * 2f * t) * 0.3f;
+                squawk *= Mathf.Sin(p * Mathf.PI);
+                call += squawk * 0.35f;
+            }
+
+            // Add harsh noise for authentic parrot sound
+            call += (Random.value * 2f - 1f) * 0.15f * (1f - progress * 0.5f);
+
+            samples[i] = Mathf.Clamp(call, -0.9f, 0.9f);
+        }
+
+        squawkClip.SetData(samples, 0);
+
+        // Play LOUD
+        audioSource.PlayOneShot(squawkClip, 1.0f); // Full volume
+
+        yield return null;
+    }
+
+    IEnumerator GenerateCasinoCelebrationSound()
+    {
+        // Wait a moment for the squawk to start
+        yield return new WaitForSeconds(0.3f);
+
+        int sampleRate = 44100;
+        float duration = 3f;
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip celebrationClip = AudioClip.Create("CasinoCelebration", sampleCount, 1, sampleRate, false);
+
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            float sound = 0f;
+
+            // Ascending victory fanfare
+            float fanfareEnvelope = Mathf.Sin(progress * Mathf.PI) * (1f - progress * 0.3f);
+
+            // Rising arpeggio notes
+            float[] noteFreqs = { 523f, 659f, 784f, 1047f, 1319f }; // C5, E5, G5, C6, E6
+            for (int n = 0; n < noteFreqs.Length; n++)
+            {
+                float noteStart = n * 0.15f;
+                float noteEnd = noteStart + 0.8f;
+                if (t >= noteStart && t < noteEnd)
+                {
+                    float noteT = t - noteStart;
+                    float noteEnv = Mathf.Sin((noteT / 0.8f) * Mathf.PI) * Mathf.Exp(-noteT * 2f);
+                    sound += Mathf.Sin(2f * Mathf.PI * noteFreqs[n] * t) * noteEnv * 0.15f;
+                    sound += Mathf.Sin(2f * Mathf.PI * noteFreqs[n] * 2f * t) * noteEnv * 0.08f; // Harmonic
+                }
+            }
+
+            // Coin shower sounds (high-pitched tinkles)
+            for (int c = 0; c < 20; c++)
+            {
+                float coinStart = 0.2f + (c * 0.1f);
+                float coinT = t - coinStart;
+                if (coinT > 0 && coinT < 0.15f)
+                {
+                    float coinFreq = 2500f + (c % 5) * 400f;
+                    float coinEnv = Mathf.Exp(-coinT * 15f);
+                    sound += Mathf.Sin(2f * Mathf.PI * coinFreq * coinT) * coinEnv * 0.08f;
+                }
+            }
+
+            // Triumphant brass-like chord at the end
+            if (progress > 0.6f)
+            {
+                float chordProgress = (progress - 0.6f) / 0.4f;
+                float chordEnv = Mathf.Sin(chordProgress * Mathf.PI) * 0.3f;
+
+                // Major chord: C, E, G
+                sound += Mathf.Sin(2f * Mathf.PI * 523f * t) * chordEnv;
+                sound += Mathf.Sin(2f * Mathf.PI * 659f * t) * chordEnv * 0.8f;
+                sound += Mathf.Sin(2f * Mathf.PI * 784f * t) * chordEnv * 0.7f;
+                sound += Mathf.Sin(2f * Mathf.PI * 1047f * t) * chordEnv * 0.5f; // Octave
+            }
+
+            // Bell/chime accents
+            if (t < 0.5f || (t > 1f && t < 1.2f) || (t > 2f && t < 2.3f))
+            {
+                float bellFreq = 1760f; // A6
+                float bellEnv = Mathf.Exp(-(t % 0.5f) * 8f);
+                sound += Mathf.Sin(2f * Mathf.PI * bellFreq * t) * bellEnv * 0.1f;
+            }
+
+            samples[i] = Mathf.Clamp(sound * fanfareEnvelope, -0.9f, 0.9f);
+        }
+
+        celebrationClip.SetData(samples, 0);
+        audioSource.PlayOneShot(celebrationClip, 0.7f);
+    }
+
+    /// <summary>
     /// Shows a random bonus fish message when parrot grants an extra fish
     /// </summary>
     public void ShowBonusFishMessage()

@@ -255,7 +255,8 @@ public class RulesPopup : MonoBehaviour
         // Tips list
         string[] tips = new string[]
         {
-            "F near water = Fish",
+            "Hold left mouse for power cast!",
+            "F to open fish inventory",
             "Cook at BBQ for HP",
             "Sell rare fish to NPCs",
         };
@@ -273,7 +274,7 @@ public class RulesPopup : MonoBehaviour
         GUI.DrawTexture(controlsBgRect, GetTexture("tipBg"));
 
         GUI.Label(new Rect(panelX + padding, contentY + 4, contentWidth, 10), "KEYS", cachedControlStyle);
-        GUI.Label(new Rect(panelX + padding, contentY + 16, contentWidth, 10), "F=Fish E=Use TAB=Stats", cachedKeyStyle);
+        GUI.Label(new Rect(panelX + padding, contentY + 16, contentWidth, 10), "LMB=Cast E=Use TAB=Stats", cachedKeyStyle);
 
         contentY += 36;
 

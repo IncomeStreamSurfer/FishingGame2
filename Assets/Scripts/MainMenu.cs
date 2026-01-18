@@ -821,6 +821,20 @@ public class MainMenu : MonoBehaviour
             GameManager.Instance.fishInventory.Clear();
         }
 
+        // Reset Fish Connoisseur quests for new game
+        if (FishConnoisseurNPC.Instance != null)
+        {
+            FishConnoisseurNPC.Instance.ResetAllQuests();
+        }
+
+        // Clear Connoisseur PlayerPrefs directly in case NPC not yet initialized
+        PlayerPrefs.SetInt("ConnoisseurCurrentQuest", -1);
+        for (int i = 0; i < 4; i++) // 4 legendary quests
+        {
+            PlayerPrefs.SetInt($"ConnoisseurQuest_{i}", 0);
+        }
+        PlayerPrefs.Save();
+
         Debug.Log("Starting new game!");
     }
 
