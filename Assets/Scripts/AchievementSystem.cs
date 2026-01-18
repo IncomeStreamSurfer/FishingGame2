@@ -542,6 +542,10 @@ public class AchievementSystem : MonoBehaviour
         PlayerPrefs.DeleteKey("Achievement_CaughtGoldenStarfish");
         PlayerPrefs.DeleteKey("Achievement_DiedByLightning");
         PlayerPrefs.DeleteKey("Achievement_DiedByDrowning");
+        PlayerPrefs.DeleteKey("TotalGoldEarned"); // For Wealthy Fisher achievement
+        PlayerPrefs.DeleteKey("Death_Total");
+        PlayerPrefs.DeleteKey("Death_Drowning");
+        PlayerPrefs.DeleteKey("Death_LightningStrike");
 
         PlayerPrefs.Save();
         Debug.Log("[AchievementSystem] All achievements reset for new game");

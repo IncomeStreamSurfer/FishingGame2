@@ -13,7 +13,7 @@ public class MainMenu : MonoBehaviour
     public static MainMenu Instance { get; private set; }
     public static bool GameStarted { get; set; } = false;
 
-    private enum MenuState { Main, Settings, SavedGames, LoadGame }
+    private enum MenuState { Main, Settings, LoadGame }
     private MenuState currentState = MenuState.Main;
 
     // Settings
@@ -293,9 +293,6 @@ public class MainMenu : MonoBehaviour
             case MenuState.Settings:
                 DrawSettingsMenu();
                 break;
-            case MenuState.SavedGames:
-                DrawSavedGamesMenu();
-                break;
             case MenuState.LoadGame:
                 DrawLoadGameMenu();
                 break;
@@ -497,45 +494,35 @@ public class MainMenu : MonoBehaviour
 
     void DrawMainMenu()
     {
-        float buttonWidth = 180;
-        float buttonHeight = 36;
-        float buttonSpacing = 12;
-        float columnGap = 60; // Gap between left and right columns
+        float buttonWidth = 220;
+        float buttonHeight = 42;
+        float buttonSpacing = 16;
 
-        // Position buttons below the BETA text (which ends around 12% + 290 pixels)
-        float startY = safeArea.y + safeArea.height * 0.12f + 310f; // Below BETA badge
+        // Calculate center position
         float centerX = safeArea.x + safeArea.width / 2;
+        float buttonX = centerX - buttonWidth / 2;
 
-        // Left column X position (buttons on the left)
-        float leftX = centerX - buttonWidth - columnGap / 2;
-        // Right column X position (buttons on the right)
-        float rightX = centerX + columnGap / 2;
+        // Position buttons below the BETA text
+        float startY = safeArea.y + safeArea.height * 0.12f + 310f;
 
-        // Left column: START NEW GAME, LOAD GAME
-        if (DrawMenuButton(new Rect(leftX, startY, buttonWidth, buttonHeight), "START NEW GAME"))
+        // Centered vertical layout - clean and symmetrical
+        if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "START NEW GAME"))
         {
             StartNewGame();
         }
-        if (DrawMenuButton(new Rect(leftX, startY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight), "LOAD GAME"))
+
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "LOAD GAME"))
         {
-            RefreshSavedGames(); // Refresh before showing
+            RefreshSavedGames();
             currentState = MenuState.LoadGame;
         }
 
-        // Right column: SAVED GAMES, SETTINGS (symmetrical)
-        if (DrawMenuButton(new Rect(rightX, startY, buttonWidth, buttonHeight), "SAVED GAMES"))
-        {
-            RefreshSavedGames(); // Refresh before showing
-            currentState = MenuState.SavedGames;
-        }
-        if (DrawMenuButton(new Rect(rightX, startY + buttonHeight + buttonSpacing, buttonWidth, buttonHeight), "SETTINGS"))
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight), "SETTINGS"))
         {
             currentState = MenuState.Settings;
         }
 
-        // Bottom center: QUIT
-        float quitY = startY + (buttonHeight + buttonSpacing) * 2 + 20; // Extra spacing before quit
-        if (DrawMenuButton(new Rect(centerX - buttonWidth / 2, quitY, buttonWidth, buttonHeight), "QUIT"))
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * 3, buttonWidth, buttonHeight), "QUIT"))
         {
             QuitGame();
         }
@@ -607,48 +594,6 @@ public class MainMenu : MonoBehaviour
         {
             SaveSettings();
             currentState = MenuState.Main;
-        }
-    }
-
-    void DrawSavedGamesMenu()
-    {
-        float panelWidth = 600;
-        float panelHeight = 500;
-        float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
-        float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
-
-        GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
-        GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
-
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 28;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.alignment = TextAnchor.MiddleCenter;
-        headerStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
-        GUI.Label(new Rect(panelX, panelY + 15, panelWidth, 40), "SAVED GAMES", headerStyle);
-
-        if (DrawCloseButton(new Rect(panelX + panelWidth - 40, panelY + 10, 30, 30)))
-        {
-            currentState = MenuState.Main;
-        }
-
-        float contentY = panelY + 70;
-        float slotHeight = 110; // Taller for thumbnails
-
-        if (savedGames.Count == 0)
-        {
-            GUIStyle noSaveStyle = new GUIStyle(GUI.skin.label);
-            noSaveStyle.fontSize = 18;
-            noSaveStyle.alignment = TextAnchor.MiddleCenter;
-            noSaveStyle.normal.textColor = new Color(0.6f, 0.6f, 0.7f);
-            GUI.Label(new Rect(panelX, contentY + 150, panelWidth, 30), "No saved games found", noSaveStyle);
-        }
-        else
-        {
-            for (int i = 0; i < Mathf.Min(savedGames.Count, 3); i++)
-            {
-                DrawSaveSlotWithThumbnail(new Rect(panelX + 20, contentY + i * (slotHeight + 10), panelWidth - 40, slotHeight), savedGames[i], false);
-            }
         }
     }
 
