@@ -1028,6 +1028,16 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    // Reset health to full for new game
+    public void ResetHealth()
+    {
+        RecalculateMaxHealth();
+        currentHealth = maxHealth;
+        isDead = false;
+        deathCause = "";
+        Debug.Log($"Health reset to {currentHealth}/{maxHealth} for new game");
+    }
+
     void OnDestroy()
     {
         // Unsubscribe from level up event

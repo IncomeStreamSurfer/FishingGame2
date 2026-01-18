@@ -776,7 +776,10 @@ public class MainMenu : MonoBehaviour
         GameStarted = true;
         EnableGameSystems();
 
-        // Reset game state for new game
+        // ============ COMPLETE NEW GAME RESET ============
+        // Reset EVERYTHING except achievements (those persist across games)
+
+        // Reset gold and fish inventory
         if (GameManager.Instance != null)
         {
             GameManager.Instance.coins = 0;
@@ -784,29 +787,77 @@ public class MainMenu : MonoBehaviour
             GameManager.Instance.fishInventory.Clear();
         }
 
-        // Reset Fish Connoisseur quests for new game
+        // Reset XP and Level to 1
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.ResetToLevel1();
+        }
+        PlayerPrefs.SetInt("PlayerXP", 0);
+        PlayerPrefs.SetInt("PlayerLevel", 1);
+
+        // Reset player health to full
+        if (PlayerHealth.Instance != null)
+        {
+            PlayerHealth.Instance.ResetHealth();
+        }
+
+        // Reset player position to spawn
+        if (GameCache.IsPlayerValid())
+        {
+            GameCache.Player.position = new Vector3(0, 2, 0); // Spawn position
+        }
+
+        // Reset special fish inventory
+        if (FishingSystem.Instance != null)
+        {
+            FishingSystem.Instance.specialFishInventory.Clear();
+        }
+
+        // Reset buff inventory and active buffs
+        if (FishBuffSystem.Instance != null)
+        {
+            FishBuffSystem.Instance.ClearAllActiveBuffs();
+            // Reset buff inventory counts
+            foreach (var buff in FishBuffSystem.Instance.allBuffs)
+            {
+                FishBuffSystem.Instance.buffInventory[buff.type] = 0;
+                buff.isUnlocked = false;
+            }
+            // Clear quest completion tracking for buffs
+            FishBuffSystem.Instance.completedQuests.Clear();
+        }
+
+        // Reset buff-related PlayerPrefs
+        PlayerPrefs.DeleteKey("BuffInv_SnappersDelight");
+        PlayerPrefs.DeleteKey("BuffInv_MarlinsLuck");
+        PlayerPrefs.DeleteKey("BuffInv_TroutsFortune");
+        PlayerPrefs.DeleteKey("BuffInv_SunshoreSurge");
+        PlayerPrefs.DeleteKey("BuffInv_SnubnoseSpeed");
+        PlayerPrefs.DeleteKey("BuffInv_SeahorsesBounty");
+        PlayerPrefs.DeleteKey("Quest_red_snapper");
+        PlayerPrefs.DeleteKey("Quest_blue_marlin");
+        PlayerPrefs.DeleteKey("Quest_rainbow_trout");
+        PlayerPrefs.DeleteKey("Quest_sunshore_od");
+        PlayerPrefs.DeleteKey("Quest_icelandic_snubnose");
+        PlayerPrefs.DeleteKey("Quest_seahorse");
+
+        // Reset Fish Connoisseur quests
         if (FishConnoisseurNPC.Instance != null)
         {
             FishConnoisseurNPC.Instance.ResetAllQuests();
         }
-
-        // Clear Connoisseur PlayerPrefs directly in case NPC not yet initialized
         PlayerPrefs.SetInt("ConnoisseurCurrentQuest", -1);
-        for (int i = 0; i < 4; i++) // 4 legendary quests
+        for (int i = 0; i < 4; i++)
         {
             PlayerPrefs.SetInt($"ConnoisseurQuest_{i}", 0);
         }
 
-        // Reset day counter to Day 1 for new game
+        // Reset day counter to Day 1
         if (DayNightCycle.Instance != null)
         {
             DayNightCycle.Instance.ResetDayCounter();
         }
-        else
-        {
-            // Directly reset PlayerPrefs in case DayNightCycle not yet initialized
-            PlayerPrefs.SetInt("CurrentDay", 1);
-        }
+        PlayerPrefs.SetInt("CurrentDay", 1);
 
         // Reset time alive tracker
         if (TimeAliveTracker.Instance != null)
@@ -814,15 +865,26 @@ public class MainMenu : MonoBehaviour
             TimeAliveTracker.Instance.ResetTimer();
         }
 
-        // Reset all achievements for new game
-        if (AchievementSystem.Instance != null)
-        {
-            AchievementSystem.Instance.ResetAllAchievements();
-        }
+        // Reset cookable fish discovery flags
+        PlayerPrefs.DeleteKey("CookableFishDiscovered_red_snapper");
+        PlayerPrefs.DeleteKey("CookableFishDiscovered_blue_marlin");
+        PlayerPrefs.DeleteKey("CookableFishDiscovered_rainbow_trout");
+        PlayerPrefs.DeleteKey("CookableFishDiscovered_sunshore_od");
+        PlayerPrefs.DeleteKey("CookableFishDiscovered_icelandic_snubnose");
+        PlayerPrefs.DeleteKey("CookableFishDiscovered_seahorse");
+
+        // Reset gold tracking (for achievements - but keep achievement unlocks!)
+        PlayerPrefs.DeleteKey("TotalGoldEarned");
+
+        // Reset fish diary entries
+        PlayerPrefs.DeleteKey("FishDiary_golden_starfish");
+
+        // NOTE: Achievements are NOT reset - they persist across all games!
+        // NOTE: Parrot unlock is NOT reset - it's a permanent cosmetic unlock!
 
         PlayerPrefs.Save();
 
-        Debug.Log("Starting new game!");
+        Debug.Log("Starting fresh new game - all progress reset except achievements!");
     }
 
     void LoadGame(SavedGameInfo save)

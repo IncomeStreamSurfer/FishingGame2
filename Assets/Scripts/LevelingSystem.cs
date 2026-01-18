@@ -247,6 +247,16 @@ public class LevelingSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Reset to Level 1 with 0 XP (used for new game)
+    /// </summary>
+    public void ResetToLevel1()
+    {
+        currentXP = 0;
+        currentLevel = 1;
+        Debug.Log("Level reset to 1 for new game");
+    }
+
+    /// <summary>
     /// Calculate bonus max health based on level
     /// +1 HP every 5 levels (Level 5 = +1, Level 10 = +2, etc.)
     /// </summary>
