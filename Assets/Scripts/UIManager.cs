@@ -9,7 +9,7 @@ public class UIManager : MonoBehaviour
     private bool inventoryOpen = false;
     private bool shopOpen = false;
     private int selectedRodIndex = 0;
-    private int currentTab = 0; // 0=Equipment, 1=Quests, 2=Shop, 3=Wardrobe, 4=Gun Skins
+    private int currentTab = 0; // 0=Equipment, 1=Quests, 2=Buffs, 3=Wardrobe, 4=Melee, 5=Scores, 6=Achievements
 
     // Wardrobe data - tracks owned clothing items
     private List<WardrobeItem> ownedClothing = new List<WardrobeItem>();
@@ -1061,8 +1061,8 @@ public class UIManager : MonoBehaviour
         }
 
         // Tabs - smaller
-        string[] tabs = { "Equipment", "Quests", "Buffs", "Wardrobe", "Melee", "Scores" };
-        float tabWidth = 43f; // Slightly smaller to fit 6 tabs
+        string[] tabs = { "Equipment", "Quests", "Buffs", "Wardrobe", "Melee", "Scores", "Achieve" };
+        float tabWidth = 37f; // Smaller to fit 7 tabs
         for (int i = 0; i < tabs.Length; i++)
         {
             GUIStyle style = (i == currentTab) ? tabActiveStyle : tabStyle;
@@ -1083,6 +1083,7 @@ public class UIManager : MonoBehaviour
             case 3: DrawWardrobeTab(contentRect); break;
             case 4: DrawMeleeWeaponsTab(contentRect); break;
             case 5: DrawScoresTab(contentRect); break;
+            case 6: DrawAchievementsTab(contentRect); break;
         }
     }
 
@@ -1602,6 +1603,160 @@ public class UIManager : MonoBehaviour
             float scrollBarY = (scoresScrollPos / (contentHeight - listRect.height)) * (listRect.height - scrollBarHeight);
             GUI.DrawTexture(new Rect(listRect.x + listRect.width - 6, listRect.y + scrollBarY, 4, scrollBarHeight),
                 MakeTexture(1, 1, new Color(0.5f, 0.5f, 0.55f, 0.8f)));
+        }
+    }
+
+    // =============== ACHIEVEMENTS TAB ===============
+
+    private float achievementScrollPos = 0f;
+
+    void DrawAchievementsTab(Rect rect)
+    {
+        // Title with counter
+        int unlocked = AchievementSystem.Instance != null ? AchievementSystem.Instance.GetUnlockedCount() : 0;
+        int total = AchievementSystem.Instance != null ? AchievementSystem.Instance.GetTotalCount() : 0;
+        GUI.Label(new Rect(rect.x, rect.y, 200, 14), $"ACHIEVEMENTS ({unlocked}/{total})", headerStyle);
+
+        // "Open Full Panel" button
+        GUIStyle openBtnStyle = new GUIStyle(buttonStyle);
+        openBtnStyle.fontSize = 9;
+        if (GUI.Button(new Rect(rect.x + rect.width - 85, rect.y, 85, 16), "FULL VIEW", openBtnStyle))
+        {
+            if (AchievementSystem.Instance != null)
+            {
+                AchievementSystem.Instance.OpenPanel();
+                inventoryOpen = false;
+            }
+        }
+
+        // Scrollable list area
+        Rect listRect = new Rect(rect.x, rect.y + 18, rect.width, rect.height - 22);
+        GUI.DrawTexture(listRect, MakeTexture(2, 2, new Color(0.08f, 0.08f, 0.1f, 0.9f)));
+
+        if (AchievementSystem.Instance == null)
+        {
+            GUIStyle errorStyle = new GUIStyle();
+            errorStyle.fontSize = 11;
+            errorStyle.alignment = TextAnchor.MiddleCenter;
+            errorStyle.normal.textColor = new Color(0.8f, 0.5f, 0.5f);
+            GUI.Label(listRect, "Achievement system not loaded", errorStyle);
+            return;
+        }
+
+        var achievements = AchievementSystem.Instance.achievements;
+        float itemHeight = 36f;
+        float contentHeight = achievements.Count * itemHeight;
+
+        // Handle scroll
+        if (listRect.Contains(Event.current.mousePosition))
+        {
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                achievementScrollPos += Event.current.delta.y * 20f;
+                achievementScrollPos = Mathf.Clamp(achievementScrollPos, 0, Mathf.Max(0, contentHeight - listRect.height));
+                Event.current.Use();
+            }
+        }
+
+        GUI.BeginGroup(listRect);
+
+        GUIStyle nameStyle = new GUIStyle();
+        nameStyle.fontSize = 10;
+        nameStyle.fontStyle = FontStyle.Bold;
+
+        GUIStyle descStyle = new GUIStyle();
+        descStyle.fontSize = 8;
+        descStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+
+        GUIStyle lockedStyle = new GUIStyle();
+        lockedStyle.fontSize = 10;
+        lockedStyle.fontStyle = FontStyle.Bold;
+        lockedStyle.normal.textColor = new Color(0.4f, 0.4f, 0.4f);
+
+        GUIStyle chanceStyle = new GUIStyle();
+        chanceStyle.fontSize = 8;
+        chanceStyle.alignment = TextAnchor.MiddleRight;
+        chanceStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+
+        float y = 4 - achievementScrollPos;
+
+        for (int i = 0; i < achievements.Count; i++)
+        {
+            // Skip items outside visible area
+            if (y + itemHeight < 0 || y > listRect.height)
+            {
+                y += itemHeight;
+                continue;
+            }
+
+            Achievement achievement = achievements[i];
+            Rect itemRect = new Rect(4, y, listRect.width - 12, itemHeight - 4);
+
+            // Background
+            Color bgColor = achievement.isUnlocked ?
+                new Color(0.12f, 0.14f, 0.12f, 0.9f) :
+                new Color(0.08f, 0.08f, 0.08f, 0.9f);
+            GUI.DrawTexture(itemRect, MakeTexture(2, 2, bgColor));
+
+            // Rarity color indicator (left edge)
+            Color rarityColor = GetAchievementRarityColor(achievement.rarity);
+            GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, 3, itemRect.height),
+                MakeTexture(1, 1, achievement.isUnlocked ? rarityColor : new Color(0.25f, 0.25f, 0.25f)));
+
+            if (achievement.isUnlocked)
+            {
+                // Unlocked - show name and description
+                nameStyle.normal.textColor = rarityColor;
+                GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 4, 200, 14), achievement.name, nameStyle);
+                GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 18, 200, 12), achievement.description, descStyle);
+
+                // Chance display
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 4, 55, 12), achievement.chanceDisplay, chanceStyle);
+
+                // Rarity label
+                chanceStyle.normal.textColor = new Color(rarityColor.r * 0.7f, rarityColor.g * 0.7f, rarityColor.b * 0.7f);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 18, 55, 12), achievement.rarity.ToString(), chanceStyle);
+                chanceStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+            }
+            else
+            {
+                // Locked - show "???"
+                GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 4, 200, 14), "???", lockedStyle);
+                descStyle.normal.textColor = new Color(0.4f, 0.4f, 0.4f);
+                GUI.Label(new Rect(itemRect.x + 10, itemRect.y + 18, 200, 12), "Achievement Locked", descStyle);
+                descStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+
+                // Dimmed rarity hint
+                chanceStyle.normal.textColor = new Color(0.3f, 0.3f, 0.3f);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 10, 55, 12), achievement.rarity.ToString(), chanceStyle);
+                chanceStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+            }
+
+            y += itemHeight;
+        }
+
+        GUI.EndGroup();
+
+        // Scrollbar
+        if (contentHeight > listRect.height)
+        {
+            float scrollBarHeight = listRect.height * (listRect.height / contentHeight);
+            float scrollBarY = (achievementScrollPos / (contentHeight - listRect.height)) * (listRect.height - scrollBarHeight);
+            GUI.DrawTexture(new Rect(listRect.x + listRect.width - 6, listRect.y + scrollBarY, 4, scrollBarHeight),
+                MakeTexture(1, 1, new Color(0.5f, 0.5f, 0.55f, 0.8f)));
+        }
+    }
+
+    Color GetAchievementRarityColor(AchievementRarity rarity)
+    {
+        switch (rarity)
+        {
+            case AchievementRarity.Common: return new Color(0.7f, 0.7f, 0.7f);
+            case AchievementRarity.Rare: return new Color(0.4f, 0.6f, 1f);
+            case AchievementRarity.Epic: return new Color(0.8f, 0.4f, 1f);
+            case AchievementRarity.Legendary: return new Color(1f, 0.75f, 0.2f);
+            case AchievementRarity.Mythic: return new Color(1f, 0.35f, 0.35f);
+            default: return Color.white;
         }
     }
 

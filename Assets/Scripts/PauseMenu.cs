@@ -35,6 +35,9 @@ public class PauseMenu : MonoBehaviour
     // Save in progress flag
     private bool isSaving = false;
 
+    // Flag to hide UI during screenshot capture
+    private bool hideForScreenshot = false;
+
     void Awake()
     {
         if (Instance == null)
@@ -170,6 +173,9 @@ public class PauseMenu : MonoBehaviour
         }
 
         if (!initialized || fadeAlpha < 0.01f) return;
+
+        // Hide UI during screenshot capture
+        if (hideForScreenshot) return;
 
         GUI.color = new Color(1, 1, 1, fadeAlpha);
 
@@ -592,7 +598,11 @@ public class PauseMenu : MonoBehaviour
             // Temporarily unpause to capture screenshot
             Time.timeScale = 1f;
 
-            SaveGameManager.Instance.InitiateSave(slot);
+            // Pass callbacks to hide/show UI during screenshot
+            SaveGameManager.Instance.InitiateSave(slot,
+                () => { hideForScreenshot = true; },   // Hide UI before screenshot
+                () => { hideForScreenshot = false; }   // Show UI after screenshot
+            );
         }
         else
         {

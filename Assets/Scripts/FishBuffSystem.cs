@@ -367,6 +367,12 @@ public class FishBuffSystem : MonoBehaviour
         // Activate the buff
         activeBuffs.Add(new ActiveBuff(type, buffData.duration, buffData.buffName));
 
+        // Track for Buff Master achievement
+        if (AchievementSystem.Instance != null)
+        {
+            AchievementSystem.Instance.OnBuffUsed(type);
+        }
+
         Debug.Log($"Activated buff: {buffData.buffName} for {buffData.duration} seconds");
         if (UIManager.Instance != null)
         {

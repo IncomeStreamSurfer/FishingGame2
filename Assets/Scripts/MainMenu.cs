@@ -31,6 +31,9 @@ public class MainMenu : MonoBehaviour
     private float menuAlpha = 0f;
     private float fadeInTime = 0f;
 
+    // Track previous game state to detect return to menu
+    private bool wasGameStarted = false;
+
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
@@ -164,6 +167,15 @@ public class MainMenu : MonoBehaviour
 
     void Update()
     {
+        // Detect returning to menu from game
+        if (wasGameStarted && !GameStarted)
+        {
+            // Player returned to menu - refresh saved games to show latest thumbnails
+            RefreshSavedGames();
+            currentState = MenuState.Main;
+        }
+        wasGameStarted = GameStarted;
+
         if (GameStarted) return;
 
         titleBob += Time.deltaTime;
@@ -696,10 +708,16 @@ public class MainMenu : MonoBehaviour
         GUI.DrawTexture(new Rect(thumbX - 2, thumbY - 2, thumbWidth + 4, thumbHeight + 4), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), GetTexture("thumbnailBg"));
 
-        // Draw thumbnail if available
-        if (save.thumbnail != null)
+        // Draw thumbnail if available - fetch fresh from SaveGameManager for latest
+        Texture2D thumbnail = save.thumbnail;
+        if (thumbnail == null && SaveGameManager.Instance != null && save.slotIndex >= 0)
         {
-            GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), save.thumbnail);
+            thumbnail = SaveGameManager.Instance.GetThumbnail(save.slotIndex);
+        }
+
+        if (thumbnail != null)
+        {
+            GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), thumbnail);
         }
         else
         {
@@ -833,6 +851,24 @@ public class MainMenu : MonoBehaviour
         {
             PlayerPrefs.SetInt($"ConnoisseurQuest_{i}", 0);
         }
+
+        // Reset day counter to Day 1 for new game
+        if (DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.ResetDayCounter();
+        }
+        else
+        {
+            // Directly reset PlayerPrefs in case DayNightCycle not yet initialized
+            PlayerPrefs.SetInt("CurrentDay", 1);
+        }
+
+        // Reset time alive tracker
+        if (TimeAliveTracker.Instance != null)
+        {
+            TimeAliveTracker.Instance.ResetTimer();
+        }
+
         PlayerPrefs.Save();
 
         Debug.Log("Starting new game!");

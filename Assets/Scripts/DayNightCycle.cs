@@ -36,6 +36,11 @@ public class DayNightCycle : MonoBehaviour
     private float currentTimeOfDay = 8f; // Start at 8 AM
     private float timeSpeed;
 
+    // Day tracking
+    private int currentDay = 1;
+    private float previousTimeOfDay = 8f; // Used to detect midnight crossing
+    private const string DAY_COUNTER_KEY = "CurrentDay";
+
     // Sun components
     private GameObject sunObject;
     private Light sunLight;
@@ -80,6 +85,9 @@ public class DayNightCycle : MonoBehaviour
     void Start()
     {
         timeSpeed = 24f / dayLengthInSeconds;
+
+        // Load saved day counter
+        LoadDayCounter();
 
         // Configure global shadow quality settings for smooth, soft shadows
         QualitySettings.shadows = ShadowQuality.All;
@@ -278,12 +286,42 @@ public class DayNightCycle : MonoBehaviour
     {
         if (!MainMenu.GameStarted) return;
 
+        // Store previous time before advancing
+        previousTimeOfDay = currentTimeOfDay;
+
         // Advance time
         currentTimeOfDay += timeSpeed * Time.deltaTime;
         if (currentTimeOfDay >= 24f)
             currentTimeOfDay -= 24f;
 
+        // Check for midnight crossing (clock went from 23:xx to 00:xx)
+        CheckMidnightCrossing();
+
         UpdateCycle();
+    }
+
+    void CheckMidnightCrossing()
+    {
+        // Detect when time crosses midnight (0:00)
+        // previousTimeOfDay was close to 24 and currentTimeOfDay wrapped to near 0
+        if (previousTimeOfDay > 23f && currentTimeOfDay < 1f)
+        {
+            currentDay++;
+            SaveDayCounter();
+            Debug.Log($"Day {currentDay} has begun!");
+        }
+    }
+
+    void SaveDayCounter()
+    {
+        PlayerPrefs.SetInt(DAY_COUNTER_KEY, currentDay);
+        PlayerPrefs.Save();
+    }
+
+    void LoadDayCounter()
+    {
+        currentDay = PlayerPrefs.GetInt(DAY_COUNTER_KEY, 1);
+        previousTimeOfDay = currentTimeOfDay;
     }
 
     void UpdateCycle()
@@ -548,6 +586,18 @@ public class DayNightCycle : MonoBehaviour
     {
         dayLengthInSeconds = secondsPerDay;
         timeSpeed = 24f / dayLengthInSeconds;
+    }
+
+    public int GetCurrentDay()
+    {
+        return currentDay;
+    }
+
+    public void ResetDayCounter()
+    {
+        currentDay = 1;
+        SaveDayCounter();
+        Debug.Log("Day counter reset to Day 1");
     }
 
     // GUI display for current time

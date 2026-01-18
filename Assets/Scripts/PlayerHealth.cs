@@ -30,6 +30,7 @@ public class PlayerHealth : MonoBehaviour
     private float deathTimer = 0f;
     private float respawnDelay = 3f;
     private string customDeathMessage = "";
+    private string deathCause = ""; // Tracks cause of death for achievements
 
     // Low health warning
     private bool showLowHealthWarning = false;
@@ -318,11 +319,18 @@ public class PlayerHealth : MonoBehaviour
         {
             isDrowning = true;
             // Health loss - 1 HP per second (slow enough to see health bar decreasing)
+            // Set death cause to drowning so we can track it for achievements
+            deathCause = "drowning";
             TakeDamage(1f * Time.deltaTime, "you have been taken out into the ocean by the strong current.. you're dead");
         }
         else
         {
             isDrowning = false;
+            // Clear drowning death cause when player is safe
+            if (deathCause == "drowning")
+            {
+                deathCause = "";
+            }
         }
     }
 
@@ -403,6 +411,9 @@ public class PlayerHealth : MonoBehaviour
         deathTimer = 0f;
         Debug.Log("PLAYER DIED! Stats will be reset...");
 
+        // Track death cause for achievements
+        TrackDeathForAchievements();
+
         // Save cosmetics before death - these will be restored after respawn
         SaveCosmeticsBeforeDeath();
 
@@ -410,6 +421,63 @@ public class PlayerHealth : MonoBehaviour
         {
             UIManager.Instance.ShowLootNotification("YOU DIED!", Color.red);
         }
+    }
+
+    /// <summary>
+    /// Tracks the cause of death for achievement tracking
+    /// Saves to PlayerPrefs so achievements can check death counts
+    /// </summary>
+    void TrackDeathForAchievements()
+    {
+        // Track drowning deaths for "Depths Below" achievement
+        if (deathCause == "drowning")
+        {
+            int drowningDeaths = PlayerPrefs.GetInt("Death_Drowning", 0);
+            PlayerPrefs.SetInt("Death_Drowning", drowningDeaths + 1);
+            PlayerPrefs.Save();
+            Debug.Log($"Drowning death recorded! Total drowning deaths: {drowningDeaths + 1}");
+        }
+
+        // Track total deaths
+        int totalDeaths = PlayerPrefs.GetInt("Death_Total", 0);
+        PlayerPrefs.SetInt("Death_Total", totalDeaths + 1);
+        PlayerPrefs.Save();
+
+        // Notify AchievementSystem of death with cause
+        if (AchievementSystem.Instance != null)
+        {
+            string causeText = !string.IsNullOrEmpty(customDeathMessage) ? customDeathMessage : deathCause;
+            AchievementSystem.Instance.OnPlayerDeath(causeText);
+        }
+
+        // Clear death cause after tracking
+        deathCause = "";
+    }
+
+    /// <summary>
+    /// Public method to set death cause from external systems (like lightning)
+    /// </summary>
+    public void SetDeathCause(string cause)
+    {
+        deathCause = cause;
+    }
+
+    /// <summary>
+    /// Static methods for achievement system to check death counts
+    /// </summary>
+    public static int GetDrowningDeathCount()
+    {
+        return PlayerPrefs.GetInt("Death_Drowning", 0);
+    }
+
+    public static int GetLightningDeathCount()
+    {
+        return PlayerPrefs.GetInt("Death_LightningStrike", 0);
+    }
+
+    public static int GetTotalDeathCount()
+    {
+        return PlayerPrefs.GetInt("Death_Total", 0);
     }
 
     /// <summary>
@@ -526,6 +594,7 @@ public class PlayerHealth : MonoBehaviour
         healthDecayTimer = 0f;
         isDead = false;
         customDeathMessage = "";
+        deathCause = ""; // Clear death cause
 
         // Move player back to spawn position
         if (GameCache.IsPlayerValid())
@@ -559,6 +628,7 @@ public class PlayerHealth : MonoBehaviour
         healthDecayTimer = 0f;
         isDead = false;
         customDeathMessage = ""; // Clear custom death message
+        deathCause = ""; // Clear death cause
 
         // Reset fish count (lose all fish on death)
         if (GameManager.Instance != null)

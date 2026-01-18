@@ -917,6 +917,12 @@ public class FishInventoryPanel : MonoBehaviour
             LevelingSystem.Instance.AwardFishXP(fishData.rarity);
         }
 
+        // Track for Chef's Apprentice achievement
+        if (AchievementSystem.Instance != null)
+        {
+            AchievementSystem.Instance.OnFishCooked();
+        }
+
         Debug.Log($"Cooked fish {fishId} - added to hotbar slot {emptySlot + 1}");
     }
 

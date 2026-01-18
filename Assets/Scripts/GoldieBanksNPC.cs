@@ -521,6 +521,12 @@ public class GoldieBanksNPC : MonoBehaviour
             LevelingSystem.Instance.AddXP(xpReward);
         }
 
+        // Track for Rasta's Friend achievement
+        if (AchievementSystem.Instance != null)
+        {
+            AchievementSystem.Instance.OnRastaQuestCompleted();
+        }
+
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowLootNotification($"+{goldReward}g, +{xpReward} XP!", new Color(1f, 0.85f, 0.2f));

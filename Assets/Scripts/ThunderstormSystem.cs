@@ -282,7 +282,10 @@ public class ThunderstormSystem : MonoBehaviour
         // Kill player with custom death message
         if (PlayerHealth.Instance != null)
         {
-            float currentHP = PlayerHealth.Instance.GetCurrentHealth(); float damage = currentHP * 0.5f; PlayerHealth.Instance.TakeDamage(damage); Debug.Log("Lightning dealt " + damage + " damage");
+            float currentHP = PlayerHealth.Instance.GetCurrentHealth();
+            float damage = currentHP * 0.5f;
+            PlayerHealth.Instance.TakeDamage(damage, "Struck by lightning!");
+            Debug.Log("Lightning dealt " + damage + " damage");
         }
 
         if (UIManager.Instance != null)

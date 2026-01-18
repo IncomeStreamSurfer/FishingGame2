@@ -2,8 +2,9 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Weather System - Occasional rain effects
+/// Weather System - Occasional rain effects with lightning storms
 /// Scene is mainly sunny with occasional rain showers
+/// Lightning can strike during storms - deadly to weakened players!
 /// </summary>
 public class WeatherSystem : MonoBehaviour
 {
@@ -32,6 +33,18 @@ public class WeatherSystem : MonoBehaviour
     private float rainSunIntensity = 0.6f;
     private Color baseSkyColor = new Color(0.5f, 0.7f, 1f);
     private Color rainSkyColor = new Color(0.4f, 0.45f, 0.5f);
+
+    // Lightning system
+    private float lightningTimer = 0f;
+    private float nextLightningStrike = 10f;
+    private float minLightningInterval = 8f;   // Minimum time between strikes
+    private float maxLightningInterval = 25f;  // Maximum time between strikes
+    private float lightningFlashDuration = 0f;
+    private float lightningFlashIntensity = 0f;
+    private Vector3 lastLightningPosition = Vector3.zero;
+    private bool lightningActive = false;
+    private float lightningDamageRadius = 5f;  // How close player must be to get struck
+    private float lightningKillThreshold = 0.05f; // 5% health = instant death from lightning
 
     // Audio
     private AudioSource rainAudio;
@@ -137,6 +150,24 @@ public class WeatherSystem : MonoBehaviour
             UpdateRainParticles();
         }
 
+        // Update lightning during storms
+        if (isRaining && rainIntensity > 0.5f)
+        {
+            UpdateLightning();
+        }
+
+        // Update lightning flash effect
+        if (lightningFlashDuration > 0f)
+        {
+            lightningFlashDuration -= Time.deltaTime;
+            lightningFlashIntensity = Mathf.Lerp(0f, 2f, lightningFlashDuration / 0.15f);
+        }
+        else
+        {
+            lightningFlashIntensity = 0f;
+            lightningActive = false;
+        }
+
         // Update rain audio
         if (rainAudio != null)
         {
@@ -235,9 +266,157 @@ public class WeatherSystem : MonoBehaviour
         }
     }
 
+    void UpdateLightning()
+    {
+        lightningTimer += Time.deltaTime;
+
+        if (lightningTimer >= nextLightningStrike)
+        {
+            lightningTimer = 0f;
+            nextLightningStrike = Random.Range(minLightningInterval, maxLightningInterval);
+
+            // More frequent lightning during intense storms
+            if (rainIntensity > 0.8f)
+            {
+                nextLightningStrike *= 0.6f;
+            }
+
+            TriggerLightningStrike();
+        }
+    }
+
+    void TriggerLightningStrike()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        // Determine strike location - random position around camera/player
+        Vector3 camPos = cam.transform.position;
+        lastLightningPosition = new Vector3(
+            camPos.x + Random.Range(-30f, 30f),
+            20f, // Strike from sky
+            camPos.z + Random.Range(-30f, 30f)
+        );
+
+        // Trigger visual flash
+        lightningFlashDuration = 0.15f;
+        lightningFlashIntensity = 2f;
+        lightningActive = true;
+
+        // Play thunder sound (delayed based on distance)
+        PlayThunderSound();
+
+        // Check if player should be affected
+        CheckLightningDamage();
+
+        Debug.Log($"Lightning strike at {lastLightningPosition}!");
+    }
+
+    void PlayThunderSound()
+    {
+        // Create temporary audio source for thunder
+        GameObject thunderObj = new GameObject("Thunder");
+        AudioSource thunderAudio = thunderObj.AddComponent<AudioSource>();
+        thunderAudio.spatialBlend = 0f;
+        thunderAudio.volume = 0.4f * rainIntensity;
+
+        // Generate procedural thunder sound
+        int sampleRate = 44100;
+        float duration = 1.5f;
+        int sampleCount = (int)(sampleRate * duration);
+        AudioClip thunderClip = AudioClip.Create("ThunderSound", sampleCount, 1, sampleRate, false);
+        float[] samples = new float[sampleCount];
+
+        // Thunder sound: low rumble with initial crack
+        float lastSample = 0f;
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleCount;
+            float noise = Random.Range(-1f, 1f);
+
+            // Heavy low-pass filter for deep rumble
+            lastSample = lastSample * 0.95f + noise * 0.05f;
+
+            // Initial crack (first 0.1 seconds)
+            float crack = t < 0.1f ? Mathf.Sin(t * 100f) * (1f - t * 10f) * 0.5f : 0f;
+
+            // Envelope - loud start, gradual fade
+            float envelope = Mathf.Pow(1f - t, 2f);
+
+            // Add some rumble variation
+            float rumble = Mathf.Sin(t * 15f + Mathf.Sin(t * 7f) * 3f) * 0.3f;
+
+            samples[i] = (lastSample + crack + rumble * envelope) * envelope * 0.4f;
+        }
+
+        thunderClip.SetData(samples, 0);
+        thunderAudio.clip = thunderClip;
+        thunderAudio.Play();
+
+        // Destroy after playing
+        Destroy(thunderObj, duration + 0.5f);
+    }
+
+    void CheckLightningDamage()
+    {
+        // Check if player is close to lightning strike
+        if (!GameCache.IsPlayerValid()) return;
+
+        Vector3 playerPos = GameCache.Player.position;
+        float distanceToStrike = Vector3.Distance(
+            new Vector3(playerPos.x, 0, playerPos.z),
+            new Vector3(lastLightningPosition.x, 0, lastLightningPosition.z)
+        );
+
+        // If player is within damage radius
+        if (distanceToStrike <= lightningDamageRadius)
+        {
+            if (PlayerHealth.Instance != null)
+            {
+                float healthPercent = PlayerHealth.Instance.GetHealthPercent();
+
+                // If player is under 5% health, lightning kills them instantly
+                if (healthPercent < lightningKillThreshold)
+                {
+                    // Set achievement flag for "Storm's Victim" death
+                    PlayerPrefs.SetInt("Death_LightningStrike", PlayerPrefs.GetInt("Death_LightningStrike", 0) + 1);
+                    PlayerPrefs.Save();
+
+                    // Deal lethal damage with custom death message
+                    PlayerHealth.Instance.TakeDamage(
+                        PlayerHealth.Instance.GetCurrentHealth() + 10f,
+                        "The storm claimed another soul... You were struck by lightning while weakened."
+                    );
+
+                    Debug.Log("Player killed by lightning strike while under 5% health!");
+                }
+                else
+                {
+                    // Player was struck but survived - deal some damage
+                    float damage = Random.Range(5f, 15f);
+                    PlayerHealth.Instance.TakeDamage(damage, "");
+
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.ShowLootNotification("Lightning struck nearby!", new Color(1f, 1f, 0.3f));
+                    }
+
+                    Debug.Log($"Player struck by lightning for {damage} damage!");
+                }
+            }
+        }
+    }
+
     void OnGUI()
     {
         if (!MainMenu.GameStarted) return;
+
+        // Draw lightning flash effect even when not raining (flash persists briefly)
+        if (lightningFlashIntensity > 0f)
+        {
+            DrawLightningFlash();
+        }
+
         if (rainIntensity <= 0.01f) return;
         if (rainTex == null) return;
 
@@ -278,6 +457,73 @@ public class WeatherSystem : MonoBehaviour
         }
     }
 
+    void DrawLightningFlash()
+    {
+        // Bright white flash across the screen
+        float alpha = lightningFlashIntensity * 0.5f;
+        GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
+        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), rainTex != null ? rainTex : Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        // Draw lightning bolt visual (simple branching effect)
+        if (lightningActive && rainTex != null)
+        {
+            DrawLightningBolt();
+        }
+    }
+
+    void DrawLightningBolt()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        // Convert strike position to screen coordinates
+        Vector3 screenPos = cam.WorldToScreenPoint(lastLightningPosition);
+        if (screenPos.z < 0) return;
+
+        // Draw from top of screen to strike position
+        float startX = screenPos.x + Random.Range(-20f, 20f);
+        float startY = 0; // Top of screen
+        float endX = screenPos.x;
+        float endY = Screen.height - screenPos.y;
+
+        // Draw main bolt
+        GUI.color = new Color(0.9f, 0.95f, 1f, lightningFlashIntensity);
+
+        int segments = 8;
+        float lastX = startX;
+        float lastY = startY;
+
+        for (int i = 1; i <= segments; i++)
+        {
+            float t = (float)i / segments;
+            float x = Mathf.Lerp(startX, endX, t) + Random.Range(-15f, 15f);
+            float y = Mathf.Lerp(startY, endY, t);
+
+            // Draw segment as rectangle
+            float segWidth = 3f * (1f - t * 0.5f);
+            float dx = x - lastX;
+            float dy = y - lastY;
+            float length = Mathf.Sqrt(dx * dx + dy * dy);
+
+            // Simple rectangle approximation for lightning
+            GUI.DrawTexture(new Rect(Mathf.Min(lastX, x), Mathf.Min(lastY, y), Mathf.Abs(dx) + segWidth, Mathf.Abs(dy) + 2), rainTex);
+
+            // Branch occasionally
+            if (Random.value < 0.3f && i > 2)
+            {
+                float branchX = x + Random.Range(-40f, 40f);
+                float branchY = y + Random.Range(20f, 60f);
+                GUI.DrawTexture(new Rect(Mathf.Min(x, branchX), y, Mathf.Abs(branchX - x) + 2, Mathf.Abs(branchY - y) + 2), rainTex);
+            }
+
+            lastX = x;
+            lastY = y;
+        }
+
+        GUI.color = Color.white;
+    }
+
     void OnDestroy()
     {
         if (rainTex != null)
@@ -289,6 +535,8 @@ public class WeatherSystem : MonoBehaviour
     // Public methods for other systems
     public bool IsRaining() => isRaining;
     public float GetRainIntensity() => rainIntensity;
+    public bool IsLightningActive() => lightningActive;
+    public bool IsStorming() => isRaining && rainIntensity > 0.5f;
 }
 
 public class RainDrop

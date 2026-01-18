@@ -994,6 +994,12 @@ public class FishingSystem : MonoBehaviour
         specialFishInventory.Add(fish);
         Debug.Log($"Added {fish.fishName} to special fish inventory!");
 
+        // Notify achievement system of special fish catch
+        if (AchievementSystem.Instance != null)
+        {
+            AchievementSystem.Instance.OnFishCaught(fish);
+        }
+
         // Check if this is a cookable fish and show first-time discovery message
         if (cookableFishIds.Contains(fish.id))
         {
@@ -1317,6 +1323,12 @@ public class FishingSystem : MonoBehaviour
         // ========== NORMAL FISH HANDLING ==========
         // Fish goes to inventory - sell to NPCs for gold!
         GameManager.Instance.AddFish(fish);
+
+        // Notify achievement system of fish catch
+        if (AchievementSystem.Instance != null)
+        {
+            AchievementSystem.Instance.OnFishCaught(fish);
+        }
 
         // Fish popup shown via ShowCatchPopup - no duplicate notification needed
 

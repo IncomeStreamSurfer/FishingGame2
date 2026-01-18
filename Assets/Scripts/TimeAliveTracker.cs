@@ -23,6 +23,7 @@ public class TimeAliveTracker : MonoBehaviour
     private Texture2D skullTex;
     private GUIStyle timerStyle;
     private GUIStyle skullStyle;
+    private GUIStyle dayStyle;
     private bool guiInitialized = false;
 
     void Awake()
@@ -74,6 +75,12 @@ public class TimeAliveTracker : MonoBehaviour
         skullStyle = new GUIStyle();
         skullStyle.fontSize = 20;
         skullStyle.alignment = TextAnchor.MiddleCenter;
+
+        dayStyle = new GUIStyle();
+        dayStyle.fontSize = 14;
+        dayStyle.fontStyle = FontStyle.Bold;
+        dayStyle.alignment = TextAnchor.MiddleCenter;
+        dayStyle.normal.textColor = new Color(0.9f, 0.85f, 0.6f); // Golden/amber color
 
         guiInitialized = true;
     }
@@ -232,8 +239,9 @@ public class TimeAliveTracker : MonoBehaviour
         float y = 10;
         float width = 140;
         float height = 32;
+        float dayHeight = 22;
 
-        // Background
+        // Background for time alive
         GUI.DrawTexture(new Rect(x, y, width, height), bgTex);
 
         // Skull icon
@@ -254,6 +262,23 @@ public class TimeAliveTracker : MonoBehaviour
         }
 
         GUI.Label(new Rect(x + 28, y + 6, width - 35, height - 10), timeText, timerStyle);
+
+        // Day counter display below time alive
+        float dayY = y + height + 2;
+
+        // Background for day display
+        GUI.DrawTexture(new Rect(x, dayY, width, dayHeight), bgTex);
+
+        // Get current day from DayNightCycle
+        int currentDay = 1;
+        if (DayNightCycle.Instance != null)
+        {
+            currentDay = DayNightCycle.Instance.GetCurrentDay();
+        }
+
+        // Day text
+        string dayText = $"Day {currentDay}";
+        GUI.Label(new Rect(x, dayY + 2, width, dayHeight - 4), dayText, dayStyle);
     }
 
     string FormatTime(float seconds)

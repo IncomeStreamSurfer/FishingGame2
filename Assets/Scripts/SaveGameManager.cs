@@ -37,6 +37,9 @@ public class SaveGameManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            // Pre-load thumbnails in Awake to ensure they're available before other scripts' Start()
+            LoadAllThumbnails();
         }
         else
         {
@@ -46,15 +49,27 @@ public class SaveGameManager : MonoBehaviour
 
     void Start()
     {
-        // Pre-load thumbnails for all slots
-        LoadAllThumbnails();
+        // Thumbnails already loaded in Awake
     }
+
+    // Callbacks for UI hiding during screenshot
+    private System.Action onBeforeScreenshot;
+    private System.Action onAfterScreenshot;
 
     /// <summary>
     /// Initiates a save game with screenshot capture
     /// Call this when player clicks SAVE GAME button
     /// </summary>
     public void InitiateSave(int slot)
+    {
+        InitiateSave(slot, null, null);
+    }
+
+    /// <summary>
+    /// Initiates a save game with screenshot capture
+    /// Allows passing callbacks to hide/show UI during screenshot
+    /// </summary>
+    public void InitiateSave(int slot, System.Action hideUI, System.Action showUI)
     {
         if (slot < 0 || slot >= MAX_SAVE_SLOTS)
         {
@@ -63,6 +78,8 @@ public class SaveGameManager : MonoBehaviour
         }
 
         pendingSlot = slot;
+        onBeforeScreenshot = hideUI;
+        onAfterScreenshot = showUI;
         StartCoroutine(CaptureScreenshotAndSave(slot));
     }
 
@@ -71,13 +88,21 @@ public class SaveGameManager : MonoBehaviour
     /// </summary>
     private IEnumerator CaptureScreenshotAndSave(int slot)
     {
-        // Wait for end of frame to capture the current game view
+        // Hide UI before screenshot if callback provided
+        onBeforeScreenshot?.Invoke();
+
+        // Wait for the UI to be hidden and a fresh frame to render
+        yield return new WaitForEndOfFrame();
+        yield return null; // Wait one more frame to ensure UI is fully hidden
         yield return new WaitForEndOfFrame();
 
         // Capture the screen
         Texture2D screenshot = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
         screenshot.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
         screenshot.Apply();
+
+        // Show UI again after screenshot if callback provided
+        onAfterScreenshot?.Invoke();
 
         // Create a thumbnail (smaller version for the save slot display)
         int thumbWidth = 192;
@@ -347,14 +372,33 @@ public class SaveGameManager : MonoBehaviour
 
     /// <summary>
     /// Get the thumbnail for a save slot
+    /// If not in cache, attempts to load from disk
     /// </summary>
     public Texture2D GetThumbnail(int slot)
     {
+        // Try cache first
+        if (thumbnailCache.ContainsKey(slot) && thumbnailCache[slot] != null)
+        {
+            return thumbnailCache[slot];
+        }
+
+        // Try to load from disk if not cached
+        LoadThumbnail(slot);
+
+        // Return from cache (may still be null if file doesn't exist)
         if (thumbnailCache.ContainsKey(slot))
         {
             return thumbnailCache[slot];
         }
         return null;
+    }
+
+    /// <summary>
+    /// Force reload all thumbnails from disk
+    /// </summary>
+    public void ReloadThumbnails()
+    {
+        LoadAllThumbnails();
     }
 
     /// <summary>
