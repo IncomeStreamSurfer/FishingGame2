@@ -76,6 +76,19 @@ public class MainMenu : MonoBehaviour
 
     void Start()
     {
+        // Check if we're returning from a scene reload for new game
+        if (PlayerPrefs.GetInt("PendingNewGame", 0) == 1)
+        {
+            PlayerPrefs.DeleteKey("PendingNewGame");
+            PlayerPrefs.Save();
+
+            // Scene has been reloaded - now start the game fresh
+            GameStarted = true;
+            EnableGameSystems();
+            Debug.Log("New game started after scene reload - all entities cleared!");
+            return;
+        }
+
         GameStarted = false;
         LoadSettings();
         RefreshSavedGames();
@@ -773,59 +786,13 @@ public class MainMenu : MonoBehaviour
 
     void StartNewGame()
     {
-        GameStarted = true;
-        EnableGameSystems();
-
         // ============ COMPLETE NEW GAME RESET ============
-        // Reset EVERYTHING except achievements (those persist across games)
+        // Reset ALL PlayerPrefs data except achievements (those persist across games)
+        // Then reload the scene to destroy all runtime objects (enemies, items, etc.)
 
-        // Reset gold and fish inventory
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.coins = 0;
-            GameManager.Instance.totalFishCaught = 0;
-            GameManager.Instance.fishInventory.Clear();
-        }
-
-        // Reset XP and Level to 1
-        if (LevelingSystem.Instance != null)
-        {
-            LevelingSystem.Instance.ResetToLevel1();
-        }
+        // Reset XP and Level
         PlayerPrefs.SetInt("PlayerXP", 0);
         PlayerPrefs.SetInt("PlayerLevel", 1);
-
-        // Reset player health to full
-        if (PlayerHealth.Instance != null)
-        {
-            PlayerHealth.Instance.ResetHealth();
-        }
-
-        // Reset player position to spawn
-        if (GameCache.IsPlayerValid())
-        {
-            GameCache.Player.position = new Vector3(0, 2, 0); // Spawn position
-        }
-
-        // Reset special fish inventory
-        if (FishingSystem.Instance != null)
-        {
-            FishingSystem.Instance.specialFishInventory.Clear();
-        }
-
-        // Reset buff inventory and active buffs
-        if (FishBuffSystem.Instance != null)
-        {
-            FishBuffSystem.Instance.ClearAllActiveBuffs();
-            // Reset buff inventory counts
-            foreach (var buff in FishBuffSystem.Instance.allBuffs)
-            {
-                FishBuffSystem.Instance.buffInventory[buff.type] = 0;
-                buff.isUnlocked = false;
-            }
-            // Clear quest completion tracking for buffs
-            FishBuffSystem.Instance.completedQuests.Clear();
-        }
 
         // Reset buff-related PlayerPrefs
         PlayerPrefs.DeleteKey("BuffInv_SnappersDelight");
@@ -842,10 +809,6 @@ public class MainMenu : MonoBehaviour
         PlayerPrefs.DeleteKey("Quest_seahorse");
 
         // Reset Fish Connoisseur quests
-        if (FishConnoisseurNPC.Instance != null)
-        {
-            FishConnoisseurNPC.Instance.ResetAllQuests();
-        }
         PlayerPrefs.SetInt("ConnoisseurCurrentQuest", -1);
         for (int i = 0; i < 4; i++)
         {
@@ -853,17 +816,7 @@ public class MainMenu : MonoBehaviour
         }
 
         // Reset day counter to Day 1
-        if (DayNightCycle.Instance != null)
-        {
-            DayNightCycle.Instance.ResetDayCounter();
-        }
         PlayerPrefs.SetInt("CurrentDay", 1);
-
-        // Reset time alive tracker
-        if (TimeAliveTracker.Instance != null)
-        {
-            TimeAliveTracker.Instance.ResetTimer();
-        }
 
         // Reset cookable fish discovery flags
         PlayerPrefs.DeleteKey("CookableFishDiscovered_red_snapper");
@@ -879,12 +832,23 @@ public class MainMenu : MonoBehaviour
         // Reset fish diary entries
         PlayerPrefs.DeleteKey("FishDiary_golden_starfish");
 
+        // Reset death tracking for new game (but achievements stay unlocked)
+        PlayerPrefs.DeleteKey("Death_Total");
+        PlayerPrefs.DeleteKey("Death_Lightning");
+        PlayerPrefs.DeleteKey("Death_Starvation");
+        PlayerPrefs.DeleteKey("Death_Storm");
+
         // NOTE: Achievements are NOT reset - they persist across all games!
         // NOTE: Parrot unlock is NOT reset - it's a permanent cosmetic unlock!
 
+        // Set flag to indicate we're starting a new game after scene reload
+        PlayerPrefs.SetInt("PendingNewGame", 1);
         PlayerPrefs.Save();
 
-        Debug.Log("Starting fresh new game - all progress reset except achievements!");
+        Debug.Log("Starting fresh new game - reloading scene to clear all entities...");
+
+        // Reload the current scene to destroy all runtime objects
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     void LoadGame(SavedGameInfo save)
