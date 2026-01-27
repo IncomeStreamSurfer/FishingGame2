@@ -45,6 +45,24 @@ public class FoodInventory : MonoBehaviour
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
 
+    // Cached GUIStyles for performance (avoid allocating every frame)
+    private static GUIStyle cachedHintStyle;
+    private static GUIStyle cachedTitleStyle;
+    private static GUIStyle cachedXButtonStyle;
+    private static GUIStyle cachedCountStyle;
+    private static GUIStyle cachedStatusStyle;
+    private static GUIStyle cachedBtnStyle;
+    private static GUIStyle cachedConsumeStyle;
+    private static GUIStyle cachedBoxCountStyle;
+    private static GUIStyle cachedLabelStyle;
+    private static GUIStyle cachedHpStyle;
+    private static GUIStyle cachedNumStyle;
+    private static GUIStyle cachedInstrStyle;
+    private static GUIStyle cachedEmptyStyle;
+    private static GUIStyle cachedNameStyle;
+    private static GUIStyle cachedInfoStyle;
+    private static bool stylesInitialized = false;
+
     // Audio
     private AudioSource audioSource;
 
@@ -407,11 +425,95 @@ public class FoodInventory : MonoBehaviour
         return count;
     }
 
+    void InitializeCachedStyles()
+    {
+        cachedHintStyle = new GUIStyle();
+        cachedHintStyle.fontSize = 10;
+        cachedHintStyle.fontStyle = FontStyle.Bold;
+        cachedHintStyle.alignment = TextAnchor.MiddleCenter;
+        cachedHintStyle.normal.textColor = new Color(0.7f, 0.5f, 0.3f);
+
+        cachedTitleStyle = new GUIStyle();
+        cachedTitleStyle.fontStyle = FontStyle.Bold;
+        cachedTitleStyle.alignment = TextAnchor.MiddleCenter;
+        cachedTitleStyle.normal.textColor = new Color(0.8f, 0.5f, 0.2f);
+
+        cachedXButtonStyle = new GUIStyle();
+        cachedXButtonStyle.fontSize = 12;
+        cachedXButtonStyle.fontStyle = FontStyle.Bold;
+        cachedXButtonStyle.alignment = TextAnchor.MiddleCenter;
+        cachedXButtonStyle.normal.textColor = Color.white;
+
+        cachedCountStyle = new GUIStyle();
+        cachedCountStyle.fontStyle = FontStyle.Bold;
+        cachedCountStyle.alignment = TextAnchor.MiddleCenter;
+        cachedCountStyle.normal.textColor = Color.white;
+
+        cachedStatusStyle = new GUIStyle();
+        cachedStatusStyle.alignment = TextAnchor.MiddleCenter;
+        cachedStatusStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+
+        cachedBtnStyle = new GUIStyle();
+        cachedBtnStyle.fontStyle = FontStyle.Bold;
+        cachedBtnStyle.alignment = TextAnchor.MiddleCenter;
+        cachedBtnStyle.normal.textColor = Color.white;
+
+        cachedConsumeStyle = new GUIStyle();
+        cachedConsumeStyle.fontStyle = FontStyle.Bold;
+        cachedConsumeStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedBoxCountStyle = new GUIStyle();
+        cachedBoxCountStyle.fontSize = 9;
+        cachedBoxCountStyle.alignment = TextAnchor.MiddleCenter;
+        cachedBoxCountStyle.normal.textColor = new Color(0.8f, 0.6f, 0.3f);
+
+        cachedLabelStyle = new GUIStyle();
+        cachedLabelStyle.fontSize = 10;
+        cachedLabelStyle.fontStyle = FontStyle.Bold;
+        cachedLabelStyle.alignment = TextAnchor.MiddleCenter;
+        cachedLabelStyle.normal.textColor = new Color(0.9f, 0.85f, 0.75f);
+
+        cachedHpStyle = new GUIStyle();
+        cachedHpStyle.fontSize = 9;
+        cachedHpStyle.alignment = TextAnchor.MiddleCenter;
+        cachedHpStyle.normal.textColor = new Color(0.5f, 0.9f, 0.5f);
+
+        cachedNumStyle = new GUIStyle();
+        cachedNumStyle.fontSize = 10;
+        cachedNumStyle.fontStyle = FontStyle.Bold;
+        cachedNumStyle.alignment = TextAnchor.LowerRight;
+        cachedNumStyle.normal.textColor = Color.white;
+
+        cachedInstrStyle = new GUIStyle();
+        cachedInstrStyle.fontSize = 10;
+        cachedInstrStyle.alignment = TextAnchor.UpperCenter;
+        cachedInstrStyle.normal.textColor = new Color(0.7f, 0.65f, 0.55f);
+
+        cachedEmptyStyle = new GUIStyle();
+        cachedEmptyStyle.fontSize = 12;
+        cachedEmptyStyle.alignment = TextAnchor.MiddleCenter;
+        cachedEmptyStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+
+        cachedNameStyle = new GUIStyle();
+        cachedNameStyle.fontSize = 11;
+        cachedNameStyle.fontStyle = FontStyle.Bold;
+
+        cachedInfoStyle = new GUIStyle();
+        cachedInfoStyle.fontSize = 9;
+        cachedInfoStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+
+        stylesInitialized = true;
+    }
+
     void OnGUI()
     {
-        // CRITICAL: No frame skipping - hotbar must update every frame to prevent flickering
-
         if (!MainMenu.GameStarted || !initialized) return;
+
+        // Initialize cached styles once (must be inside OnGUI)
+        if (!stylesInitialized)
+        {
+            InitializeCachedStyles();
+        }
 
         // Always draw hotbar at bottom of screen
         DrawHotbar();
@@ -437,12 +539,7 @@ public class FoodInventory : MonoBehaviour
 
     void DrawLunchBoxHint()
     {
-        GUIStyle hintStyle = new GUIStyle();
-        hintStyle.fontSize = 10;
-        hintStyle.fontStyle = FontStyle.Bold;
-        hintStyle.alignment = TextAnchor.MiddleCenter;
-        hintStyle.normal.textColor = new Color(0.7f, 0.5f, 0.3f);
-        GUI.Label(new Rect(Screen.width - 150, Screen.height - 30, 140, 20), $"[L] Lunch Box ({lunchBoxFishCount}/{LUNCHBOX_CAPACITY})", hintStyle);
+        GUI.Label(new Rect(Screen.width - 150, Screen.height - 30, 140, 20), $"[L] Lunch Box ({lunchBoxFishCount}/{LUNCHBOX_CAPACITY})", cachedHintStyle);
     }
 
     void DrawLunchBoxUI()
@@ -463,22 +560,13 @@ public class FoodInventory : MonoBehaviour
         // Title bar (draggable area)
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, 25), GetOrCreateColorTexture(new Color(0.15f, 0.1f, 0.08f, 1f)));
 
-        // Title
-        GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = Mathf.Max(12, (int)(panelWidth * 0.045f));
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(0.8f, 0.5f, 0.2f);
-        GUI.Label(new Rect(panelX, panelY + 3, panelWidth, 20), "LUNCH BOX", titleStyle);
+        // Title (use cached style, just update fontSize)
+        cachedTitleStyle.fontSize = Mathf.Max(12, (int)(panelWidth * 0.045f));
+        GUI.Label(new Rect(panelX, panelY + 3, panelWidth, 20), "LUNCH BOX", cachedTitleStyle);
 
-        // Red X close button
-        GUIStyle xButtonStyle = new GUIStyle();
-        xButtonStyle.fontSize = 12;
-        xButtonStyle.fontStyle = FontStyle.Bold;
-        xButtonStyle.alignment = TextAnchor.MiddleCenter;
-        xButtonStyle.normal.textColor = Color.white;
+        // Red X close button (use cached style)
         GUI.DrawTexture(new Rect(panelX + panelWidth - 24, panelY + 4, 18, 18), GetOrCreateColorTexture(new Color(0.8f, 0.2f, 0.2f)));
-        if (GUI.Button(new Rect(panelX + panelWidth - 24, panelY + 4, 18, 18), "X", xButtonStyle))
+        if (GUI.Button(new Rect(panelX + panelWidth - 24, panelY + 4, 18, 18), "X", cachedXButtonStyle))
         {
             lunchBoxOpen = false;
         }
@@ -493,71 +581,56 @@ public class FoodInventory : MonoBehaviour
         Texture2D boxTex = GetOrCreateColorTexture(new Color(0.6f, 0.4f, 0.2f));
         GUI.DrawTexture(new Rect(panelX + panelWidth/2 - boxWidth/2, contentY + 10, boxWidth, boxHeight), boxTex);
 
-        // Fish count display
-        GUIStyle countStyle = new GUIStyle();
-        countStyle.fontSize = Mathf.Max(14, (int)(panelWidth * 0.06f));
-        countStyle.fontStyle = FontStyle.Bold;
-        countStyle.alignment = TextAnchor.MiddleCenter;
+        // Fish count display (use cached style, update dynamic properties)
         bool isFull = lunchBoxFishCount >= LUNCHBOX_CAPACITY;
-        countStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.9f, 0.5f);
-        GUI.Label(new Rect(panelX, contentY + boxHeight + 20, panelWidth, 30), $"{lunchBoxFishCount} / {LUNCHBOX_CAPACITY} fish", countStyle);
+        cachedCountStyle.fontSize = Mathf.Max(14, (int)(panelWidth * 0.06f));
+        cachedCountStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.9f, 0.5f);
+        GUI.Label(new Rect(panelX, contentY + boxHeight + 20, panelWidth, 30), $"{lunchBoxFishCount} / {LUNCHBOX_CAPACITY} fish", cachedCountStyle);
 
-        // Status text
-        GUIStyle statusStyle = new GUIStyle();
-        statusStyle.fontSize = Mathf.Max(9, (int)(panelWidth * 0.035f));
-        statusStyle.alignment = TextAnchor.MiddleCenter;
-        statusStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(0.6f, 0.6f, 0.6f);
-        statusStyle.wordWrap = true;
+        // Status text (use cached style)
+        cachedStatusStyle.fontSize = Mathf.Max(9, (int)(panelWidth * 0.035f));
+        cachedStatusStyle.normal.textColor = isFull ? new Color(0.3f, 1f, 0.5f) : new Color(0.6f, 0.6f, 0.6f);
+        cachedStatusStyle.wordWrap = true;
         string statusText = isFull ? "READY TO CONSUME!" : "Add cooked fish from hotbar";
-        GUI.Label(new Rect(panelX + 10, contentY + boxHeight + 50, panelWidth - 20, 30), statusText, statusStyle);
+        GUI.Label(new Rect(panelX + 10, contentY + boxHeight + 50, panelWidth - 20, 30), statusText, cachedStatusStyle);
 
         // Buttons - scaled and positioned relative to window size
         float btnWidth = Mathf.Max(80, panelWidth * 0.35f);
         float btnHeight = Mathf.Max(25, panelHeight * 0.12f);
         float btnY = panelY + panelHeight - btnHeight - 35;
 
-        // Add Fish button
+        // Add Fish button (use cached style)
         Texture2D addBtnTex = GetOrCreateColorTexture(new Color(0.3f, 0.5f, 0.7f));
         Rect addBtnRect = new Rect(panelX + 15, btnY, btnWidth, btnHeight);
         GUI.DrawTexture(addBtnRect, addBtnTex);
 
-        GUIStyle btnStyle = new GUIStyle();
-        btnStyle.fontSize = Mathf.Max(10, (int)(panelWidth * 0.038f));
-        btnStyle.fontStyle = FontStyle.Bold;
-        btnStyle.alignment = TextAnchor.MiddleCenter;
-        btnStyle.normal.textColor = Color.white;
-        GUI.Label(addBtnRect, "Add Fish", btnStyle);
+        cachedBtnStyle.fontSize = Mathf.Max(10, (int)(panelWidth * 0.038f));
+        GUI.Label(addBtnRect, "Add Fish", cachedBtnStyle);
 
         if (GUI.Button(addBtnRect, "", GUIStyle.none))
         {
             AddFishToLunchBox();
         }
 
-        // Consume button (only enabled when full)
+        // Consume button (use cached style)
         Texture2D consumeBtnTex = GetOrCreateColorTexture(isFull ? new Color(0.2f, 0.7f, 0.3f) : new Color(0.3f, 0.3f, 0.3f));
         Rect consumeBtnRect = new Rect(panelX + panelWidth - btnWidth - 15, btnY, btnWidth, btnHeight);
         GUI.DrawTexture(consumeBtnRect, consumeBtnTex);
 
-        GUIStyle consumeStyle = new GUIStyle();
-        consumeStyle.fontSize = Mathf.Max(10, (int)(panelWidth * 0.038f));
-        consumeStyle.fontStyle = FontStyle.Bold;
-        consumeStyle.alignment = TextAnchor.MiddleCenter;
-        consumeStyle.normal.textColor = isFull ? Color.white : new Color(0.5f, 0.5f, 0.5f);
-        GUI.Label(consumeBtnRect, "Consume", consumeStyle);
+        cachedConsumeStyle.fontSize = Mathf.Max(10, (int)(panelWidth * 0.038f));
+        cachedConsumeStyle.normal.textColor = isFull ? Color.white : new Color(0.5f, 0.5f, 0.5f);
+        GUI.Label(consumeBtnRect, "Consume", cachedConsumeStyle);
 
         if (isFull && GUI.Button(consumeBtnRect, "", GUIStyle.none))
         {
             ConsumeLunchBox();
         }
 
-        // Boxes remaining count
+        // Boxes remaining count (use cached style)
         if (lunchBoxCount > 1)
         {
-            GUIStyle boxCountStyle = new GUIStyle();
-            boxCountStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.032f));
-            boxCountStyle.alignment = TextAnchor.MiddleCenter;
-            boxCountStyle.normal.textColor = new Color(0.6f, 0.5f, 0.4f);
-            GUI.Label(new Rect(panelX, panelY + panelHeight - 18, panelWidth, 14), $"({lunchBoxCount} lunch boxes owned)", boxCountStyle);
+            cachedBoxCountStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.032f));
+            GUI.Label(new Rect(panelX, panelY + panelHeight - 18, panelWidth, 14), $"({lunchBoxCount} lunch boxes owned)", cachedBoxCountStyle);
         }
 
         // Draw resize handle
@@ -573,13 +646,9 @@ public class FoodInventory : MonoBehaviour
         float startX = 15;  // 15px from left edge - ensures all 4 slots visible
         float startY = Screen.height - slotSize - 15;
 
-        // Label
-        GUIStyle labelStyle = new GUIStyle();
-        labelStyle.fontSize = 10;
-        labelStyle.fontStyle = FontStyle.Bold;
-        labelStyle.alignment = TextAnchor.MiddleCenter;
-        labelStyle.normal.textColor = new Color(0.8f, 0.7f, 0.5f);
-        GUI.Label(new Rect(startX, startY - 16, totalWidth, 14), "FOOD [1-4]", labelStyle);
+        // Label (use cached style)
+        cachedLabelStyle.normal.textColor = new Color(0.8f, 0.7f, 0.5f);
+        GUI.Label(new Rect(startX, startY - 16, totalWidth, 14), "FOOD [1-4]", cachedLabelStyle);
 
         for (int i = 0; i < 4; i++)
         {
@@ -604,22 +673,18 @@ public class FoodInventory : MonoBehaviour
                     fishTex = GetOrCreateColorTexture(hotbar[i].color);  // Fallback to color
                 GUI.DrawTexture(new Rect(x + 8, startY + 8, imgSize, imgSize), fishTex);
 
-                // Health value
-                GUIStyle hpStyle = new GUIStyle();
-                hpStyle.fontSize = 10;
-                hpStyle.fontStyle = FontStyle.Bold;
-                hpStyle.alignment = TextAnchor.LowerRight;
-                hpStyle.normal.textColor = new Color(0.3f, 1f, 0.4f);
-                GUI.Label(new Rect(x, startY, slotSize - 3, slotSize - 3), $"+{hotbar[i].healthValue}", hpStyle);
+                // Health value (use cached style)
+                cachedHpStyle.fontSize = 10;
+                cachedHpStyle.alignment = TextAnchor.LowerRight;
+                cachedHpStyle.normal.textColor = new Color(0.3f, 1f, 0.4f);
+                GUI.Label(new Rect(x, startY, slotSize - 3, slotSize - 3), $"+{hotbar[i].healthValue}", cachedHpStyle);
             }
 
-            // Slot number
-            GUIStyle numStyle = new GUIStyle();
-            numStyle.fontSize = 9;
-            numStyle.fontStyle = FontStyle.Bold;
-            numStyle.alignment = TextAnchor.UpperLeft;
-            numStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
-            GUI.Label(new Rect(x + 3, startY + 2, 15, 12), $"{i + 1}", numStyle);
+            // Slot number (use cached style)
+            cachedNumStyle.fontSize = 9;
+            cachedNumStyle.alignment = TextAnchor.UpperLeft;
+            cachedNumStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+            GUI.Label(new Rect(x + 3, startY + 2, 15, 12), $"{i + 1}", cachedNumStyle);
 
             // Click to consume
             if (hasItem && GUI.Button(slotRect, "", GUIStyle.none))
@@ -640,20 +705,14 @@ public class FoodInventory : MonoBehaviour
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("border"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("invBg"));
 
-        // Title
-        GUIStyle titleStyle = new GUIStyle();
-        titleStyle.fontSize = 16;
-        titleStyle.fontStyle = FontStyle.Bold;
-        titleStyle.alignment = TextAnchor.MiddleCenter;
-        titleStyle.normal.textColor = new Color(1f, 0.85f, 0.5f);
-        GUI.Label(new Rect(panelX, panelY + 8, panelWidth, 24), "RAW FISH - Click to Cook", titleStyle);
+        // Title (use cached style)
+        cachedTitleStyle.fontSize = 16;
+        cachedTitleStyle.normal.textColor = new Color(1f, 0.85f, 0.5f);
+        GUI.Label(new Rect(panelX, panelY + 8, panelWidth, 24), "RAW FISH - Click to Cook", cachedTitleStyle);
 
-        // Instruction
-        GUIStyle instrStyle = new GUIStyle();
-        instrStyle.fontSize = 10;
-        instrStyle.alignment = TextAnchor.MiddleCenter;
-        instrStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
-        GUI.Label(new Rect(panelX, panelY + 30, panelWidth, 16), "Click a fish to cook it on the BBQ", instrStyle);
+        // Instruction (use cached style)
+        cachedInstrStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+        GUI.Label(new Rect(panelX, panelY + 30, panelWidth, 16), "Click a fish to cook it on the BBQ", cachedInstrStyle);
 
         // Fish list
         float listY = panelY + 55;
@@ -679,11 +738,8 @@ public class FoodInventory : MonoBehaviour
 
         if (rawFish.Count == 0)
         {
-            GUIStyle emptyStyle = new GUIStyle();
-            emptyStyle.fontSize = 12;
-            emptyStyle.alignment = TextAnchor.MiddleCenter;
-            emptyStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-            GUI.Label(new Rect(0, listHeight / 2 - 20, scrollArea.width, 40), "No raw fish.\nGo fishing to catch some!", emptyStyle);
+            // Use cached style
+            GUI.Label(new Rect(0, listHeight / 2 - 20, scrollArea.width, 40), "No raw fish.\nGo fishing to catch some!", cachedEmptyStyle);
         }
         else
         {
@@ -712,26 +768,18 @@ public class FoodInventory : MonoBehaviour
                     fishTex = GetOrCreateColorTexture(fish.color);  // Fallback to color
                 GUI.DrawTexture(new Rect(itemRect.x + 5, itemRect.y + 5, imgSize, imgSize), fishTex);
 
-                // Fish name
-                GUIStyle nameStyle = new GUIStyle();
-                nameStyle.fontSize = 11;
-                nameStyle.fontStyle = FontStyle.Bold;
-                nameStyle.normal.textColor = GetRarityColor(fish.rarity);
-                GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 5, 150, 16), fish.fishName, nameStyle);
+                // Fish name (use cached style, update color)
+                cachedNameStyle.normal.textColor = GetRarityColor(fish.rarity);
+                GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 5, 150, 16), fish.fishName, cachedNameStyle);
 
-                // Rarity and HP value
-                GUIStyle infoStyle = new GUIStyle();
-                infoStyle.fontSize = 9;
-                infoStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
-                GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 22, 100, 14), fish.rarity.ToString(), infoStyle);
+                // Rarity and HP value (use cached style)
+                GUI.Label(new Rect(itemRect.x + 42, itemRect.y + 22, 100, 14), fish.rarity.ToString(), cachedInfoStyle);
 
-                // HP value when cooked
-                GUIStyle hpStyle = new GUIStyle();
-                hpStyle.fontSize = 10;
-                hpStyle.fontStyle = FontStyle.Bold;
-                hpStyle.alignment = TextAnchor.MiddleRight;
-                hpStyle.normal.textColor = new Color(0.3f, 1f, 0.4f);
-                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 5, 55, 30), $"+{fish.healthValue} HP", hpStyle);
+                // HP value when cooked (use cached style)
+                cachedHpStyle.fontSize = 10;
+                cachedHpStyle.alignment = TextAnchor.MiddleRight;
+                cachedHpStyle.normal.textColor = new Color(0.3f, 1f, 0.4f);
+                GUI.Label(new Rect(itemRect.x + itemRect.width - 60, itemRect.y + 5, 55, 30), $"+{fish.healthValue} HP", cachedHpStyle);
 
                 // Click to cook
                 if (GUI.Button(itemRect, "", GUIStyle.none))

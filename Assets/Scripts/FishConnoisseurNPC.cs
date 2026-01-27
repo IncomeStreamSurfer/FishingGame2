@@ -96,6 +96,9 @@ public class FishConnoisseurNPC : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         InitializeQuests();
         CreateVisuals();
         CreateCachedTextures();

@@ -61,6 +61,9 @@ public class GoldieBanksNPC : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         SetupBeachWaypoints();
         CreateNPC();
         CreateUITextures();

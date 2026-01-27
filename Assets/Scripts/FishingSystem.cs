@@ -88,6 +88,17 @@ public class FishingSystem : MonoBehaviour
     private Texture2D bottleBorderTex;
     private int guiFrameSkip = 0;
 
+    // Cached rarity border textures (one for each rarity)
+    private Dictionary<Rarity, Texture2D> rarityBorderTextures;
+
+    // Cached GUIStyles for catch popup
+    private GUIStyle cachedRarityStyle;
+    private GUIStyle cachedNameStyle;
+    private GUIStyle cachedGoldStyle;
+    private GUIStyle cachedXpStyle;
+    private GUIStyle cachedCaughtStyle;
+    private bool guiStylesInitialized = false;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -114,6 +125,48 @@ public class FishingSystem : MonoBehaviour
         bottleBorderTex = new Texture2D(1, 1);
         bottleBorderTex.SetPixel(0, 0, new Color(0.4f, 0.8f, 1f));
         bottleBorderTex.Apply();
+
+        // Create cached rarity border textures
+        rarityBorderTextures = new Dictionary<Rarity, Texture2D>();
+        foreach (Rarity rarity in System.Enum.GetValues(typeof(Rarity)))
+        {
+            Texture2D tex = new Texture2D(1, 1);
+            tex.SetPixel(0, 0, GetRarityColor(rarity));
+            tex.Apply();
+            rarityBorderTextures[rarity] = tex;
+        }
+    }
+
+    void InitializeCachedGUIStyles()
+    {
+        // Called from OnGUI once (can only access GUI.skin there)
+        cachedRarityStyle = new GUIStyle();
+        cachedRarityStyle.fontSize = 11;
+        cachedRarityStyle.fontStyle = FontStyle.Bold;
+
+        cachedNameStyle = new GUIStyle();
+        cachedNameStyle.fontSize = 16;
+        cachedNameStyle.fontStyle = FontStyle.Bold;
+        cachedNameStyle.normal.textColor = Color.white;
+        cachedNameStyle.wordWrap = true;
+
+        cachedGoldStyle = new GUIStyle();
+        cachedGoldStyle.fontSize = 13;
+        cachedGoldStyle.fontStyle = FontStyle.Bold;
+        cachedGoldStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+
+        cachedXpStyle = new GUIStyle();
+        cachedXpStyle.fontSize = 13;
+        cachedXpStyle.fontStyle = FontStyle.Bold;
+        cachedXpStyle.normal.textColor = new Color(0.4f, 0.9f, 1f);
+
+        cachedCaughtStyle = new GUIStyle();
+        cachedCaughtStyle.fontSize = 12;
+        cachedCaughtStyle.fontStyle = FontStyle.Bold;
+        cachedCaughtStyle.normal.textColor = new Color(0.6f, 0.8f, 0.6f);
+        cachedCaughtStyle.alignment = TextAnchor.MiddleCenter;
+
+        guiStylesInitialized = true;
     }
 
     void InitializeRareFishAudio()
@@ -1042,6 +1095,33 @@ public class FishingSystem : MonoBehaviour
             if (fish.id == fishId) return fish;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Get a copy of the special fish inventory for UI display
+    /// </summary>
+    public List<FishData> GetSpecialFishInventory()
+    {
+        return new List<FishData>(specialFishInventory);
+    }
+
+    /// <summary>
+    /// Remove a special fish by ID (for cooking)
+    /// Returns true if fish was found and removed
+    /// </summary>
+    public bool RemoveSpecialFish(string fishId)
+    {
+        for (int i = 0; i < specialFishInventory.Count; i++)
+        {
+            if (specialFishInventory[i].id == fishId)
+            {
+                string fishName = specialFishInventory[i].fishName;
+                specialFishInventory.RemoveAt(i);
+                Debug.Log($"Removed {fishName} from special fish inventory for cooking");
+                return true;
+            }
+        }
+        return false;
     }
 
     public bool CanFish()
@@ -2646,17 +2726,22 @@ public class FishingSystem : MonoBehaviour
 
     void OnGUI()
     {
+        // Initialize cached GUIStyles once (can only do this inside OnGUI)
+        if (!guiStylesInitialized)
+        {
+            InitializeCachedGUIStyles();
+        }
+
         // Draw jackpot popup if active (highest priority)
         if (showingJackpot)
         {
             DrawJackpotPopup();
         }
 
-        // Performance: Skip frames when not actively needed
-        if (!showingCatchPopup && !showingBottlePopup)
+        // Early return when nothing to show
+        if (!showingCatchPopup && !showingBottlePopup && !showingJackpot)
         {
-            guiFrameSkip++;
-            if (guiFrameSkip % 3 != 0) return;
+            return;
         }
 
         if (!showingCatchPopup || catchPopupFish == null)
@@ -2682,11 +2767,9 @@ public class FishingSystem : MonoBehaviour
         // Background (use cached texture)
         GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, popupHeight), popupBgTex);
 
-        // Border color based on rarity (dynamically created per rarity - can't cache easily)
+        // Border color based on rarity (use cached texture)
         Color rarityCol = GetRarityColor(catchPopupFish.rarity);
-        Texture2D borderTex = new Texture2D(1, 1);
-        borderTex.SetPixel(0, 0, rarityCol);
-        borderTex.Apply();
+        Texture2D borderTex = rarityBorderTextures[catchPopupFish.rarity];
         // Thicker border for visibility
         GUI.DrawTexture(new Rect(popupX, popupY, popupWidth, 4), borderTex);
         GUI.DrawTexture(new Rect(popupX, popupY + popupHeight - 4, popupWidth, 4), borderTex);
@@ -2708,51 +2791,27 @@ public class FishingSystem : MonoBehaviour
 
         float textX = popupX + 78;
 
-        // Rarity label at top
-        GUIStyle rarityStyle = new GUIStyle();
-        rarityStyle.fontSize = 11;
-        rarityStyle.fontStyle = FontStyle.Bold;
-        rarityStyle.normal.textColor = rarityCol;
+        // Rarity label at top (use cached style, just update color)
+        cachedRarityStyle.normal.textColor = rarityCol;
         string rarityName = catchPopupFish.rarity.ToString().ToUpper();
-        GUI.Label(new Rect(textX, popupY + 10, 150, 16), rarityName, rarityStyle);
+        GUI.Label(new Rect(textX, popupY + 10, 150, 16), rarityName, cachedRarityStyle);
 
-        // Fish name - larger and bolder
-        GUIStyle nameStyle = new GUIStyle();
-        nameStyle.fontSize = 16;
-        nameStyle.fontStyle = FontStyle.Bold;
-        nameStyle.normal.textColor = Color.white;
-        nameStyle.wordWrap = true;
-        GUI.Label(new Rect(textX, popupY + 28, 150, 36), catchPopupFish.fishName, nameStyle);
+        // Fish name - larger and bolder (use cached style)
+        GUI.Label(new Rect(textX, popupY + 28, 150, 36), catchPopupFish.fishName, cachedNameStyle);
 
         // Get XP value for this fish
         int xpValue = LevelingSystem.GetFishXP(catchPopupFish.rarity);
 
-        // Gold value
-        GUIStyle goldStyle = new GUIStyle();
-        goldStyle.fontSize = 13;
-        goldStyle.fontStyle = FontStyle.Bold;
-        goldStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-        GUI.Label(new Rect(textX, popupY + 72, 75, 20), $"+{catchPopupFish.coinValue}g", goldStyle);
+        // Gold value (use cached style)
+        GUI.Label(new Rect(textX, popupY + 72, 75, 20), $"+{catchPopupFish.coinValue}g", cachedGoldStyle);
 
-        // XP value
-        GUIStyle xpStyle = new GUIStyle();
-        xpStyle.fontSize = 13;
-        xpStyle.fontStyle = FontStyle.Bold;
-        xpStyle.normal.textColor = new Color(0.4f, 0.9f, 1f);
-        GUI.Label(new Rect(textX + 70, popupY + 72, 75, 20), $"+{xpValue} XP", xpStyle);
+        // XP value (use cached style)
+        GUI.Label(new Rect(textX + 70, popupY + 72, 75, 20), $"+{xpValue} XP", cachedXpStyle);
 
-        // "CAUGHT!" banner at bottom
-        GUIStyle caughtStyle = new GUIStyle();
-        caughtStyle.fontSize = 12;
-        caughtStyle.fontStyle = FontStyle.Bold;
-        caughtStyle.normal.textColor = new Color(0.6f, 0.8f, 0.6f);
-        caughtStyle.alignment = TextAnchor.MiddleCenter;
-        GUI.Label(new Rect(popupX, popupY + 100, popupWidth, 20), "~ CAUGHT! ~", caughtStyle);
+        // "CAUGHT!" banner at bottom (use cached style)
+        GUI.Label(new Rect(popupX, popupY + 100, popupWidth, 20), "~ CAUGHT! ~", cachedCaughtStyle);
 
         GUI.color = Color.white;
-
-        // Clean up only the dynamically created border texture
-        Object.Destroy(borderTex);
 
         // Draw bottle popup if active
         DrawBottlePopup();

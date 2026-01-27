@@ -86,8 +86,8 @@ public class IslandSoundManager : MonoBehaviour
         GenerateAllAudioClips();
         StartAmbientSounds();
 
-        // Play a test beep to verify audio is working
-        PlayTestBeep();
+        // REMOVED: Test beep was playing at startup before title card
+        // PlayTestBeep();
 
         Debug.Log("[IslandSoundManager] Sound system initialized successfully");
     }
@@ -265,12 +265,12 @@ public class IslandSoundManager : MonoBehaviour
             Debug.Log("[IslandSoundManager] Ocean waves started - volume: " + waveSource.volume);
         }
 
-        // Play an initial bird sound to confirm audio works
-        if (birdChirpClip != null && birdSource != null)
-        {
-            birdSource.PlayOneShot(birdChirpClip, 0.6f);
-            Debug.Log("[IslandSoundManager] Initial bird chirp played");
-        }
+        // REMOVED: Initial bird chirp was playing before title card
+        // if (birdChirpClip != null && birdSource != null)
+        // {
+        //     birdSource.PlayOneShot(birdChirpClip, 0.6f);
+        //     Debug.Log("[IslandSoundManager] Initial bird chirp played");
+        // }
     }
 
     private bool gameStartedLogged = false;

@@ -584,9 +584,9 @@ public class FishInventoryPanel : MonoBehaviour
         // Check if near BBQ for cooking
         bool nearBBQ = BBQStation.IsPlayerNearBBQ();
 
-        // Check if near Chef for making buffs
-        bool nearChef = ChefNPC.IsPlayerNearChef();
-        bool hasCompletedQuest = ChefNPC.HasCompletedFirstQuest();
+        // Check if near Chef for making buffs (DISABLED FOR TESTING)
+        bool nearChef = false; // ChefNPC.IsPlayerNearChef();
+        bool hasCompletedQuest = false; // ChefNPC.HasCompletedFirstQuest();
 
         // Hint messages when actions are unavailable
         if (!sellModeEnabled && !nearBBQ && fishList.Count > 0)

@@ -43,6 +43,7 @@ public class SnakeAI : MonoBehaviour
     private Material patternMat;
     private float damageFlashTimer;
     private bool isDead = false;
+    private Transform cachedTongue; // Cached to avoid transform.Find every frame
 
     // Audio
     private AudioSource audioSource;
@@ -285,12 +286,15 @@ public class SnakeAI : MonoBehaviour
             }
         }
 
-        // Flick tongue
-        Transform tongue = transform.Find("BodySegment0/Tongue");
-        if (tongue != null)
+        // Flick tongue (use cached reference)
+        if (cachedTongue == null && bodySegments != null && bodySegments[0] != null)
+        {
+            cachedTongue = bodySegments[0].transform.Find("Tongue");
+        }
+        if (cachedTongue != null)
         {
             float tongueFlick = Mathf.Sin(slitherTimer * 3f);
-            tongue.localPosition = new Vector3(0, 0, 0.6f + tongueFlick * 0.1f);
+            cachedTongue.localPosition = new Vector3(0, 0, 0.6f + tongueFlick * 0.1f);
         }
     }
 

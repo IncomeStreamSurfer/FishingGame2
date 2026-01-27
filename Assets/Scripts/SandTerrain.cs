@@ -37,9 +37,13 @@ public class SandTerrain : MonoBehaviour
     void Start()
     {
         GenerateTerrain();
-        if (addShells) AddSeashells();
-        if (addRocks) AddBeachRocks();
-        if (addDriftwood) AddDriftwood();
+
+        // PERFORMANCE: Disable beach decorations - they create 180+ primitives
+        // The terrain mesh itself is fine, it's the scattered objects that kill FPS
+        Debug.Log("[SandTerrain] Beach decorations DISABLED for performance - 180 primitives saved");
+        // if (addShells) AddSeashells();
+        // if (addRocks) AddBeachRocks();
+        // if (addDriftwood) AddDriftwood();
     }
 
     public void GenerateTerrain()

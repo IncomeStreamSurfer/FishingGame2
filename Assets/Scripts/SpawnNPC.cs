@@ -35,6 +35,9 @@ public class SpawnNPC : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         CreateNPCModel();
         SetupAudio();
         Invoke("InitializeStyles", 0.5f);

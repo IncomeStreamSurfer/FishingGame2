@@ -376,16 +376,6 @@ public class DropRatesSign : MonoBehaviour
         DrawDropItem(0, y, listArea.width, "Epic Fishing Rod", "1%", new Color(0.6f, 0.2f, 0.8f)); y += 20;
         DrawDropItem(0, y, listArea.width, "JACKPOT (1,000,000 coins!)", "0.05%", new Color(1f, 0.85f, 0f)); y += 30;
 
-        // SPECIAL MECHANICS
-        GUI.Label(new Rect(0, y, listArea.width, 20), "SPECIAL MECHANICS", cachedSectionStyle);
-        y += 25;
-
-        DrawDropItem(0, y, listArea.width, "Cast Distance affects rarity", "", new Color(0.8f, 0.8f, 0.6f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Farther cast = better fish", "", new Color(0.8f, 0.8f, 0.6f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Hold click to charge cast", "", new Color(0.8f, 0.8f, 0.6f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Special fish glow at night", "", new Color(0.8f, 0.8f, 0.6f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Ice Realm has unique fish", "", new Color(0.8f, 0.8f, 0.6f)); y += 20;
-        DrawDropItem(0, y, listArea.width, "Jungle has rare species", "", new Color(0.8f, 0.8f, 0.6f)); y += 30;
 
         // XP REWARDS
         GUI.Label(new Rect(0, y, listArea.width, 20), "XP PER FISH CAUGHT", cachedSectionStyle);

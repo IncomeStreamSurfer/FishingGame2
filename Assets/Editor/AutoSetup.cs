@@ -197,8 +197,8 @@ public class AutoSetup
         // BBQ Station at end of dock
         CreateBBQ();
 
-        // Chef NPC (random location on beach)
-        CreateChefNPC();
+        // Chef NPC (DISABLED FOR TESTING)
+        // CreateChefNPC();
 
         // Fish Connoisseur NPC (random location on beach)
         CreateFishConnoisseurNPC();
@@ -2566,6 +2566,7 @@ public class AutoSetup
         board.AddComponent<DropRatesSign>();
     }
 
+    /* DISABLED FOR TESTING
     static void CreateChefNPC()
     {
         // Check if Chef already exists
@@ -2582,6 +2583,7 @@ public class AutoSetup
         chef.transform.rotation = Quaternion.Euler(0, 200f, 0); // Facing toward beach/player
         chef.AddComponent<ChefNPC>();
     }
+    */
 
     static void CreateFishConnoisseurNPC()
     {
@@ -3042,16 +3044,16 @@ public class AutoSetup
             RealmType.IceRealm
         };
 
-        // BETA: Lock Ice and Jungle portals until full release
-        bool[] betaLocked = { true, true }; // Both portals locked for beta
+        // OPEN TESTING: Lock Ice and Jungle portals until full release
+        bool[] openTestingLocked = { true, true }; // Both portals locked for open testing
 
         for (int i = 0; i < 2; i++)
         {
-            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i], destinations[i], betaLocked[i]);
+            CreateSinglePortal(portalsParent.transform, portalPositions[i], portalNames[i], requiredLevels[i], portalColors[i], destinations[i], openTestingLocked[i]);
         }
     }
 
-    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor, RealmType destination = RealmType.TropicalIsland, bool isBetaLocked = false)
+    static void CreateSinglePortal(Transform parent, Vector3 pos, string name, int requiredLevel, Color portalColor, RealmType destination = RealmType.TropicalIsland, bool isOpenTestingLocked = false)
     {
         GameObject portal = new GameObject(name);
         portal.transform.SetParent(parent);
@@ -3065,11 +3067,11 @@ public class AutoSetup
         portalInteraction.destinationRealm = destination;
         portalInteraction.spawnOffset = new Vector3(0, 2f, 5f); // Spawn near return portal
 
-        // BETA LOCK - prevents access during beta testing
-        portalInteraction.betaLocked = isBetaLocked;
-        if (isBetaLocked)
+        // OPEN TESTING LOCK - prevents access during open testing phase
+        portalInteraction.openTestingLocked = isOpenTestingLocked;
+        if (isOpenTestingLocked)
         {
-            portalInteraction.betaMessage = "Available in full release!";
+            portalInteraction.openTestingMessage = "Available in full release!";
         }
 
         // Portal materials

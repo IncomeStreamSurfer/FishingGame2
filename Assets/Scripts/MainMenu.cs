@@ -1,19 +1,17 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
-using System.IO;
 
 /// <summary>
 /// Main Menu - Landing page for the game
-/// Shows Start New Game, Load Game, Saved Games, Settings
-/// Updated to support SaveGameManager with thumbnails
+/// Shows Start New Game, Settings, Quit
 /// </summary>
 public class MainMenu : MonoBehaviour
 {
     public static MainMenu Instance { get; private set; }
     public static bool GameStarted { get; set; } = false;
 
-    private enum MenuState { Main, Settings, LoadGame }
+    private enum MenuState { Main, Settings }
     private MenuState currentState = MenuState.Main;
 
     // Settings
@@ -23,26 +21,17 @@ public class MainMenu : MonoBehaviour
     private int qualityLevel = 2;
     private string[] qualityNames = { "Low", "Medium", "High", "Ultra" };
 
-    // Saved games list
-    private List<SavedGameInfo> savedGames = new List<SavedGameInfo>();
-
     // Animation
     private float titleBob = 0f;
     private float menuAlpha = 0f;
     private float fadeInTime = 0f;
 
-    // Track previous game state to detect return to menu
-    private bool wasGameStarted = false;
-
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
     private bool initialized = false;
-    private int guiFrameSkip = 0;
 
     // Water animation for background
     private float waterTime = 0f;
-
-    // Title screen music - REMOVED (was causing audio issues)
 
     // Title screen effects
     private float lightningTimer = 0f;
@@ -53,8 +42,6 @@ public class MainMenu : MonoBehaviour
 
     // Cached GUIStyles for performance
     private static GUIStyle cachedVersionStyle;
-    private static GUIStyle cachedTitleStyle;
-    private static GUIStyle cachedSubStyle;
     private static bool stylesInitialized = false;
 
     // 16:9 safe area calculations
@@ -82,7 +69,9 @@ public class MainMenu : MonoBehaviour
             PlayerPrefs.DeleteKey("PendingNewGame");
             PlayerPrefs.Save();
 
-            // Scene has been reloaded - now start the game fresh
+            // Clear all runtime state for fresh start
+            Invoke("ClearAllRuntimeState", 0.1f);
+
             GameStarted = true;
             EnableGameSystems();
             Debug.Log("New game started after scene reload - all entities cleared!");
@@ -91,14 +80,7 @@ public class MainMenu : MonoBehaviour
 
         GameStarted = false;
         LoadSettings();
-        RefreshSavedGames();
-
-        // Disable all game systems until game starts
         DisableGameSystems();
-
-        // Title music removed - was causing audio issues
-
-        // Delay texture creation
         Invoke("Initialize", 0.2f);
     }
 
@@ -116,21 +98,14 @@ public class MainMenu : MonoBehaviour
         CacheTexture("buttonNormal", new Color(0.2f, 0.08f, 0.08f, 0.95f));
         CacheTexture("buttonHover", new Color(0.4f, 0.15f, 0.15f, 1f));
         CacheTexture("buttonPressed", new Color(0.15f, 0.05f, 0.05f, 1f));
-        CacheTexture("titleGlow", new Color(0.8f, 0.2f, 0.1f, 0.4f));
         CacheTexture("waterDark", new Color(0.02f, 0.05f, 0.12f, 1f));
         CacheTexture("waterLight", new Color(0.05f, 0.1f, 0.2f, 1f));
         CacheTexture("waterBlood", new Color(0.15f, 0.02f, 0.02f, 0.5f));
         CacheTexture("sliderBg", new Color(0.1f, 0.05f, 0.05f, 1f));
         CacheTexture("sliderFill", new Color(0.7f, 0.2f, 0.2f, 1f));
-        CacheTexture("saveSlotBg", new Color(0.1f, 0.08f, 0.08f, 0.95f));
         CacheTexture("white", Color.white);
         CacheTexture("red", new Color(0.8f, 0.1f, 0.1f, 1f));
-        CacheTexture("darkRed", new Color(0.4f, 0.05f, 0.05f, 1f));
-        CacheTexture("lightning", new Color(1f, 1f, 1f, 0.9f));
-        CacheTexture("skull", new Color(0.9f, 0.85f, 0.75f, 1f));
-        CacheTexture("thumbnailBg", new Color(0.08f, 0.08f, 0.1f, 1f));
 
-        // Initialize fish positions for swimming animation
         for (int i = 0; i < fishPositions.Length; i++)
         {
             fishPositions[i] = Random.Range(0f, Screen.width);
@@ -157,7 +132,6 @@ public class MainMenu : MonoBehaviour
 
     void DisableGameSystems()
     {
-        // Disable player controls and other systems
         if (GameCache.IsPlayerValid() && GameCache.PlayerObject != null)
         {
             var controller = GameCache.PlayerObject.GetComponent<PlayerController>();
@@ -178,17 +152,72 @@ public class MainMenu : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when returning to menu from gameplay (e.g., quit to menu)
+    /// </summary>
+    public void ReturnToMenu()
+    {
+        GameStarted = false;
+        currentState = MenuState.Main;
+        fadeInTime = 0f; // Reset fade so menu fades in fresh
+        menuAlpha = 0f;
+        DisableGameSystems();
+        Debug.Log("Returned to main menu");
+    }
+
+    void ClearAllRuntimeState()
+    {
+        // Clear food inventory (hotbar and raw fish)
+        if (FoodInventory.Instance != null)
+        {
+            FoodInventory.Instance.ClearInventory();
+            FoodInventory.Instance.lunchBoxCount = 0;
+            FoodInventory.Instance.lunchBoxFishCount = 0;
+        }
+
+        // Clear GameManager state (persists via DontDestroyOnLoad)
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.coins = 0;
+            GameManager.Instance.totalFishCaught = 0;
+            GameManager.Instance.fishInventory.Clear();
+        }
+
+        // Reset player health
+        if (PlayerHealth.Instance != null)
+        {
+            PlayerHealth.Instance.ResetHealth();
+        }
+
+        // Reset leveling to level 1
+        if (LevelingSystem.Instance != null)
+        {
+            LevelingSystem.Instance.ResetToLevel1();
+        }
+
+        // Clear active buffs
+        if (FishBuffSystem.Instance != null)
+        {
+            FishBuffSystem.Instance.ClearAllActiveBuffs();
+        }
+
+        // Reset wet debuff
+        if (WetDebuffSystem.Instance != null)
+        {
+            WetDebuffSystem.Instance.ClearWetDebuff();
+        }
+
+        // Reset player position
+        if (GameCache.IsPlayerValid())
+        {
+            GameCache.Player.position = new Vector3(0, 2, 0);
+        }
+
+        Debug.Log("All runtime state cleared for new game!");
+    }
+
     void Update()
     {
-        // Detect returning to menu from game
-        if (wasGameStarted && !GameStarted)
-        {
-            // Player returned to menu - refresh saved games to show latest thumbnails
-            RefreshSavedGames();
-            currentState = MenuState.Main;
-        }
-        wasGameStarted = GameStarted;
-
         if (GameStarted) return;
 
         titleBob += Time.deltaTime;
@@ -196,7 +225,6 @@ public class MainMenu : MonoBehaviour
         skullPulse += Time.deltaTime;
         bloodDrip += Time.deltaTime * 0.5f;
 
-        // Lightning effect - random flashes
         lightningTimer -= Time.deltaTime;
         if (lightningTimer <= 0f)
         {
@@ -205,7 +233,6 @@ public class MainMenu : MonoBehaviour
         }
         lightningFlash = Mathf.Max(0f, lightningFlash - Time.deltaTime * 4f);
 
-        // Animate fish swimming across screen
         for (int i = 0; i < fishPositions.Length; i++)
         {
             fishPositions[i] -= Time.deltaTime * (30f + i * 15f);
@@ -215,11 +242,9 @@ public class MainMenu : MonoBehaviour
             }
         }
 
-        // Fade in
         fadeInTime += Time.deltaTime;
         menuAlpha = Mathf.Clamp01(fadeInTime / 1.5f);
 
-        // ESC to go back
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (currentState != MenuState.Main)
@@ -231,13 +256,11 @@ public class MainMenu : MonoBehaviour
 
     void CalculateSafeArea()
     {
-        // Calculate 16:9 safe area within current screen
         float targetAspect = 16f / 9f;
         float currentAspect = (float)Screen.width / Screen.height;
 
         if (currentAspect > targetAspect)
         {
-            // Screen is wider than 16:9 - add horizontal margins
             float safeWidth = Screen.height * targetAspect;
             safeMarginX = (Screen.width - safeWidth) / 2f;
             safeMarginY = 0;
@@ -245,7 +268,6 @@ public class MainMenu : MonoBehaviour
         }
         else
         {
-            // Screen is taller than 16:9 - add vertical margins
             float safeHeight = Screen.width / targetAspect;
             safeMarginX = 0;
             safeMarginY = (Screen.height - safeHeight) / 2f;
@@ -255,49 +277,25 @@ public class MainMenu : MonoBehaviour
 
     void OnGUI()
     {
-        // Performance: Skip frames when not actively needed (menu is less critical)
-        if (!GameStarted)
-        {
-            guiFrameSkip++;
-            if (guiFrameSkip % 2 != 0) return; // Skip every other frame for smoother menu
-        }
-
         if (GameStarted || !initialized) return;
 
-        // Calculate safe area for 16:9
         CalculateSafeArea();
 
-        // Initialize styles lazily (must be done in OnGUI context) - BEFORE any drawing
         if (!stylesInitialized)
         {
             cachedVersionStyle = new GUIStyle(GUI.skin.label);
             cachedVersionStyle.fontSize = 12;
             cachedVersionStyle.alignment = TextAnchor.LowerRight;
-
-            cachedTitleStyle = new GUIStyle(GUI.skin.label);
-            cachedTitleStyle.fontSize = 72;
-            cachedTitleStyle.fontStyle = FontStyle.Bold;
-            cachedTitleStyle.alignment = TextAnchor.MiddleCenter;
-
-            cachedSubStyle = new GUIStyle(GUI.skin.label);
-            cachedSubStyle.fontSize = 22;
-            cachedSubStyle.fontStyle = FontStyle.Italic;
-            cachedSubStyle.alignment = TextAnchor.MiddleCenter;
-
             stylesInitialized = true;
         }
 
-        // Draw animated water background
         DrawWaterBackground();
 
-        // Dark overlay
         GUI.color = new Color(1, 1, 1, menuAlpha);
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("overlay"));
 
-        // Title with glow effect
         DrawTitle();
 
-        // Draw current menu state
         switch (currentState)
         {
             case MenuState.Main:
@@ -306,25 +304,19 @@ public class MainMenu : MonoBehaviour
             case MenuState.Settings:
                 DrawSettingsMenu();
                 break;
-            case MenuState.LoadGame:
-                DrawLoadGameMenu();
-                break;
         }
 
-        // Version and credits - update color dynamically, within safe area
         cachedVersionStyle.normal.textColor = new Color(0.4f, 0.35f, 0.35f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + safeArea.width - 210, safeArea.y + safeArea.height - 30, 200, 25), "BETA v0.1", cachedVersionStyle);
+        GUI.Label(new Rect(safeArea.x + safeArea.width - 260, safeArea.y + safeArea.height - 30, 250, 25), "OPEN TESTING v0.2", cachedVersionStyle);
 
         GUI.color = Color.white;
     }
 
     void DrawWaterBackground()
     {
-        // Dark stormy ocean background
         GUI.color = new Color(0.02f, 0.04f, 0.08f, 1f);
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("white"));
 
-        // Animated wave pattern - more dramatic
         int numWaves = 25;
         float waveHeight = Screen.height / (float)numWaves;
 
@@ -340,17 +332,14 @@ public class MainMenu : MonoBehaviour
             GUI.DrawTexture(new Rect(waveOffset + waveOffset2, i * waveHeight, Screen.width + 60, waveHeight + 3), tex);
         }
 
-        // Swimming fish silhouettes in the background
         GUI.color = new Color(0.03f, 0.06f, 0.1f, 0.6f);
         for (int i = 0; i < fishPositions.Length; i++)
         {
             float y = Screen.height * 0.5f + Mathf.Sin(waterTime + i * 2f) * 100f + i * 60f;
             float size = 40f + i * 10f;
-            // Simple fish shape (elongated oval)
             GUI.DrawTexture(new Rect(fishPositions[i], y, size * 2f, size), GetTexture("white"));
         }
 
-        // Blood drips from top
         GUI.color = new Color(0.5f, 0.05f, 0.05f, 0.3f);
         for (int i = 0; i < 8; i++)
         {
@@ -360,7 +349,6 @@ public class MainMenu : MonoBehaviour
             GUI.DrawTexture(new Rect(x, dripY, 4f, dripHeight), GetTexture("red"));
         }
 
-        // Lightning flash overlay
         if (lightningFlash > 0f)
         {
             GUI.color = new Color(1f, 1f, 1f, lightningFlash * 0.3f);
@@ -376,80 +364,61 @@ public class MainMenu : MonoBehaviour
         float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 5f;
         float pulseScale = 1f + Mathf.Sin(skullPulse * 2f) * 0.02f;
 
-        // Use safe area for positioning - moved title lower for better visibility
         float centerX = safeArea.x + safeArea.width / 2;
-        float titleY = safeArea.y + safeArea.height * 0.12f; // Start 12% down the safe area
+        float titleY = safeArea.y + safeArea.height * 0.12f;
 
-        // Large ominous glow behind title
         GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.25f * menuAlpha);
         GUI.DrawTexture(new Rect(centerX - 350, titleY + 30 + bobOffset, 700, 180), GetTexture("white"));
 
-        // Secondary glow
         GUI.color = new Color(1f, 0.3f, 0.1f, 0.15f * menuAlpha);
         GUI.DrawTexture(new Rect(centerX - 300, titleY + 50 + bobOffset, 600, 140), GetTexture("white"));
 
-        // Draw crossed fishing rods behind title (X shape)
         GUI.color = new Color(0.3f, 0.25f, 0.2f, 0.8f * menuAlpha);
         DrawRotatedRect(new Rect(centerX - 180, titleY + 40 + bobOffset, 360, 8), 15f);
         DrawRotatedRect(new Rect(centerX - 180, titleY + 40 + bobOffset, 360, 8), -15f);
 
-        // "FISH" text
         GUIStyle fishStyle = new GUIStyle();
         fishStyle.fontSize = 90;
         fishStyle.fontStyle = FontStyle.Bold;
         fishStyle.alignment = TextAnchor.MiddleCenter;
 
-        // Black outline shadow for better visibility
         GUI.color = new Color(0f, 0f, 0f, 0.9f * menuAlpha);
         fishStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX + 3, titleY + 43 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
         GUI.Label(new Rect(safeArea.x + shakeX - 3, titleY + 43 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 46 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 37 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
 
-        // Main "FISH" text - bright blood red for better visibility
         GUI.color = new Color(1, 1, 1, menuAlpha);
         fishStyle.normal.textColor = new Color(1.0f, 0.2f, 0.15f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX, titleY + 40 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
 
-        // "OR" text - smaller, bright white for visibility
         GUIStyle orStyle = new GUIStyle();
         orStyle.fontSize = 36;
         orStyle.fontStyle = FontStyle.BoldAndItalic;
         orStyle.alignment = TextAnchor.MiddleCenter;
 
-        // Black outline for OR
         orStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 117 + bobOffset, safeArea.width, 50), "OR", orStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX - 2, titleY + 117 + bobOffset, safeArea.width, 50), "OR", orStyle);
 
         orStyle.normal.textColor = new Color(1.0f, 1.0f, 1.0f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX, titleY + 115 + bobOffset, safeArea.width, 50), "OR", orStyle);
 
-        // "DIE" text - even more dramatic
         GUIStyle dieStyle = new GUIStyle();
         dieStyle.fontSize = 100;
         dieStyle.fontStyle = FontStyle.Bold;
         dieStyle.alignment = TextAnchor.MiddleCenter;
 
-        // Heavy black outline for DIE
         GUI.color = new Color(0, 0, 0, 0.9f * menuAlpha);
         dieStyle.normal.textColor = new Color(0, 0, 0, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX + 4, titleY + 139 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
         GUI.Label(new Rect(safeArea.x + shakeX - 4, titleY + 139 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 143 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 131 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
 
-        // Main "DIE" text - brighter blood red, pulsing
         float diePulse = 0.85f + Mathf.Sin(skullPulse * 3f) * 0.15f;
         GUI.color = new Color(1, 1, 1, menuAlpha);
         dieStyle.normal.textColor = new Color(0.9f * diePulse, 0.1f, 0.1f, menuAlpha);
         GUI.Label(new Rect(safeArea.x + shakeX, titleY + 135 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
 
-        // Draw skull and crossbones between the words (simple version)
         DrawSkull(centerX - 15, titleY + 125 + bobOffset, 30f * pulseScale, menuAlpha);
 
-        // Tagline - brighter for visibility
         GUIStyle tagStyle = new GUIStyle();
         tagStyle.fontSize = 18;
         tagStyle.fontStyle = FontStyle.Italic;
@@ -457,18 +426,16 @@ public class MainMenu : MonoBehaviour
         tagStyle.normal.textColor = new Color(0.8f, 0.85f, 0.9f, menuAlpha);
         GUI.Label(new Rect(safeArea.x, titleY + 235 + bobOffset, safeArea.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
 
-        // Beta version badge - brighter
-        GUIStyle betaStyle = new GUIStyle();
-        betaStyle.fontSize = 14;
-        betaStyle.fontStyle = FontStyle.Bold;
-        betaStyle.alignment = TextAnchor.MiddleCenter;
-        betaStyle.normal.textColor = new Color(1f, 0.9f, 0.3f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x, titleY + 265 + bobOffset, safeArea.width, 25), "[ BETA - Tropical Island ]", betaStyle);
+        GUIStyle openTestingStyle = new GUIStyle();
+        openTestingStyle.fontSize = 14;
+        openTestingStyle.fontStyle = FontStyle.Bold;
+        openTestingStyle.alignment = TextAnchor.MiddleCenter;
+        openTestingStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, menuAlpha);
+        GUI.Label(new Rect(safeArea.x, titleY + 265 + bobOffset, safeArea.width, 25), "[ OPEN TESTING - Tropical Island ]", openTestingStyle);
     }
 
     void DrawRotatedRect(Rect rect, float angle)
     {
-        // Simple rotation approximation using multiple offset rects
         Matrix4x4 matrixBackup = GUI.matrix;
         GUIUtility.RotateAroundPivot(angle, new Vector2(rect.x + rect.width / 2, rect.y + rect.height / 2));
         GUI.DrawTexture(rect, GetTexture("white"));
@@ -477,25 +444,17 @@ public class MainMenu : MonoBehaviour
 
     void DrawSkull(float x, float y, float size, float alpha)
     {
-        // Simple skull shape using primitives
         GUI.color = new Color(0.9f, 0.85f, 0.75f, alpha * 0.9f);
-
-        // Skull head (circle approximation with oval)
         GUI.DrawTexture(new Rect(x - size * 0.4f, y - size * 0.5f, size * 0.8f, size * 0.7f), GetTexture("white"));
 
-        // Eye sockets (dark)
         GUI.color = new Color(0.1f, 0.05f, 0.05f, alpha);
         GUI.DrawTexture(new Rect(x - size * 0.25f, y - size * 0.2f, size * 0.18f, size * 0.2f), GetTexture("white"));
         GUI.DrawTexture(new Rect(x + size * 0.07f, y - size * 0.2f, size * 0.18f, size * 0.2f), GetTexture("white"));
-
-        // Nose hole
         GUI.DrawTexture(new Rect(x - size * 0.06f, y + size * 0.05f, size * 0.12f, size * 0.12f), GetTexture("white"));
 
-        // Jaw/teeth area
         GUI.color = new Color(0.85f, 0.8f, 0.7f, alpha * 0.9f);
         GUI.DrawTexture(new Rect(x - size * 0.3f, y + size * 0.15f, size * 0.6f, size * 0.2f), GetTexture("white"));
 
-        // Teeth lines
         GUI.color = new Color(0.1f, 0.05f, 0.05f, alpha * 0.7f);
         for (int i = 0; i < 4; i++)
         {
@@ -511,31 +470,21 @@ public class MainMenu : MonoBehaviour
         float buttonHeight = 42;
         float buttonSpacing = 16;
 
-        // Calculate center position
         float centerX = safeArea.x + safeArea.width / 2;
         float buttonX = centerX - buttonWidth / 2;
-
-        // Position buttons below the BETA text
         float startY = safeArea.y + safeArea.height * 0.12f + 310f;
 
-        // Centered vertical layout - clean and symmetrical
-        if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "START NEW GAME"))
+        if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "START GAME"))
         {
             StartNewGame();
         }
 
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "LOAD GAME"))
-        {
-            RefreshSavedGames();
-            currentState = MenuState.LoadGame;
-        }
-
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight), "SETTINGS"))
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "SETTINGS"))
         {
             currentState = MenuState.Settings;
         }
 
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * 3, buttonWidth, buttonHeight), "QUIT"))
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight), "QUIT"))
         {
             QuitGame();
         }
@@ -548,11 +497,9 @@ public class MainMenu : MonoBehaviour
         float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
         float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
 
-        // Panel background
         GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
 
-        // Header
         GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
         headerStyle.fontSize = 28;
         headerStyle.fontStyle = FontStyle.Bold;
@@ -560,7 +507,6 @@ public class MainMenu : MonoBehaviour
         headerStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
         GUI.Label(new Rect(panelX, panelY + 15, panelWidth, 40), "SETTINGS", headerStyle);
 
-        // Close button
         if (DrawCloseButton(new Rect(panelX + panelWidth - 40, panelY + 10, 30, 30)))
         {
             currentState = MenuState.Main;
@@ -574,17 +520,14 @@ public class MainMenu : MonoBehaviour
         labelStyle.fontSize = 16;
         labelStyle.normal.textColor = Color.white;
 
-        // Music Volume
         GUI.Label(new Rect(panelX + 20, contentY, labelWidth, 25), "Music Volume", labelStyle);
         musicVolume = DrawSlider(new Rect(panelX + labelWidth + 30, contentY, sliderWidth, 20), musicVolume);
         contentY += 50;
 
-        // SFX Volume
         GUI.Label(new Rect(panelX + 20, contentY, labelWidth, 25), "SFX Volume", labelStyle);
         sfxVolume = DrawSlider(new Rect(panelX + labelWidth + 30, contentY, sliderWidth, 20), sfxVolume);
         contentY += 50;
 
-        // Quality
         GUI.Label(new Rect(panelX + 20, contentY, labelWidth, 25), "Quality", labelStyle);
         if (GUI.Button(new Rect(panelX + labelWidth + 30, contentY, 100, 28), "< " + qualityNames[qualityLevel] + " >"))
         {
@@ -593,7 +536,6 @@ public class MainMenu : MonoBehaviour
         }
         contentY += 50;
 
-        // Fullscreen
         GUI.Label(new Rect(panelX + 20, contentY, labelWidth, 25), "Fullscreen", labelStyle);
         if (GUI.Button(new Rect(panelX + labelWidth + 30, contentY, 100, 28), fullscreen ? "ON" : "OFF"))
         {
@@ -602,115 +544,10 @@ public class MainMenu : MonoBehaviour
         }
         contentY += 70;
 
-        // Save and Back buttons
         if (DrawMenuButton(new Rect(panelX + panelWidth / 2 - 100, contentY, 200, 45), "SAVE SETTINGS"))
         {
             SaveSettings();
             currentState = MenuState.Main;
-        }
-    }
-
-    void DrawLoadGameMenu()
-    {
-        float panelWidth = 600;
-        float panelHeight = 500;
-        float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
-        float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
-
-        GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
-        GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
-
-        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
-        headerStyle.fontSize = 28;
-        headerStyle.fontStyle = FontStyle.Bold;
-        headerStyle.alignment = TextAnchor.MiddleCenter;
-        headerStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
-        GUI.Label(new Rect(panelX, panelY + 15, panelWidth, 40), "LOAD GAME", headerStyle);
-
-        if (DrawCloseButton(new Rect(panelX + panelWidth - 40, panelY + 10, 30, 30)))
-        {
-            currentState = MenuState.Main;
-        }
-
-        float contentY = panelY + 70;
-        float slotHeight = 110; // Taller for thumbnails
-
-        if (savedGames.Count == 0)
-        {
-            GUIStyle noSaveStyle = new GUIStyle(GUI.skin.label);
-            noSaveStyle.fontSize = 18;
-            noSaveStyle.alignment = TextAnchor.MiddleCenter;
-            noSaveStyle.normal.textColor = new Color(0.6f, 0.6f, 0.7f);
-            GUI.Label(new Rect(panelX, contentY + 150, panelWidth, 30), "No saved games to load", noSaveStyle);
-        }
-        else
-        {
-            for (int i = 0; i < Mathf.Min(savedGames.Count, 3); i++)
-            {
-                DrawSaveSlotWithThumbnail(new Rect(panelX + 20, contentY + i * (slotHeight + 10), panelWidth - 40, slotHeight), savedGames[i], true);
-            }
-        }
-    }
-
-    void DrawSaveSlotWithThumbnail(Rect rect, SavedGameInfo save, bool canLoad)
-    {
-        GUI.DrawTexture(rect, GetTexture("saveSlotBg"));
-
-        // Thumbnail area (left side)
-        float thumbWidth = 144;
-        float thumbHeight = 81;
-        float thumbX = rect.x + 10;
-        float thumbY = rect.y + (rect.height - thumbHeight) / 2;
-
-        // Thumbnail background/border
-        GUI.DrawTexture(new Rect(thumbX - 2, thumbY - 2, thumbWidth + 4, thumbHeight + 4), GetTexture("panelBorder"));
-        GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), GetTexture("thumbnailBg"));
-
-        // Draw thumbnail if available - fetch fresh from SaveGameManager for latest
-        Texture2D thumbnail = save.thumbnail;
-        if (thumbnail == null && SaveGameManager.Instance != null && save.slotIndex >= 0)
-        {
-            thumbnail = SaveGameManager.Instance.GetThumbnail(save.slotIndex);
-        }
-
-        if (thumbnail != null)
-        {
-            GUI.DrawTexture(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), thumbnail);
-        }
-        else
-        {
-            // No thumbnail - show placeholder text
-            GUIStyle placeholderStyle = new GUIStyle(GUI.skin.label);
-            placeholderStyle.fontSize = 11;
-            placeholderStyle.alignment = TextAnchor.MiddleCenter;
-            placeholderStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f, 1f);
-            GUI.Label(new Rect(thumbX, thumbY, thumbWidth, thumbHeight), "No Preview", placeholderStyle);
-        }
-
-        // Info area (right of thumbnail)
-        float infoX = thumbX + thumbWidth + 20;
-        float infoWidth = rect.width - thumbWidth - 50;
-
-        GUIStyle nameStyle = new GUIStyle(GUI.skin.label);
-        nameStyle.fontSize = 18;
-        nameStyle.fontStyle = FontStyle.Bold;
-        nameStyle.normal.textColor = Color.white;
-
-        GUIStyle infoStyle = new GUIStyle(GUI.skin.label);
-        infoStyle.fontSize = 13;
-        infoStyle.normal.textColor = new Color(0.7f, 0.7f, 0.8f);
-
-        GUI.Label(new Rect(infoX, rect.y + 15, infoWidth, 24), save.name, nameStyle);
-        GUI.Label(new Rect(infoX, rect.y + 42, infoWidth, 18), $"Level {save.level}", infoStyle);
-        GUI.Label(new Rect(infoX, rect.y + 60, infoWidth, 18), $"{save.gold:N0} Gold | {save.fishCaught} Fish", infoStyle);
-        GUI.Label(new Rect(infoX, rect.y + 78, infoWidth, 18), $"Play Time: {save.playTime}", infoStyle);
-
-        if (canLoad)
-        {
-            if (GUI.Button(new Rect(rect.x + rect.width - 90, rect.y + rect.height / 2 - 18, 75, 36), "LOAD"))
-            {
-                LoadGame(save);
-            }
         }
     }
 
@@ -722,17 +559,14 @@ public class MainMenu : MonoBehaviour
         Texture2D tex = pressed ? GetTexture("buttonPressed") :
                         hover ? GetTexture("buttonHover") : GetTexture("buttonNormal");
 
-        // Button background
         GUI.DrawTexture(rect, tex);
 
-        // Border on hover
         if (hover)
         {
             GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2), GetTexture("panelBorder"));
             GUI.DrawTexture(new Rect(rect.x, rect.y + rect.height - 2, rect.width, 2), GetTexture("panelBorder"));
         }
 
-        // Text
         GUIStyle btnStyle = new GUIStyle(GUI.skin.label);
         btnStyle.fontSize = 13;
         btnStyle.fontStyle = FontStyle.Bold;
@@ -767,14 +601,12 @@ public class MainMenu : MonoBehaviour
         GUI.DrawTexture(rect, GetTexture("sliderBg"));
         GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width * value, rect.height), GetTexture("sliderFill"));
 
-        // Handle click
         if (rect.Contains(Event.current.mousePosition) && Input.GetMouseButton(0))
         {
             value = (Event.current.mousePosition.x - rect.x) / rect.width;
             value = Mathf.Clamp01(value);
         }
 
-        // Percentage label
         GUIStyle pctStyle = new GUIStyle(GUI.skin.label);
         pctStyle.fontSize = 12;
         pctStyle.alignment = TextAnchor.MiddleRight;
@@ -786,15 +618,9 @@ public class MainMenu : MonoBehaviour
 
     void StartNewGame()
     {
-        // ============ COMPLETE NEW GAME RESET ============
-        // Reset ALL PlayerPrefs data except achievements (those persist across games)
-        // Then reload the scene to destroy all runtime objects (enemies, items, etc.)
-
-        // Reset XP and Level
+        // Reset PlayerPrefs for new game (except achievements)
         PlayerPrefs.SetInt("PlayerXP", 0);
         PlayerPrefs.SetInt("PlayerLevel", 1);
-
-        // Reset buff-related PlayerPrefs
         PlayerPrefs.DeleteKey("BuffInv_SnappersDelight");
         PlayerPrefs.DeleteKey("BuffInv_MarlinsLuck");
         PlayerPrefs.DeleteKey("BuffInv_TroutsFortune");
@@ -807,71 +633,30 @@ public class MainMenu : MonoBehaviour
         PlayerPrefs.DeleteKey("Quest_sunshore_od");
         PlayerPrefs.DeleteKey("Quest_icelandic_snubnose");
         PlayerPrefs.DeleteKey("Quest_seahorse");
-
-        // Reset Fish Connoisseur quests
         PlayerPrefs.SetInt("ConnoisseurCurrentQuest", -1);
         for (int i = 0; i < 4; i++)
         {
             PlayerPrefs.SetInt($"ConnoisseurQuest_{i}", 0);
         }
-
-        // Reset day counter to Day 1
         PlayerPrefs.SetInt("CurrentDay", 1);
-
-        // Reset cookable fish discovery flags
         PlayerPrefs.DeleteKey("CookableFishDiscovered_red_snapper");
         PlayerPrefs.DeleteKey("CookableFishDiscovered_blue_marlin");
         PlayerPrefs.DeleteKey("CookableFishDiscovered_rainbow_trout");
         PlayerPrefs.DeleteKey("CookableFishDiscovered_sunshore_od");
         PlayerPrefs.DeleteKey("CookableFishDiscovered_icelandic_snubnose");
         PlayerPrefs.DeleteKey("CookableFishDiscovered_seahorse");
-
-        // Reset gold tracking (for achievements - but keep achievement unlocks!)
         PlayerPrefs.DeleteKey("TotalGoldEarned");
-
-        // Reset fish diary entries
         PlayerPrefs.DeleteKey("FishDiary_golden_starfish");
-
-        // Reset death tracking for new game (but achievements stay unlocked)
         PlayerPrefs.DeleteKey("Death_Total");
         PlayerPrefs.DeleteKey("Death_Lightning");
         PlayerPrefs.DeleteKey("Death_Starvation");
         PlayerPrefs.DeleteKey("Death_Storm");
 
-        // NOTE: Achievements are NOT reset - they persist across all games!
-        // NOTE: Parrot unlock is NOT reset - it's a permanent cosmetic unlock!
-
-        // Set flag to indicate we're starting a new game after scene reload
         PlayerPrefs.SetInt("PendingNewGame", 1);
         PlayerPrefs.Save();
 
-        Debug.Log("Starting fresh new game - reloading scene to clear all entities...");
-
-        // Reload the current scene to destroy all runtime objects
+        Debug.Log("Starting fresh new game - reloading scene...");
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
-
-    void LoadGame(SavedGameInfo save)
-    {
-        GameStarted = true;
-        EnableGameSystems();
-
-        // Use SaveGameManager if available
-        if (SaveGameManager.Instance != null && save.slotIndex >= 0)
-        {
-            SaveGameManager.Instance.LoadGame(save.slotIndex);
-        }
-        else
-        {
-            // Fallback: Load basic data from info
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.coins = save.gold;
-                GameManager.Instance.totalFishCaught = save.fishCaught;
-            }
-        }
-
-        Debug.Log($"Loaded game: {save.name}");
     }
 
     void QuitGame()
@@ -900,57 +685,6 @@ public class MainMenu : MonoBehaviour
         fullscreen = PlayerPrefs.GetInt("Fullscreen", 1) == 1;
     }
 
-    void RefreshSavedGames()
-    {
-        savedGames.Clear();
-
-        // Check SaveGameManager for saves with thumbnails
-        if (SaveGameManager.Instance != null)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                if (SaveGameManager.Instance.HasSaveData(i))
-                {
-                    SaveData data = SaveGameManager.Instance.GetSaveInfo(i);
-                    if (data != null)
-                    {
-                        savedGames.Add(new SavedGameInfo
-                        {
-                            name = data.saveName ?? $"Save {i + 1}",
-                            level = data.level,
-                            gold = data.gold,
-                            fishCaught = data.totalFishCaught,
-                            playTime = data.playTime ?? "0:00",
-                            slotIndex = i,
-                            thumbnail = SaveGameManager.Instance.GetThumbnail(i)
-                        });
-                    }
-                }
-            }
-        }
-
-        // Fallback: Check PlayerPrefs for legacy saves
-        if (savedGames.Count == 0)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                if (PlayerPrefs.HasKey($"Save{i}_Gold"))
-                {
-                    savedGames.Add(new SavedGameInfo
-                    {
-                        name = $"Save {i + 1}",
-                        level = PlayerPrefs.GetInt($"Save{i}_Level", 1),
-                        gold = PlayerPrefs.GetInt($"Save{i}_Gold", 0),
-                        fishCaught = PlayerPrefs.GetInt($"Save{i}_FishCaught", 0),
-                        playTime = PlayerPrefs.GetString($"Save{i}_Time", "0:00"),
-                        slotIndex = i,
-                        thumbnail = null
-                    });
-                }
-            }
-        }
-    }
-
     void OnDestroy()
     {
         foreach (var tex in textureCache.Values)
@@ -959,16 +693,4 @@ public class MainMenu : MonoBehaviour
         }
         textureCache.Clear();
     }
-}
-
-[System.Serializable]
-public class SavedGameInfo
-{
-    public string name;
-    public int level;
-    public int gold;
-    public int fishCaught;
-    public string playTime;
-    public int slotIndex;
-    public Texture2D thumbnail;
 }

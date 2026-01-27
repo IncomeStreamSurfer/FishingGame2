@@ -29,9 +29,17 @@ public class VolumetricLighting : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Disable entirely - creates 108+ primitives
+        // Major FPS killer with god rays and dust motes
+        Debug.Log("[VolumetricLighting] DISABLED for performance - 108 primitives saved");
+        enabled = false;
+        return;
+
+        /*
         CreateRayMaterial();
         Invoke("CreateGodRays", 1f);
         Invoke("CreateDustMotes", 1.2f);
+        */
     }
 
     void CreateRayMaterial()

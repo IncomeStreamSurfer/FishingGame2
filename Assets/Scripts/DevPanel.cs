@@ -12,7 +12,10 @@ public class DevPanel : MonoBehaviour
     private bool isOpen = false;
     private bool isDragging = false;
     private Vector2 dragOffset;
-    private Rect windowRect = new Rect(20, 20, 320, 620);
+    private Rect windowRect = new Rect(20, 20, 320, 850); // Increased height for fish spawner
+
+    // Fish spawner scroll position
+    private Vector2 fishScrollPos = Vector2.zero;
 
     // Input fields
     private string goldInput = "1000";
@@ -383,6 +386,20 @@ public class DevPanel : MonoBehaviour
         }
         contentY += 35;
 
+        // Fish Spawner Section
+        GUI.DrawTexture(new Rect(windowRect.x + padding, contentY, contentWidth, 1), GetTexture("divider"));
+        contentY += 10;
+
+        prevColor = cachedSectionTitle.normal.textColor;
+        cachedSectionTitle.normal.textColor = new Color(0.4f, 1f, 0.8f); // Cyan for fish
+        GUI.Label(new Rect(windowRect.x + padding, contentY, contentWidth, 18), "FISH SPAWNER", cachedSectionTitle);
+        cachedSectionTitle.normal.textColor = prevColor;
+        contentY += 22;
+
+        // Fish list in scrollable area
+        DrawFishSpawner(ref contentY, padding, contentWidth);
+        contentY += 10;
+
         // Danger zone - use section title with different color
         prevColor = cachedSectionTitle.normal.textColor;
         cachedSectionTitle.normal.textColor = new Color(1f, 0.4f, 0.4f);
@@ -393,6 +410,159 @@ public class DevPanel : MonoBehaviour
         if (DrawButton(new Rect(windowRect.x + padding, contentY, contentWidth, 25), "Reset All Progress", true))
         {
             ResetProgress();
+        }
+    }
+
+    void DrawFishSpawner(ref float contentY, float padding, float contentWidth)
+    {
+        // Fish categories with their IDs
+        string[][] fishCategories = new string[][]
+        {
+            // Common
+            new string[] { "sardine", "anchovy", "minnow", "cod" },
+            // Uncommon
+            new string[] { "bass", "salmon", "baby_turtle", "jellyfish" },
+            // Rare
+            new string[] { "tuna", "swordfish", "hammerhead", "ocean_eel" },
+            // Special (Cookable)
+            new string[] { "red_snapper", "blue_marlin", "rainbow_trout", "sunshore_od", "icelandic_snubnose", "seahorse" },
+            // Epic
+            new string[] { "shark", "sting_ray", "rainbow_fish", "whale_baby" },
+            // Legendary
+            new string[] { "whale", "dorgush_wrangler", "danish_warblecock" },
+            // Mythic
+            new string[] { "golden_starfish" }
+        };
+
+        string[] categoryNames = { "Common", "Uncommon", "Rare", "Special", "Epic", "Legendary", "Mythic" };
+        Color[] categoryColors = {
+            new Color(0.7f, 0.7f, 0.7f),  // Common - gray
+            new Color(0.4f, 0.8f, 0.4f),  // Uncommon - green
+            new Color(0.4f, 0.6f, 1f),    // Rare - blue
+            new Color(1f, 0.8f, 0.3f),    // Special - gold
+            new Color(0.8f, 0.4f, 1f),    // Epic - purple
+            new Color(1f, 0.6f, 0.2f),    // Legendary - orange
+            new Color(1f, 0.3f, 0.3f)     // Mythic - red
+        };
+
+        float scrollHeight = 150;
+        Rect scrollViewRect = new Rect(windowRect.x + padding, contentY, contentWidth, scrollHeight);
+        Rect scrollContentRect = new Rect(0, 0, contentWidth - 20, 400); // Approximate content height
+
+        fishScrollPos = GUI.BeginScrollView(scrollViewRect, fishScrollPos, scrollContentRect);
+
+        float y = 0;
+        float smallBtnWidth = 65;
+        float smallBtnHeight = 20;
+
+        for (int cat = 0; cat < fishCategories.Length; cat++)
+        {
+            // Category label
+            GUIStyle catStyle = new GUIStyle();
+            catStyle.fontSize = 11;
+            catStyle.fontStyle = FontStyle.Bold;
+            catStyle.normal.textColor = categoryColors[cat];
+            GUI.Label(new Rect(0, y, contentWidth, 16), categoryNames[cat] + ":", catStyle);
+            y += 18;
+
+            // Fish buttons in rows of 4
+            for (int i = 0; i < fishCategories[cat].Length; i++)
+            {
+                int col = i % 4;
+                if (i > 0 && col == 0) y += smallBtnHeight + 2;
+
+                string fishId = fishCategories[cat][i];
+                string displayName = GetShortFishName(fishId);
+
+                Rect btnRect = new Rect(col * (smallBtnWidth + 5), y, smallBtnWidth, smallBtnHeight);
+                bool hover = btnRect.Contains(Event.current.mousePosition);
+
+                GUI.DrawTexture(btnRect, hover ? GetTexture("buttonHover") : GetTexture("buttonNormal"));
+
+                GUIStyle btnStyle = new GUIStyle();
+                btnStyle.fontSize = 9;
+                btnStyle.alignment = TextAnchor.MiddleCenter;
+                btnStyle.normal.textColor = Color.white;
+                GUI.Label(btnRect, displayName, btnStyle);
+
+                if (GUI.Button(btnRect, "", GUIStyle.none))
+                {
+                    SpawnFish(fishId);
+                }
+            }
+            y += smallBtnHeight + 8;
+        }
+
+        GUI.EndScrollView();
+        contentY += scrollHeight + 5;
+    }
+
+    string GetShortFishName(string fishId)
+    {
+        // Shorten long fish names for buttons
+        return fishId switch
+        {
+            "sardine" => "Sardine",
+            "anchovy" => "Anchovy",
+            "minnow" => "Minnow",
+            "cod" => "Cod",
+            "bass" => "Bass",
+            "salmon" => "Salmon",
+            "baby_turtle" => "Turtle",
+            "jellyfish" => "Jelly",
+            "tuna" => "Tuna",
+            "swordfish" => "Sword",
+            "hammerhead" => "Hammer",
+            "ocean_eel" => "Eel",
+            "red_snapper" => "Snapper",
+            "blue_marlin" => "Marlin",
+            "rainbow_trout" => "Trout",
+            "sunshore_od" => "Sunshore",
+            "icelandic_snubnose" => "Snubnose",
+            "seahorse" => "Seahorse",
+            "shark" => "Shark",
+            "sting_ray" => "Ray",
+            "rainbow_fish" => "Rainbow",
+            "whale_baby" => "BabyWhale",
+            "whale" => "Whale",
+            "dorgush_wrangler" => "Dorgush",
+            "danish_warblecock" => "Warble",
+            "golden_starfish" => "GOLDEN",
+            _ => fishId.Substring(0, Mathf.Min(7, fishId.Length))
+        };
+    }
+
+    void SpawnFish(string fishId)
+    {
+        if (FishingSystem.Instance == null)
+        {
+            Debug.LogWarning("FishingSystem not found!");
+            return;
+        }
+
+        FishData fish = FishingSystem.Instance.GetFishById(fishId);
+        if (fish == null)
+        {
+            Debug.LogWarning($"Fish not found: {fishId}");
+            return;
+        }
+
+        // Special fish go to special inventory
+        if (fish.isSpecialFish)
+        {
+            FishingSystem.Instance.AddSpecialFish(fish);
+        }
+        else
+        {
+            // Normal fish go to GameManager inventory
+            GameManager.Instance.AddFish(fish);
+        }
+
+        Debug.Log($"[DevPanel] Spawned {fish.fishName} into inventory!");
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowLootNotification($"DEV: Added {fish.fishName}", new Color(0.4f, 1f, 0.8f));
         }
     }
 

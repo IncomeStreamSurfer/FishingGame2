@@ -22,6 +22,46 @@ public class GameManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    void Start()
+    {
+        // Ensure required managers exist
+        EnsurePerformanceManager();
+        EnsurePollBooth();
+        EnsureCookingFire();
+    }
+
+    void EnsurePerformanceManager()
+    {
+        if (DynamicPerformanceManager.Instance == null)
+        {
+            GameObject perfManager = new GameObject("DynamicPerformanceManager");
+            perfManager.AddComponent<DynamicPerformanceManager>();
+            Debug.Log("[GameManager] Created DynamicPerformanceManager");
+        }
+    }
+
+    void EnsurePollBooth()
+    {
+        if (PollBooth.Instance == null)
+        {
+            GameObject pollBooth = new GameObject("PollBooth");
+            pollBooth.transform.position = new Vector3(12f, 1.3f, -8f); // Near docks, to the right
+            pollBooth.AddComponent<PollBooth>();
+            Debug.Log("[GameManager] Created PollBooth at docks");
+        }
+    }
+
+    void EnsureCookingFire()
+    {
+        if (CookingFire.Instance == null)
+        {
+            GameObject cookingFire = new GameObject("CookingFire");
+            cookingFire.transform.position = new Vector3(-5f, 1.3f, 5f); // Near the island center
+            cookingFire.AddComponent<CookingFire>();
+            Debug.Log("[GameManager] Created Cooking Fire with Chef Gusteau");
+        }
+    }
+
     public void AddCoins(int amount)
     {
         int finalAmount = Mathf.RoundToInt(amount * goldMultiplier);

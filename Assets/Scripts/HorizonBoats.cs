@@ -59,7 +59,13 @@ public class HorizonBoats : MonoBehaviour
 
     void Start()
     {
-        Invoke("Initialize", 1f);
+        // PERFORMANCE: Disable horizon boats/planes/clouds - creates 100+ primitives
+        // Each cargo ship alone has 60+ primitives, planes have 15+, clouds have 4-8 each
+        Debug.Log("[HorizonBoats] DISABLED for performance - boats/planes/clouds removed");
+        enabled = false;
+        return;
+
+        // Invoke("Initialize", 1f);
     }
 
     void Initialize()

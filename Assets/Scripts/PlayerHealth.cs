@@ -85,6 +85,9 @@ public class PlayerHealth : MonoBehaviour
         {
             LevelingSystem.Instance.OnLevelUp += OnPlayerLevelUp;
         }
+
+        // Check if we're respawning from death - restore gold and cosmetics
+        Invoke("CheckForRespawnRestore", 0.3f);
     }
 
     void Initialize()
@@ -547,71 +550,70 @@ public class PlayerHealth : MonoBehaviour
     }
 
     /// <summary>
-    /// Respawns the player in-game - loses gold, fish, XP but KEEPS cosmetics
+    /// Respawns the player by reloading the entire game scene
+    /// PRESERVES: Gold and Cosmetics (saved to PlayerPrefs)
+    /// RESETS: Fish, XP, Quests, Buffs, Food, Position
     /// </summary>
     void RespawnPlayer()
     {
-        Debug.Log("Respawning player - losing gold, fish, XP but keeping cosmetics!");
+        Debug.Log("Death! Restarting game - preserving gold and cosmetics...");
 
         // Invoke the game over event for other systems to hook into
         OnGameOver?.Invoke();
 
-        // Reset gold to 0 - player loses all money on death
+        // SAVE GOLD before death - player KEEPS their gold!
         if (GameManager.Instance != null)
         {
-            GameManager.Instance.coins = 0;
-            GameManager.Instance.ResetFishStats();
-            Debug.Log("Gold and fish reset to 0!");
+            PlayerPrefs.SetInt("DeathSave_Gold", GameManager.Instance.coins);
+            Debug.Log($"Gold saved before death: {GameManager.Instance.coins}");
         }
 
-        // Reset XP/Level on death
-        if (LevelingSystem.Instance != null)
+        // Cosmetics already saved in Die() via SaveCosmeticsBeforeDeath()
+
+        // Mark that we're respawning (so scene reload knows to restore gold/cosmetics)
+        PlayerPrefs.SetInt("PendingRespawn", 1);
+        PlayerPrefs.Save();
+
+        // Reload the scene for a fresh start
+        Debug.Log("Reloading scene for respawn...");
+        UnityEngine.SceneManagement.SceneManager.LoadScene(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex
+        );
+    }
+
+    /// <summary>
+    /// Called on scene Start to check if we're respawning from death
+    /// Restores gold and cosmetics if so
+    /// </summary>
+    public void CheckForRespawnRestore()
+    {
+        if (PlayerPrefs.GetInt("PendingRespawn", 0) == 1)
         {
-            LevelingSystem.Instance.ResetProgress();
-            Debug.Log("XP and level reset!");
+            PlayerPrefs.DeleteKey("PendingRespawn");
+
+            // Restore gold
+            int savedGold = PlayerPrefs.GetInt("DeathSave_Gold", 0);
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.coins = savedGold;
+                Debug.Log($"Gold restored after respawn: {savedGold}");
+            }
+
+            // Restore cosmetics
+            RestoreCosmeticsAfterRespawn();
+
+            // Clear the saved gold key
+            PlayerPrefs.DeleteKey("DeathSave_Gold");
+            PlayerPrefs.Save();
+
+            // Show respawn notification
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowLootNotification($"Respawned! Gold ({savedGold}g) and cosmetics preserved.", new Color(0.3f, 0.8f, 1f));
+            }
+
+            Debug.Log("Respawn restoration complete!");
         }
-
-        // Reset quests
-        if (QuestSystem.Instance != null)
-        {
-            QuestSystem.Instance.ResetQuests();
-        }
-
-        // Clear food inventory
-        if (FoodInventory.Instance != null)
-        {
-            FoodInventory.Instance.ClearInventory();
-        }
-
-        // Clear all active buffs
-        if (FishBuffSystem.Instance != null)
-        {
-            FishBuffSystem.Instance.ClearAllActiveBuffs();
-        }
-
-        // Reset player health state
-        currentHealth = maxHealth;
-        healthDecayTimer = 0f;
-        isDead = false;
-        customDeathMessage = "";
-        deathCause = ""; // Clear death cause
-
-        // Move player back to spawn position
-        if (GameCache.IsPlayerValid())
-        {
-            GameCache.Player.position = new Vector3(0, 2f, -5f);
-        }
-
-        // RESTORE COSMETICS after resetting everything else
-        RestoreCosmeticsAfterRespawn();
-
-        // Show respawn notification - STAY IN GAME (don't return to main menu)
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowLootNotification("Respawned! Cosmetics preserved, resources lost.", new Color(0.3f, 0.8f, 1f));
-        }
-
-        Debug.Log("Player respawned in-game with cosmetics preserved!");
     }
 
     // Legacy TriggerGameOver - now redirects to RespawnPlayer
@@ -673,9 +675,6 @@ public class PlayerHealth : MonoBehaviour
 
     void OnGUI()
     {
-        // CRITICAL HUD - NO FRAME SKIPPING to prevent flickering
-        // Health bar and ECG must update every frame for smooth display
-
         if (!MainMenu.GameStarted || !initialized) return;
 
         DrawHealthUI();

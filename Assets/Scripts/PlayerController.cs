@@ -46,6 +46,15 @@ public class PlayerController : MonoBehaviour
     private bool wasInWater = false;
     private float waterLevel = 0.75f;
 
+    // Performance optimization - reduce raycast frequency
+    private int groundCheckFrame = 0;
+    private const int GROUND_CHECK_INTERVAL = 5; // Check every 5 frames instead of every frame
+
+    // Cache UI open state to avoid repeated checks
+    private bool cachedUIOpen = false;
+    private int uiCheckFrame = 0;
+    private const int UI_CHECK_INTERVAL = 10; // Check UI state every 10 frames
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -470,8 +479,13 @@ public class PlayerController : MonoBehaviour
 
     void CheckGrounded()
     {
-        // Raycast down to check if on ground
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.2f);
+        // Performance: Only raycast every N frames to reduce CPU load
+        groundCheckFrame++;
+        if (groundCheckFrame >= GROUND_CHECK_INTERVAL)
+        {
+            groundCheckFrame = 0;
+            isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.2f);
+        }
     }
 
     void CheckWaterSplash()
@@ -631,8 +645,25 @@ public class PlayerController : MonoBehaviour
     }
 
     // Check if any UI window is currently open (blocks fishing)
+    // Performance optimized: caches result and only rechecks periodically
     bool IsAnyUIOpen()
     {
+        // Performance: Only do full check periodically, use cached value otherwise
+        uiCheckFrame++;
+        if (uiCheckFrame >= UI_CHECK_INTERVAL)
+        {
+            uiCheckFrame = 0;
+            cachedUIOpen = CheckAllUIStates();
+        }
+        return cachedUIOpen;
+    }
+
+    // Separated for clarity - does the actual UI state checking
+    bool CheckAllUIStates()
+    {
+        // Quick check for pause first (most common blocker)
+        if (PauseMenu.IsPaused) return true;
+
         // Check all UI panels that could be open
         if (UIManager.Instance != null && UIManager.Instance.IsInventoryOpen()) return true;
         if (CharacterPanel.Instance != null && CharacterPanel.Instance.IsOpen()) return true;
@@ -644,7 +675,13 @@ public class PlayerController : MonoBehaviour
         if (GoldieBanksNPC.Instance != null && GoldieBanksNPC.Instance.IsDialogueOpen()) return true;
         if (IceRealmShopNPC.Instance != null && IceRealmShopNPC.Instance.IsShopOpen()) return true;
         if (WeaponShopNPC.Instance != null && WeaponShopNPC.Instance.IsShopOpen()) return true;
-        if (PauseMenu.IsPaused) return true;
+        if (PollBooth.Instance != null && PollBooth.Instance.IsWindowOpen()) return true;
         return false;
+    }
+
+    // Allow external code to force UI state refresh (call when opening/closing UI)
+    public void RefreshUIState()
+    {
+        uiCheckFrame = UI_CHECK_INTERVAL; // Force next check
     }
 }

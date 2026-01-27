@@ -33,10 +33,18 @@ public class IslandCritters : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: DISABLE ENTIRELY - creates 1556 primitives!!!
+        // 12 squirrels (13 primitives each) + 8 ant hills (10 each) + 120 ants (11 each)
+        Debug.Log("[IslandCritters] DISABLED for performance - 1556 primitives saved!!!");
+        enabled = false;
+        return;
+
+        /*
         // Critters spawn across the MAIN island (centered at origin)
         islandCenter = Vector3.zero;
 
         Invoke("SpawnCritters", 1.5f);
+        */
     }
 
     void SpawnCritters()

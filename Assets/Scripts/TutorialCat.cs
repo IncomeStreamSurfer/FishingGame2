@@ -34,6 +34,9 @@ public class TutorialCat : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         // Setup audio source
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.spatialBlend = 0.5f;

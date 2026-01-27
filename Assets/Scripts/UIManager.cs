@@ -96,6 +96,16 @@ public class UIManager : MonoBehaviour
     private GUIStyle cachedLvlStyle;
     private GUIStyle cachedXpStyle;
 
+    // Additional cached styles for notifications and quest tracker
+    private GUIStyle cachedQuestTitleStyle;
+    private GUIStyle cachedQuestStyle;
+    private GUIStyle cachedQuestProgressStyle;
+    private GUIStyle cachedLvlUpStyle;
+    private GUIStyle cachedLootStyle;
+    private GUIStyle cachedLootOutlineStyle;
+    private GUIStyle cachedRodUnlockStyle;
+    private GUIStyle cachedDiscoveryStyle;
+
     // NPC proximity for sell prompt
     private bool isNearNPC = false;
     private string nearbyNPCName = "";
@@ -267,6 +277,49 @@ public class UIManager : MonoBehaviour
         cachedXpStyle.normal.textColor = Color.white;
         cachedXpStyle.fontSize = 9;
         cachedXpStyle.alignment = TextAnchor.MiddleCenter;
+
+        // Quest tracker styles
+        cachedQuestTitleStyle = new GUIStyle();
+        cachedQuestTitleStyle.fontSize = 11;
+        cachedQuestTitleStyle.fontStyle = FontStyle.Bold;
+        cachedQuestTitleStyle.alignment = TextAnchor.MiddleCenter;
+        cachedQuestTitleStyle.normal.textColor = new Color(0.9f, 0.8f, 0.5f);
+
+        cachedQuestStyle = new GUIStyle();
+        cachedQuestStyle.fontSize = 10;
+        cachedQuestStyle.fontStyle = FontStyle.Bold;
+        cachedQuestStyle.normal.textColor = new Color(0.9f, 0.85f, 0.7f);
+
+        cachedQuestProgressStyle = new GUIStyle();
+        cachedQuestProgressStyle.fontSize = 9;
+        cachedQuestProgressStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+
+        // Notification styles
+        cachedLvlUpStyle = new GUIStyle();
+        cachedLvlUpStyle.fontSize = 20;
+        cachedLvlUpStyle.fontStyle = FontStyle.Bold;
+        cachedLvlUpStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedLootStyle = new GUIStyle();
+        cachedLootStyle.fontSize = 14;
+        cachedLootStyle.fontStyle = FontStyle.Bold;
+        cachedLootStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedLootOutlineStyle = new GUIStyle();
+        cachedLootOutlineStyle.fontSize = 14;
+        cachedLootOutlineStyle.fontStyle = FontStyle.Bold;
+        cachedLootOutlineStyle.alignment = TextAnchor.MiddleCenter;
+        cachedLootOutlineStyle.normal.textColor = new Color(0, 0, 0, 0.8f);
+
+        cachedRodUnlockStyle = new GUIStyle();
+        cachedRodUnlockStyle.fontSize = 18;
+        cachedRodUnlockStyle.fontStyle = FontStyle.Bold;
+        cachedRodUnlockStyle.alignment = TextAnchor.MiddleCenter;
+
+        cachedDiscoveryStyle = new GUIStyle();
+        cachedDiscoveryStyle.fontSize = 22;
+        cachedDiscoveryStyle.fontStyle = FontStyle.Bold;
+        cachedDiscoveryStyle.alignment = TextAnchor.MiddleCenter;
 
         stylesInitialized = true;
     }
@@ -462,10 +515,6 @@ public class UIManager : MonoBehaviour
 
     void OnGUI()
     {
-        // CRITICAL HUD - NO FRAME SKIPPING to prevent flickering
-        // The main HUD must update every frame for smooth display
-
-        // Don't draw HUD if game hasn't started or not initialized
         if (!MainMenu.GameStarted || !initialized) return;
 
         DrawHUD();
@@ -901,29 +950,20 @@ public class UIManager : MonoBehaviour
                 questTrackerHidden = true;
             }
 
-            GUIStyle titleStyle = new GUIStyle();
-            titleStyle.normal.textColor = new Color(1f, 0.9f, 0.5f);
-            titleStyle.fontSize = Mathf.Max(9, (int)(panelWidth * 0.045f));
-            titleStyle.fontStyle = FontStyle.Bold;
-            titleStyle.alignment = TextAnchor.MiddleCenter;
-
-            GUI.Label(new Rect(x, y + 2, panelWidth, 16), "Active Quest", titleStyle);
+            // Use cached styles
+            cachedQuestTitleStyle.fontSize = Mathf.Max(9, (int)(panelWidth * 0.045f));
+            GUI.Label(new Rect(x, y + 2, panelWidth, 16), "Active Quest", cachedQuestTitleStyle);
 
             // Content area
             float contentY = y + 24;
 
-            GUIStyle questStyle = new GUIStyle();
-            questStyle.normal.textColor = new Color(0.9f, 0.9f, 0.8f);
-            questStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.04f));
-            questStyle.wordWrap = true;
+            cachedQuestStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.04f));
+            cachedQuestStyle.wordWrap = true;
+            GUI.Label(new Rect(x + 8, contentY, panelWidth - 16, 24), quest.questName, cachedQuestStyle);
 
-            GUI.Label(new Rect(x + 8, contentY, panelWidth - 16, 24), quest.questName, questStyle);
-
-            GUIStyle progressStyle = new GUIStyle();
-            progressStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
-            progressStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.04f));
-
-            GUI.Label(new Rect(x + 8, contentY + 22, panelWidth - 16, 14), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", progressStyle);
+            cachedQuestProgressStyle.fontSize = Mathf.Max(8, (int)(panelWidth * 0.04f));
+            cachedQuestProgressStyle.normal.textColor = new Color(0.5f, 1f, 0.5f);
+            GUI.Label(new Rect(x + 8, contentY + 22, panelWidth - 16, 14), $"Progress: {quest.currentAmount}/{quest.requiredAmount}", cachedQuestProgressStyle);
 
             // Draw resize handle
             questTrackerWindow.DrawResizeHandle();
@@ -933,63 +973,54 @@ public class UIManager : MonoBehaviour
 
     void DrawNotifications()
     {
-        // Level up notification
+        // Level up notification (use cached style)
         if (levelUpNotificationTime > 0)
         {
             float alpha = Mathf.Min(1f, levelUpNotificationTime);
-            GUIStyle lvlUpStyle = new GUIStyle();
-            lvlUpStyle.normal.textColor = new Color(1f, 0.9f, 0.2f, alpha);
-            lvlUpStyle.fontSize = 28;
-            lvlUpStyle.fontStyle = FontStyle.Bold;
-            lvlUpStyle.alignment = TextAnchor.MiddleCenter;
+            cachedLvlUpStyle.normal.textColor = new Color(1f, 0.9f, 0.2f, alpha);
+            cachedLvlUpStyle.fontSize = 28;
 
             float y = Screen.height / 3f - (4f - levelUpNotificationTime) * 20f;
-            GUI.Label(new Rect(0, y, Screen.width, 40), $"LEVEL UP! {levelUpFrom} → {levelUpTo}", lvlUpStyle);
+            GUI.Label(new Rect(0, y, Screen.width, 40), $"LEVEL UP! {levelUpFrom} → {levelUpTo}", cachedLvlUpStyle);
         }
 
-        // Loot notification
+        // Loot notification (use cached styles)
         if (lootNotificationTime > 0)
         {
             float alpha = Mathf.Min(1f, lootNotificationTime);
-            GUIStyle lootStyle = new GUIStyle();
-            lootStyle.normal.textColor = new Color(lootNotificationColor.r, lootNotificationColor.g, lootNotificationColor.b, alpha);
-            lootStyle.fontSize = 16; // Reduced from 22 to 16
-            lootStyle.fontStyle = FontStyle.Bold;
-            lootStyle.alignment = TextAnchor.MiddleCenter;
+            cachedLootStyle.normal.textColor = new Color(lootNotificationColor.r, lootNotificationColor.g, lootNotificationColor.b, alpha);
+            cachedLootStyle.fontSize = 16;
 
             float y = Screen.height / 2.5f;
 
-            // Draw black outline
-            GUIStyle outlineStyle = new GUIStyle(lootStyle);
-            outlineStyle.normal.textColor = new Color(0, 0, 0, alpha);
+            // Draw black outline (use cached style)
+            cachedLootOutlineStyle.normal.textColor = new Color(0, 0, 0, alpha);
+            cachedLootOutlineStyle.fontSize = 16;
 
-            // Draw outline in 8 directions (up, down, left, right, and diagonals)
+            // Draw outline in 8 directions
             int outlineOffset = 2;
-            GUI.Label(new Rect(0, y - outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // up
-            GUI.Label(new Rect(0, y + outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // down
-            GUI.Label(new Rect(outlineOffset, y, Screen.width, 35), lootNotificationText, outlineStyle); // right
-            GUI.Label(new Rect(-outlineOffset, y, Screen.width, 35), lootNotificationText, outlineStyle); // left
-            GUI.Label(new Rect(outlineOffset, y - outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // top-right
-            GUI.Label(new Rect(-outlineOffset, y - outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // top-left
-            GUI.Label(new Rect(outlineOffset, y + outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // bottom-right
-            GUI.Label(new Rect(-outlineOffset, y + outlineOffset, Screen.width, 35), lootNotificationText, outlineStyle); // bottom-left
+            GUI.Label(new Rect(0, y - outlineOffset, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(0, y + outlineOffset, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(outlineOffset, y, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(-outlineOffset, y, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(outlineOffset, y - outlineOffset, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(-outlineOffset, y - outlineOffset, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(outlineOffset, y + outlineOffset, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
+            GUI.Label(new Rect(-outlineOffset, y + outlineOffset, Screen.width, 35), lootNotificationText, cachedLootOutlineStyle);
 
             // Draw main text on top
-            GUI.Label(new Rect(0, y, Screen.width, 35), lootNotificationText, lootStyle);
+            GUI.Label(new Rect(0, y, Screen.width, 35), lootNotificationText, cachedLootStyle);
         }
 
-        // Rod unlock notification
+        // Rod unlock notification (use cached style)
         if (rodUnlockNotificationTime > 0)
         {
             float alpha = Mathf.Min(1f, rodUnlockNotificationTime);
-            GUIStyle rodUnlockStyle = new GUIStyle();
-            rodUnlockStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, alpha);
-            rodUnlockStyle.fontSize = 24;
-            rodUnlockStyle.fontStyle = FontStyle.Bold;
-            rodUnlockStyle.alignment = TextAnchor.MiddleCenter;
+            cachedRodUnlockStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, alpha);
+            cachedRodUnlockStyle.fontSize = 24;
 
             float y = Screen.height / 2.5f;
-            GUI.Label(new Rect(0, y, Screen.width, 35), "Well done matey! Try out this new rod, you've earned it!", rodUnlockStyle);
+            GUI.Label(new Rect(0, y, Screen.width, 35), "Well done matey! Try out this new rod, you've earned it!", cachedRodUnlockStyle);
         }
 
         // Special fish discovery notification (cookable fish)
@@ -1016,15 +1047,12 @@ public class UIManager : MonoBehaviour
             GUI.DrawTexture(new Rect(panelX + panelW - 3, panelY, 3, panelH), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            // Text
-            GUIStyle discoveryStyle = new GUIStyle();
-            discoveryStyle.normal.textColor = new Color(1f, 0.85f, 0.4f, alpha);
-            discoveryStyle.fontSize = 16;
-            discoveryStyle.fontStyle = FontStyle.Bold;
-            discoveryStyle.alignment = TextAnchor.MiddleCenter;
-            discoveryStyle.wordWrap = true;
+            // Text (use cached style)
+            cachedDiscoveryStyle.normal.textColor = new Color(1f, 0.85f, 0.4f, alpha);
+            cachedDiscoveryStyle.fontSize = 16;
+            cachedDiscoveryStyle.wordWrap = true;
 
-            GUI.Label(new Rect(panelX + 10, panelY + 10, panelW - 20, panelH - 20), specialFishDiscoveryText, discoveryStyle);
+            GUI.Label(new Rect(panelX + 10, panelY + 10, panelW - 20, panelH - 20), specialFishDiscoveryText, cachedDiscoveryStyle);
         }
     }
 

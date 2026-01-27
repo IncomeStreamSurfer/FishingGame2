@@ -25,9 +25,15 @@ public class WaterEffect : MonoBehaviour
     public float drowningDistance = 25f; // Player starts drowning
 
     [Header("Water Particles")]
+    #if UNITY_WEBGL
+    public int maxSparkles = 3;  // Minimal for WebGL performance
+    public int maxFoamParticles = 3;  // Minimal for WebGL performance
+    public int maxSunGlints = 2;  // Minimal for WebGL performance
+    #else
     public int maxSparkles = 10;  // Reduced from 20 for better performance
     public int maxFoamParticles = 10;  // Reduced from 20 for better performance
     public int maxSunGlints = 5;  // Reduced from 10 for better performance
+    #endif
 
     private Vector3 startPos;
     private Material waterMat;
@@ -76,6 +82,12 @@ public class WaterEffect : MonoBehaviour
 
     void InitializeWaterEffects()
     {
+        // PERFORMANCE: Disable all particle effects - they create too many primitives
+        // and run too many coroutines that kill FPS
+        Debug.Log("[WaterEffect] Particle effects DISABLED for performance");
+        return;
+
+        /*
         // Create sun reflection on water
         CreateSunReflection();
 
@@ -94,6 +106,7 @@ public class WaterEffect : MonoBehaviour
 
         // Start spawning bright sun glints (more visible sparkle effect)
         StartCoroutine(SpawnSunGlints());
+        */
     }
 
     // REMOVED: Animated wave ridges - they were "totally wrong" and have been removed
@@ -104,6 +117,11 @@ public class WaterEffect : MonoBehaviour
 
     void CreateShimmerRipples()
     {
+        #if UNITY_WEBGL
+        // Skip shimmer ripples entirely in WebGL for performance
+        return;
+        #endif
+
         // Create multiple shimmer/ripple circles across the water surface
         int rippleCount = 8;  // Reduced from 15 for better performance
 
@@ -238,6 +256,11 @@ public class WaterEffect : MonoBehaviour
 
     void CreateCausticLights()
     {
+        #if UNITY_WEBGL
+        // Skip caustic lights in WebGL for performance
+        return;
+        #endif
+
         // Create several point lights under water for caustic effect
         for (int i = 0; i < 3; i++)  // Reduced from 5 for better performance
         {
@@ -602,6 +625,11 @@ public class WaterEffect : MonoBehaviour
 
     void CreateWaveLayers()
     {
+        // PERFORMANCE: Disable wave layer creation - creates too many primitives
+        Debug.Log("[WaterEffect] Wave layers DISABLED for performance");
+        return;
+
+        /*
         // Create depth gradient rings around the island
         CreateDepthGradientRings();
 
@@ -612,6 +640,7 @@ public class WaterEffect : MonoBehaviour
 
         // Create underwater light beams
         CreateUnderwaterBeams();
+        */
     }
 
     void CreateDepthGradientRings()
@@ -639,8 +668,15 @@ public class WaterEffect : MonoBehaviour
 
     void CreateWaveCrests()
     {
+        #if UNITY_WEBGL
+        // Reduce wave crests in WebGL for performance
+        int crestCount = 3;
+        #else
+        int crestCount = 8;  // Reduced from 15 for better performance
+        #endif
+
         // Light blue foam-like crests that move across the water - NOT WHITE
-        for (int i = 0; i < 8; i++)  // Reduced from 15 for better performance
+        for (int i = 0; i < crestCount; i++)
         {
             GameObject crest = GameObject.CreatePrimitive(PrimitiveType.Cube);
             crest.name = "WaveCrest_" + i;
@@ -709,6 +745,11 @@ public class WaterEffect : MonoBehaviour
 
     void CreateUnderwaterBeams()
     {
+        #if UNITY_WEBGL
+        // Skip underwater beams in WebGL for performance
+        return;
+        #endif
+
         // Light beams visible under/through water
         for (int i = 0; i < 4; i++)  // Reduced from 8 for better performance
         {

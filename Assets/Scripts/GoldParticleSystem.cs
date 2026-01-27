@@ -91,8 +91,21 @@ public class GoldParticleSystem : MonoBehaviour
             return;
         }
 
+        // PERFORMANCE: Disable gold particles entirely - spawns 30-120 primitives per catch
+        Debug.Log("[GoldParticleSystem] DISABLED for performance - coin primitives saved");
+        enabled = false;
+        return;
+
+        /*
+        #if UNITY_WEBGL
+        // Disable gold particle effects in WebGL for performance
+        enabled = false;
+        return;
+        #endif
+
         CreateMaterials();
         CreateAudio();
+        */
     }
 
     void CreateMaterials()

@@ -17,6 +17,13 @@ public class BeachCritters : MonoBehaviour
     private List<Crab> crabs = new List<Crab>();
     private float groundY = 1.26f;
 
+    // Performance: Shared materials pool (avoid creating per-crab)
+    private Material[] bodyMaterials;
+    private Material legMaterial;
+    private Material clawMaterial;
+    private Material eyeMaterial;
+    private const int MATERIAL_VARIANTS = 3; // 3 color variants shared across all crabs
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -25,7 +32,43 @@ public class BeachCritters : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Disable crabs entirely - they create 195 primitives
+        // This is a major FPS killer
+        Debug.Log("[BeachCritters] DISABLED for performance - 195 primitives saved");
+        enabled = false;
+        return;
+
+        /*
+        #if UNITY_WEBGL
+        // Reduce crabs significantly for WebGL performance
+        maxCrabs = 5;
+        #endif
+
+        CreateSharedMaterials();
         Invoke("SpawnCrabs", 1f);
+        */
+    }
+
+    void CreateSharedMaterials()
+    {
+        // Create a pool of material variants instead of per-crab materials
+        bodyMaterials = new Material[MATERIAL_VARIANTS];
+        for (int i = 0; i < MATERIAL_VARIANTS; i++)
+        {
+            float colorVariation = 0.9f + i * 0.15f;
+            bodyMaterials[i] = new Material(Shader.Find("Standard"));
+            bodyMaterials[i].color = new Color(0.8f * colorVariation, 0.4f * colorVariation, 0.3f * colorVariation);
+            bodyMaterials[i].SetFloat("_Glossiness", 0.4f);
+        }
+
+        legMaterial = new Material(Shader.Find("Standard"));
+        legMaterial.color = new Color(0.7f, 0.35f, 0.25f);
+
+        clawMaterial = new Material(Shader.Find("Standard"));
+        clawMaterial.color = new Color(0.9f, 0.45f, 0.35f);
+
+        eyeMaterial = new Material(Shader.Find("Standard"));
+        eyeMaterial.color = Color.black;
     }
 
     void SpawnCrabs()
@@ -61,17 +104,11 @@ public class BeachCritters : MonoBehaviour
         crabObj.transform.position = position;
         crabObj.transform.rotation = Quaternion.Euler(0, Random.Range(0, 360), 0);
 
-        // Crab colors
-        Material bodyMat = new Material(Shader.Find("Standard"));
-        float colorVariation = Random.Range(0.8f, 1.2f);
-        bodyMat.color = new Color(0.8f * colorVariation, 0.4f * colorVariation, 0.3f * colorVariation);
-        bodyMat.SetFloat("_Glossiness", 0.4f);
-
-        Material legMat = new Material(Shader.Find("Standard"));
-        legMat.color = new Color(0.7f * colorVariation, 0.35f * colorVariation, 0.25f * colorVariation);
-
-        Material clawMat = new Material(Shader.Find("Standard"));
-        clawMat.color = new Color(0.9f * colorVariation, 0.45f * colorVariation, 0.35f * colorVariation);
+        // Performance: Use shared materials from pool instead of creating new ones
+        int materialVariant = Random.Range(0, MATERIAL_VARIANTS);
+        Material bodyMat = bodyMaterials[materialVariant];
+        Material legMat = legMaterial;
+        Material clawMat = clawMaterial;
 
         float scale = Random.Range(0.8f, 1.2f);
 
@@ -81,7 +118,7 @@ public class BeachCritters : MonoBehaviour
         body.transform.SetParent(crabObj.transform);
         body.transform.localPosition = Vector3.zero;
         body.transform.localScale = new Vector3(0.15f * scale, 0.06f * scale, 0.12f * scale);
-        body.GetComponent<Renderer>().material = bodyMat;
+        body.GetComponent<Renderer>().sharedMaterial = bodyMat; // Use sharedMaterial
         Destroy(body.GetComponent<Collider>());
 
         // Eyes on stalks
@@ -93,7 +130,7 @@ public class BeachCritters : MonoBehaviour
             stalk.transform.SetParent(crabObj.transform);
             stalk.transform.localPosition = new Vector3(side * 0.04f * scale, 0.04f * scale, 0.04f * scale);
             stalk.transform.localScale = new Vector3(0.015f * scale, 0.02f * scale, 0.015f * scale);
-            stalk.GetComponent<Renderer>().material = bodyMat;
+            stalk.GetComponent<Renderer>().sharedMaterial = bodyMat;
             Destroy(stalk.GetComponent<Collider>());
 
             // Eye ball
@@ -102,9 +139,7 @@ public class BeachCritters : MonoBehaviour
             eye.transform.SetParent(crabObj.transform);
             eye.transform.localPosition = new Vector3(side * 0.04f * scale, 0.065f * scale, 0.04f * scale);
             eye.transform.localScale = Vector3.one * 0.02f * scale;
-            Material eyeMat = new Material(Shader.Find("Standard"));
-            eyeMat.color = Color.black;
-            eye.GetComponent<Renderer>().material = eyeMat;
+            eye.GetComponent<Renderer>().sharedMaterial = eyeMaterial; // Use shared eye material
             Destroy(eye.GetComponent<Collider>());
         }
 
@@ -123,7 +158,7 @@ public class BeachCritters : MonoBehaviour
                 upperLeg.transform.localPosition = new Vector3(side * 0.08f * scale, 0.01f * scale, zOffset * scale);
                 upperLeg.transform.localScale = new Vector3(0.06f * scale, 0.01f * scale, 0.015f * scale);
                 upperLeg.transform.localRotation = Quaternion.Euler(0, 0, side * 20);
-                upperLeg.GetComponent<Renderer>().material = legMat;
+                upperLeg.GetComponent<Renderer>().sharedMaterial = legMat;
                 Destroy(upperLeg.GetComponent<Collider>());
 
                 // Lower leg segment
@@ -133,7 +168,7 @@ public class BeachCritters : MonoBehaviour
                 lowerLeg.transform.localPosition = new Vector3(side * 0.4f, -0.3f, 0);
                 lowerLeg.transform.localScale = new Vector3(0.8f, 1.5f, 0.8f);
                 lowerLeg.transform.localRotation = Quaternion.Euler(0, 0, side * 40);
-                lowerLeg.GetComponent<Renderer>().material = legMat;
+                lowerLeg.GetComponent<Renderer>().sharedMaterial = legMat;
                 Destroy(lowerLeg.GetComponent<Collider>());
 
                 legs.Add(upperLeg.transform);
@@ -151,7 +186,7 @@ public class BeachCritters : MonoBehaviour
             clawArm.transform.localPosition = new Vector3(side * 0.06f * scale, 0.02f * scale, 0.06f * scale);
             clawArm.transform.localScale = new Vector3(0.04f * scale, 0.015f * scale, 0.03f * scale);
             clawArm.transform.localRotation = Quaternion.Euler(0, side * -30, 0);
-            clawArm.GetComponent<Renderer>().material = clawMat;
+            clawArm.GetComponent<Renderer>().sharedMaterial = clawMat;
             Destroy(clawArm.GetComponent<Collider>());
 
             // Claw pincer (upper)
@@ -160,7 +195,7 @@ public class BeachCritters : MonoBehaviour
             upperPincer.transform.SetParent(clawArm.transform);
             upperPincer.transform.localPosition = new Vector3(side * 0.8f, 0.3f, 0.5f);
             upperPincer.transform.localScale = new Vector3(0.8f, 0.5f, 1.2f);
-            upperPincer.GetComponent<Renderer>().material = clawMat;
+            upperPincer.GetComponent<Renderer>().sharedMaterial = clawMat;
             Destroy(upperPincer.GetComponent<Collider>());
 
             // Claw pincer (lower)
@@ -169,7 +204,7 @@ public class BeachCritters : MonoBehaviour
             lowerPincer.transform.SetParent(clawArm.transform);
             lowerPincer.transform.localPosition = new Vector3(side * 0.8f, -0.2f, 0.5f);
             lowerPincer.transform.localScale = new Vector3(0.6f, 0.4f, 1f);
-            lowerPincer.GetComponent<Renderer>().material = clawMat;
+            lowerPincer.GetComponent<Renderer>().sharedMaterial = clawMat;
             Destroy(lowerPincer.GetComponent<Collider>());
 
             claws.Add(clawArm.transform);

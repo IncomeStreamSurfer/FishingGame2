@@ -64,6 +64,9 @@ public class NightSkyOverlay : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         // Find DayNightCycle if not assigned
         if (dayNightCycle == null)
         {

@@ -241,6 +241,15 @@ public class WetDebuffSystem : MonoBehaviour
     // Public methods
     public bool IsWet() => isWet;
 
+    public void ClearWetDebuff()
+    {
+        isWet = false;
+        isDrying = false;
+        dryingTimer = 0f;
+        wetDamageTimer = 0f;
+        Debug.Log("Wet debuff cleared");
+    }
+
     void OnDestroy()
     {
         if (debuffBgTex != null) Destroy(debuffBgTex);

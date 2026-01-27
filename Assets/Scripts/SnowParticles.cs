@@ -40,6 +40,15 @@ public class SnowParticles : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
+        #if UNITY_WEBGL
+        // Disable snow particles in WebGL for performance
+        enabled = false;
+        return;
+        #endif
+
         // Create snow material
         snowMat = new Material(Shader.Find("Standard"));
         snowMat.color = new Color(1f, 1f, 1f, 0.85f);
@@ -281,6 +290,12 @@ public class WindAmbience : MonoBehaviour
 
     void Start()
     {
+        #if UNITY_WEBGL
+        // Disable wind ambience in WebGL for performance
+        enabled = false;
+        return;
+        #endif
+
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.loop = true;
         audioSource.volume = 0.15f;

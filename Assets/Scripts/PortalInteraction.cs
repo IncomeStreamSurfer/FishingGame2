@@ -8,9 +8,9 @@ public class PortalInteraction : MonoBehaviour
     public RealmType destinationRealm = RealmType.TropicalIsland;
     public Vector3 spawnOffset = new Vector3(0, 2f, 5f); // Where player spawns in destination
 
-    // Beta lock - prevents access regardless of level, shows "COMING SOON"
-    public bool betaLocked = false;
-    public string betaMessage = "COMING SOON IN FULL RELEASE!";
+    // Open Testing lock - prevents access, shows "COMING SOON"
+    public bool openTestingLocked = false;
+    public string openTestingMessage = "COMING SOON IN FULL RELEASE!";
 
     private bool isUnlocked = false;
     private bool playerNearby = false;
@@ -59,8 +59,8 @@ public class PortalInteraction : MonoBehaviour
 
     void CheckUnlockStatus()
     {
-        // Beta locked portals can never be unlocked
-        if (betaLocked)
+        // Open Testing locked portals can never be unlocked
+        if (openTestingLocked)
         {
             isUnlocked = false;
             return;
@@ -111,13 +111,13 @@ public class PortalInteraction : MonoBehaviour
 
     void TryEnterPortal()
     {
-        // Beta locked portals cannot be entered at all
-        if (betaLocked)
+        // Open Testing locked portals cannot be entered at all
+        if (openTestingLocked)
         {
-            Debug.Log($"{portalName} is BETA LOCKED - {betaMessage}");
+            Debug.Log($"{portalName} is LOCKED (Open Testing) - {openTestingMessage}");
             if (UIManager.Instance != null)
             {
-                UIManager.Instance.ShowLootNotification(betaMessage, new Color(1f, 0.8f, 0.3f));
+                UIManager.Instance.ShowLootNotification(openTestingMessage, new Color(1f, 0.8f, 0.3f));
             }
             return;
         }
@@ -160,8 +160,8 @@ public class PortalInteraction : MonoBehaviour
         style.fontStyle = FontStyle.Bold;
         style.alignment = TextAnchor.MiddleCenter;
 
-        // Beta locked portals show special message
-        if (betaLocked)
+        // Open Testing locked portals show special message
+        if (openTestingLocked)
         {
             // Portal name in orange
             style.normal.textColor = new Color(1f, 0.7f, 0.3f);
@@ -172,15 +172,15 @@ public class PortalInteraction : MonoBehaviour
             style.normal.textColor = new Color(1f, 0.85f, 0.4f);
             GUI.Label(new Rect(Screen.width / 2 - 150, 110, 300, 25), "COMING SOON!", style);
 
-            // Beta message
+            // Open Testing message
             style.fontSize = 12;
             style.normal.textColor = new Color(0.8f, 0.8f, 0.8f);
-            GUI.Label(new Rect(Screen.width / 2 - 150, 135, 300, 25), betaMessage, style);
+            GUI.Label(new Rect(Screen.width / 2 - 150, 135, 300, 25), openTestingMessage, style);
 
-            // Beta badge
+            // Open Testing badge
             style.fontSize = 11;
-            style.normal.textColor = new Color(0.3f, 0.7f, 1f);
-            GUI.Label(new Rect(Screen.width / 2 - 150, 160, 300, 20), "[BETA VERSION - Tropical Island Only]", style);
+            style.normal.textColor = new Color(0.3f, 1f, 0.5f);
+            GUI.Label(new Rect(Screen.width / 2 - 150, 160, 300, 20), "[OPEN TESTING - Tropical Island Only]", style);
             return;
         }
 

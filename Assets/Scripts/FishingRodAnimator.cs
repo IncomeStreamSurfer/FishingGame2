@@ -108,16 +108,18 @@ public class FishingRodAnimator : MonoBehaviour
 
     void CleanupStrayBobbers()
     {
-        // Find and destroy any leftover bobbers from previous sessions
-        GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
-        foreach (GameObject obj in allObjects)
+        // Performance: Use targeted Find by name instead of searching all GameObjects
+        // This is only called once at Start() so impact is minimal, but still faster
+        string[] strayObjectNames = { "Bobber", "BobberTop", "BobberBottom", "SplashRing", "WaterDroplet", "FootRipple", "WaterRipple" };
+
+        foreach (string objName in strayObjectNames)
         {
-            if (obj.name == "Bobber" || obj.name == "BobberTop" || obj.name == "BobberBottom" ||
-                obj.name == "SplashRing" || obj.name == "WaterDroplet" || obj.name == "FootRipple" ||
-                obj.name == "WaterRipple")
+            GameObject obj = GameObject.Find(objName);
+            while (obj != null)
             {
                 Debug.Log($"Cleaning up stray object: {obj.name}");
                 Destroy(obj);
+                obj = GameObject.Find(objName); // Find next with same name
             }
         }
     }
@@ -139,9 +141,15 @@ public class FishingRodAnimator : MonoBehaviour
 
     void EnsureAudioListener()
     {
+        // Performance: Check main camera first (most likely location)
         // IslandSoundManager handles AudioListener management now
-        // Just verify one exists
-        AudioListener listener = FindObjectOfType<AudioListener>();
+        AudioListener listener = Camera.main?.GetComponent<AudioListener>();
+        if (listener == null)
+        {
+            // Fallback to FindObjectOfType only if not on main camera
+            listener = FindObjectOfType<AudioListener>();
+        }
+
         if (listener == null)
         {
             Debug.LogWarning("FishingRodAnimator: No AudioListener found! Waiting for IslandSoundManager...");

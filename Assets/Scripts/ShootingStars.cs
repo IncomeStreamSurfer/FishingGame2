@@ -72,6 +72,15 @@ public class ShootingStars : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
+        #if UNITY_WEBGL
+        // Disable shooting stars in WebGL for performance
+        enabled = false;
+        return;
+        #endif
+
         CreateMaterials();
 
         // Check if it's already night and start if so

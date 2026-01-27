@@ -17,6 +17,9 @@ public class WaterfallEffect : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         CreateWaterfall();
         CreateMist();
         CreateAudio();

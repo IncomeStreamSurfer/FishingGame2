@@ -33,6 +33,9 @@ public class OrangutanVendor : MonoBehaviour
 
     void Start()
     {
+        // PERFORMANCE: Skip if performance mode enabled
+        if (PerformanceMode.ShouldSkip(this)) return;
+
         CreateOrangutanModel();
         InitializeShop();
         CreateUITextures();
