@@ -141,57 +141,10 @@ public class CameraController : MonoBehaviour
             cameraDistance = Mathf.Clamp(cameraDistance, minZoom, maxZoom);
         }
 
-        // Check if right mouse button is held for orbiting
-        if (Input.GetMouseButtonDown(1))
-        {
-            isOrbiting = true;
-            // Initialize orbit angles to current camera orientation when starting to orbit
-            if (!isOrbiting || currentYaw == 0f)
-            {
-                currentYaw = target.eulerAngles.y;
-            }
-        }
-
-        if (Input.GetMouseButtonUp(1))
-        {
-            isOrbiting = false;
-        }
-
-        // Update orbit angles when right mouse is held
-        if (Input.GetMouseButton(1))
-        {
-            float mouseX = Input.GetAxis("Mouse X");
-            float mouseY = Input.GetAxis("Mouse Y");
-
-            currentYaw += mouseX * orbitSensitivity;
-            currentPitch -= mouseY * orbitSensitivity;
-
-            // Clamp pitch to prevent camera flipping
-            currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
-        }
-        else
-        {
-            // When not orbiting, sync yaw with player rotation for smooth transition
-            currentYaw = Mathf.LerpAngle(currentYaw, target.eulerAngles.y, smoothSpeed * Time.deltaTime);
-        }
-
-        // Calculate camera position using orbit or follow mode
-        Vector3 desiredPosition;
-
-        if (Input.GetMouseButton(1))
-        {
-            // ORBIT MODE: Use yaw and pitch to calculate offset
-            Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
-            Vector3 offset = rotation * Vector3.back * cameraDistance;
-            desiredPosition = target.position + offset;
-        }
-        else
-        {
-            // FOLLOW MODE: Camera locked behind player (original behavior)
-            Vector3 behindPlayer = -target.forward * cameraDistance;
-            Vector3 abovePlayer = Vector3.up * cameraHeight;
-            desiredPosition = target.position + behindPlayer + abovePlayer;
-        }
+        // Camera always stays behind player (no orbit mode)
+        Vector3 behindPlayer = -target.forward * cameraDistance;
+        Vector3 abovePlayer = Vector3.up * cameraHeight;
+        Vector3 desiredPosition = target.position + behindPlayer + abovePlayer;
 
         Vector3 lookAtPoint = target.position + Vector3.up * lookAtHeight;
 
