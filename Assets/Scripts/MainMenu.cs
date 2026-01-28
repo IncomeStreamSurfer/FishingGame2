@@ -486,50 +486,58 @@ public class MainMenu : MonoBehaviour
 
     void DrawMainMenu()
     {
-        float buttonWidth = 220;
-        float buttonHeight = 42;
-        float buttonSpacing = 16;
+        float buttonWidth = 200;
+        float buttonHeight = 40;
+        float buttonSpacing = 8;
 
         float centerX = safeArea.x + safeArea.width / 2;
         float buttonX = centerX - buttonWidth / 2;
-        float startY = safeArea.y + safeArea.height * 0.12f + 310f;
-
-        int buttonIndex = 0;
+        float startY = safeArea.y + safeArea.height * 0.52f;
 
         // Check if save exists
         bool hasSave = SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData;
 
         if (hasSave)
         {
-            // Draw save preview
-            DrawSavePreview(centerX, startY - 120f);
+            // Draw save preview panel centered above buttons
+            DrawSavePreview(centerX, startY - 100f);
 
-            // Continue button
+            // CONTINUE - prominent button for existing players
             if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "CONTINUE"))
             {
                 ContinueGame();
             }
-            buttonIndex++;
-        }
+            startY += buttonHeight + buttonSpacing;
 
-        // New Game button
-        string newGameText = hasSave ? "NEW GAME" : "START GAME";
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), newGameText))
+            // New Game (smaller, since they have a save)
+            if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "NEW GAME"))
+            {
+                StartNewGame();
+            }
+            startY += buttonHeight + buttonSpacing;
+        }
+        else
         {
-            if (hasSave)
-            {
-                // Confirm new game will delete save
-                StartNewGame();
-            }
-            else
+            // START GAME - prominent for new players
+            if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "START GAME"))
             {
                 StartNewGame();
             }
+            startY += buttonHeight + buttonSpacing;
         }
-        buttonIndex++;
 
-        // Backup Codes button
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), "BACKUP CODES"))
+        // Secondary buttons in a row
+        float smallBtnWidth = 95;
+        float smallBtnSpacing = 10;
+        float rowX = centerX - (smallBtnWidth * 2 + smallBtnSpacing) / 2;
+
+        // Settings and Backup Codes side by side
+        if (DrawMenuButton(new Rect(rowX, startY, smallBtnWidth, buttonHeight), "SETTINGS"))
+        {
+            currentState = MenuState.Settings;
+        }
+
+        if (DrawMenuButton(new Rect(rowX + smallBtnWidth + smallBtnSpacing, startY, smallBtnWidth, buttonHeight), "BACKUP"))
         {
             currentState = MenuState.BackupCodes;
             if (SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData)
@@ -537,17 +545,10 @@ public class MainMenu : MonoBehaviour
                 backupCodeOutput = SaveSystem.Instance.ExportSaveCode();
             }
         }
-        buttonIndex++;
+        startY += buttonHeight + buttonSpacing + 5;
 
-        // Settings button
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), "SETTINGS"))
-        {
-            currentState = MenuState.Settings;
-        }
-        buttonIndex++;
-
-        // Quit button
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), "QUIT"))
+        // Quit at bottom, centered
+        if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "QUIT"))
         {
             QuitGame();
         }
@@ -560,58 +561,61 @@ public class MainMenu : MonoBehaviour
         var (timeAlive, day, timeOfDay, saveDate) = SaveSystem.Instance.GetSaveInfo();
         Texture2D screenshot = SaveSystem.Instance.GetScreenshot();
 
-        float previewWidth = 280;
-        float previewHeight = 100;
+        // Compact preview - fits nicely above buttons
+        float previewWidth = 220; // Same width as buttons for symmetry
+        float previewHeight = 75;
         float previewX = centerX - previewWidth / 2;
 
-        // Background
+        // Background with subtle border
         GUI.DrawTexture(new Rect(previewX - 2, y - 2, previewWidth + 4, previewHeight + 4), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(previewX, y, previewWidth, previewHeight), GetTexture("panelBg"));
 
-        // Screenshot
-        float screenshotWidth = 120;
-        float screenshotHeight = 68;
+        // Small screenshot on the left (80x45 for 16:9)
+        float screenshotWidth = 80;
+        float screenshotHeight = 45;
+        float screenshotX = previewX + 8;
+        float screenshotY = y + (previewHeight - screenshotHeight) / 2;
+
+        // Screenshot border
+        GUI.DrawTexture(new Rect(screenshotX - 1, screenshotY - 1, screenshotWidth + 2, screenshotHeight + 2), GetTexture("panelBorder"));
+
         if (screenshot != null)
         {
-            GUI.DrawTexture(new Rect(previewX + 8, y + 16, screenshotWidth, screenshotHeight), screenshot);
+            GUI.DrawTexture(new Rect(screenshotX, screenshotY, screenshotWidth, screenshotHeight), screenshot);
         }
         else
         {
-            GUI.DrawTexture(new Rect(previewX + 8, y + 16, screenshotWidth, screenshotHeight), GetTexture("waterDark"));
+            GUI.DrawTexture(new Rect(screenshotX, screenshotY, screenshotWidth, screenshotHeight), GetTexture("waterDark"));
         }
 
-        // Save info
+        // Save info - compact layout on right side
         GUIStyle infoStyle = new GUIStyle();
-        infoStyle.fontSize = 12;
-        infoStyle.normal.textColor = Color.white;
+        infoStyle.fontSize = 11;
+        infoStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
 
-        float infoX = previewX + screenshotWidth + 20;
-        float infoY = y + 12;
+        float infoX = previewX + screenshotWidth + 18;
+        float infoY = y + 10;
 
         // Time alive
         int mins = (int)(timeAlive / 60);
         int secs = (int)(timeAlive % 60);
-        string timeStr = mins >= 60 ? $"{mins / 60}:{mins % 60:D2}:{secs:D2}" : $"{mins}:{secs:D2}";
-        GUI.Label(new Rect(infoX, infoY, 140, 20), $"Time: {timeStr}", infoStyle);
-        infoY += 18;
+        string timeStr = mins >= 60 ? $"{mins / 60}h {mins % 60}m" : $"{mins}m {secs}s";
+        GUI.Label(new Rect(infoX, infoY, 120, 16), timeStr, infoStyle);
+        infoY += 16;
 
-        // Day
-        GUI.Label(new Rect(infoX, infoY, 140, 20), $"Day {day}", infoStyle);
-        infoY += 18;
-
-        // Time of day
+        // Day and time of day on same line
         float hour = timeOfDay * 24f;
         int hourInt = (int)hour;
         string ampm = hourInt >= 12 ? "PM" : "AM";
         int hour12 = hourInt % 12;
         if (hour12 == 0) hour12 = 12;
-        GUI.Label(new Rect(infoX, infoY, 140, 20), $"{hour12}:00 {ampm}", infoStyle);
-        infoY += 18;
+        GUI.Label(new Rect(infoX, infoY, 120, 16), $"Day {day} - {hour12}{ampm}", infoStyle);
+        infoY += 16;
 
-        // Save date
-        infoStyle.fontSize = 10;
-        infoStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
-        GUI.Label(new Rect(infoX, infoY, 140, 20), saveDate, infoStyle);
+        // Save date - smaller
+        infoStyle.fontSize = 9;
+        infoStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+        GUI.Label(new Rect(infoX, infoY, 120, 14), saveDate, infoStyle);
     }
 
     void DrawBackupCodesMenu()

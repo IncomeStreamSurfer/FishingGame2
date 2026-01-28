@@ -313,6 +313,13 @@ public class TimeAliveTracker : MonoBehaviour
     public float GetBestTime() => bestTimes.Count > 0 ? bestTimes[0] : 0f;
     public List<float> GetLeaderboard() => new List<float>(bestTimes);
 
+    // Set timer (called when loading a save)
+    public void SetCurrentTime(float time)
+    {
+        timeAlive = time;
+        isTracking = true;
+    }
+
     // Reset timer (called when starting new game)
     public void ResetTimer()
     {

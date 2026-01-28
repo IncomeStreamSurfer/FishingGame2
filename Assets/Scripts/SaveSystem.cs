@@ -299,6 +299,12 @@ public class SaveSystem : MonoBehaviour
             DayNightCycle.Instance.SetCurrentDay(currentSave.currentDay);
         }
 
+        // Restore time alive counter
+        if (TimeAliveTracker.Instance != null)
+        {
+            TimeAliveTracker.Instance.SetCurrentTime(currentSave.timeAlive);
+        }
+
         // Food inventory
         if (FoodInventory.Instance != null)
         {
