@@ -319,9 +319,9 @@ public class AtmosphericSounds : MonoBehaviour
                 samples = GenerateTropicalChirp(sampleRate, duration);
                 break;
             case 1:
-                // Parrot-like squawk
-                duration = Random.Range(0.4f, 0.8f);
-                samples = GenerateParrotSquawk(sampleRate, duration);
+                // Gentle dove coo (replaced parrot squawk - parrot sounds only from ShoulderParrot)
+                duration = Random.Range(0.6f, 1.0f);
+                samples = GenerateDoveCoo(sampleRate, duration);
                 break;
             case 2:
                 // Songbird trill
@@ -370,33 +370,39 @@ public class AtmosphericSounds : MonoBehaviour
         return samples;
     }
 
-    float[] GenerateParrotSquawk(int sampleRate, float duration)
+    float[] GenerateDoveCoo(int sampleRate, float duration)
     {
         int sampleCount = (int)(sampleRate * duration);
         float[] samples = new float[sampleCount];
 
-        float baseFreq = Random.Range(800f, 1200f);
+        // Doves have a soft, low cooing sound
+        float baseFreq = Random.Range(300f, 450f);
 
         for (int i = 0; i < sampleCount; i++)
         {
             float t = (float)i / sampleRate;
             float progress = (float)i / sampleCount;
 
-            // Raspy frequency modulation
-            float freqMod = 1f + Mathf.Sin(t * 80f) * 0.15f;
-            float freq = baseFreq * freqMod * (1f + progress * 0.3f);
+            // Gentle frequency wobble
+            float freqMod = 1f + Mathf.Sin(t * 8f) * 0.05f;
+            float freq = baseFreq * freqMod;
 
-            // Harsh envelope
-            float envelope = Mathf.Clamp01(1f - Mathf.Abs(progress - 0.3f) * 2f);
+            // Soft envelope with gentle attack and release
+            float envelope = Mathf.Sin(progress * Mathf.PI);
+            envelope *= 1f - progress * 0.3f; // Slight decay
 
-            // Square-ish wave for harsh sound
-            float sound = Mathf.Sign(Mathf.Sin(2 * Mathf.PI * freq * t)) * 0.3f;
-            sound += Mathf.Sin(2 * Mathf.PI * freq * t) * 0.4f;
+            // Pure, soft sine waves
+            float sound = Mathf.Sin(2 * Mathf.PI * freq * t) * 0.5f;
+            sound += Mathf.Sin(2 * Mathf.PI * freq * 2f * t) * 0.15f; // Soft harmonic
 
-            // Add noise for raspiness
-            sound += (Random.value * 2f - 1f) * 0.1f * envelope;
+            // Two-note coo pattern (coo-COO)
+            if (progress > 0.4f && progress < 0.8f)
+            {
+                float secondNote = Mathf.Sin(2 * Mathf.PI * (freq * 1.2f) * t) * 0.4f;
+                sound = sound * 0.3f + secondNote * 0.7f;
+            }
 
-            samples[i] = sound * envelope;
+            samples[i] = sound * envelope * 0.6f;
         }
 
         return samples;
