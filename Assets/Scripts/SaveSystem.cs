@@ -145,7 +145,7 @@ public class SaveSystem : MonoBehaviour
 
         if (PlayerHealth.Instance != null)
         {
-            currentSave.health = PlayerHealth.Instance.GetHealth();
+            currentSave.health = PlayerHealth.Instance.GetCurrentHealth();
         }
 
         // Position
