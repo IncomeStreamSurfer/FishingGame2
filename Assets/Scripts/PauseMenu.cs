@@ -11,8 +11,14 @@ public class PauseMenu : MonoBehaviour
     public static PauseMenu Instance { get; private set; }
     public static bool IsPaused { get; private set; } = false;
 
-    private enum PauseState { Main, Controls }
+    private enum PauseState { Main, Controls, BackupCodes }
     private PauseState currentState = PauseState.Main;
+
+    // Backup codes
+    private string backupCodeInput = "";
+    private string backupCodeOutput = "";
+    private bool showCopySuccess = false;
+    private float copySuccessTimer = 0f;
 
     // Cached textures
     private Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
@@ -99,6 +105,16 @@ public class PauseMenu : MonoBehaviour
         }
 
         fadeAlpha = Mathf.MoveTowards(fadeAlpha, targetAlpha, Time.unscaledDeltaTime * 5f);
+
+        // Copy success timer (use unscaled time since game is paused)
+        if (showCopySuccess)
+        {
+            copySuccessTimer -= Time.unscaledDeltaTime;
+            if (copySuccessTimer <= 0f)
+            {
+                showCopySuccess = false;
+            }
+        }
     }
 
     void PauseGame()
@@ -124,8 +140,8 @@ public class PauseMenu : MonoBehaviour
 
         GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), GetTexture("overlay"));
 
-        float panelWidth = currentState == PauseState.Controls ? 450 : 300;
-        float panelHeight = currentState == PauseState.Main ? 250 : 520;
+        float panelWidth = currentState == PauseState.Controls ? 450 : (currentState == PauseState.BackupCodes ? 520 : 300);
+        float panelHeight = currentState == PauseState.Main ? 310 : (currentState == PauseState.BackupCodes ? 480 : 520);
         float panelX = (Screen.width - panelWidth) / 2;
         float panelY = (Screen.height - panelHeight) / 2;
 
@@ -146,6 +162,9 @@ public class PauseMenu : MonoBehaviour
                 break;
             case PauseState.Controls:
                 DrawControlsMenu(panelX, panelY, panelWidth);
+                break;
+            case PauseState.BackupCodes:
+                DrawBackupCodesMenu(panelX, panelY, panelWidth);
                 break;
         }
 
@@ -170,7 +189,18 @@ public class PauseMenu : MonoBehaviour
             currentState = PauseState.Controls;
         }
 
-        if (DrawMenuButton(new Rect(centerX, startY + 2 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "QUIT TO MENU"))
+        if (DrawMenuButton(new Rect(centerX, startY + 2 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "BACKUP CODES"))
+        {
+            currentState = PauseState.BackupCodes;
+            // Save current game and generate backup code
+            if (SaveSystem.Instance != null)
+            {
+                SaveSystem.Instance.SaveGame();
+                backupCodeOutput = SaveSystem.Instance.ExportSaveCode();
+            }
+        }
+
+        if (DrawMenuButton(new Rect(centerX, startY + 3 * (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "QUIT TO MENU"))
         {
             QuitToMenu();
         }
@@ -247,6 +277,105 @@ public class PauseMenu : MonoBehaviour
         GUI.Label(new Rect(keyX, y, 100, lineHeight), key, keyStyle);
         GUI.Label(new Rect(actionX, y, 250, lineHeight), action, actionStyle);
         y += lineHeight;
+    }
+
+    void DrawBackupCodesMenu(float panelX, float panelY, float panelWidth)
+    {
+        GUIStyle subHeader = new GUIStyle(GUI.skin.label);
+        subHeader.fontSize = 18;
+        subHeader.fontStyle = FontStyle.Bold;
+        subHeader.alignment = TextAnchor.MiddleCenter;
+        subHeader.normal.textColor = new Color(1f, 0.85f, 0.4f, fadeAlpha);
+        GUI.Label(new Rect(panelX, panelY + 50, panelWidth, 25), "BACKUP CODES", subHeader);
+
+        float contentY = panelY + 85;
+
+        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+        labelStyle.fontSize = 13;
+        labelStyle.normal.textColor = new Color(1f, 1f, 1f, fadeAlpha);
+
+        GUIStyle infoStyle = new GUIStyle(GUI.skin.label);
+        infoStyle.fontSize = 11;
+        infoStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f, fadeAlpha);
+        infoStyle.wordWrap = true;
+
+        // Export section
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 20), "YOUR SAVE CODE:", labelStyle);
+        contentY += 22;
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 30), "Copy this code to backup your progress", infoStyle);
+        contentY += 32;
+
+        // Export code display
+        GUIStyle codeStyle = new GUIStyle(GUI.skin.textArea);
+        codeStyle.fontSize = 9;
+        codeStyle.wordWrap = true;
+
+        string displayCode = string.IsNullOrEmpty(backupCodeOutput) ? "No save data" : backupCodeOutput;
+        GUI.TextArea(new Rect(panelX + 20, contentY, panelWidth - 40, 55), displayCode, codeStyle);
+        contentY += 62;
+
+        // Copy button
+        if (DrawMenuButton(new Rect(panelX + panelWidth / 2 - 90, contentY, 180, 35), "COPY TO CLIPBOARD"))
+        {
+            if (!string.IsNullOrEmpty(backupCodeOutput))
+            {
+                GUIUtility.systemCopyBuffer = backupCodeOutput;
+                showCopySuccess = true;
+                copySuccessTimer = 2f;
+            }
+        }
+        contentY += 42;
+
+        if (showCopySuccess)
+        {
+            GUIStyle successStyle = new GUIStyle(GUI.skin.label);
+            successStyle.fontSize = 12;
+            successStyle.alignment = TextAnchor.MiddleCenter;
+            successStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, fadeAlpha);
+            GUI.Label(new Rect(panelX, contentY - 8, panelWidth, 20), "Copied!", successStyle);
+        }
+
+        contentY += 15;
+
+        // Divider
+        GUI.DrawTexture(new Rect(panelX + 20, contentY, panelWidth - 40, 2), GetTexture("panelBorder"));
+        contentY += 18;
+
+        // Import section
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 20), "RESTORE FROM CODE:", labelStyle);
+        contentY += 22;
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 30), "Paste a backup code to restore progress", infoStyle);
+        contentY += 32;
+
+        // Import code input
+        backupCodeInput = GUI.TextArea(new Rect(panelX + 20, contentY, panelWidth - 40, 55), backupCodeInput, codeStyle);
+        contentY += 62;
+
+        // Import button
+        if (DrawMenuButton(new Rect(panelX + panelWidth / 2 - 90, contentY, 180, 35), "RESTORE SAVE"))
+        {
+            if (!string.IsNullOrEmpty(backupCodeInput))
+            {
+                if (SaveSystem.Instance != null && SaveSystem.Instance.ImportSaveCode(backupCodeInput))
+                {
+                    // Reload scene to apply the imported save
+                    Time.timeScale = 1f;
+                    IsPaused = false;
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                }
+                else
+                {
+                    backupCodeInput = "INVALID CODE";
+                }
+            }
+        }
+        contentY += 45;
+
+        // Back button
+        if (DrawMenuButton(new Rect(panelX + panelWidth / 2 - 60, contentY, 120, 35), "BACK"))
+        {
+            currentState = PauseState.Main;
+        }
     }
 
     bool DrawMenuButton(Rect rect, string text)
