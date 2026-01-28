@@ -6,8 +6,19 @@ using UnityEngine;
 /// </summary>
 public class SkyDiagnostics : MonoBehaviour
 {
+    void Awake()
+    {
+        // Disable in release mode
+        if (GameConfig.RELEASE_MODE)
+        {
+            Destroy(gameObject);
+        }
+    }
+
     void Update()
     {
+        if (GameConfig.RELEASE_MODE) return;
+
         // Press F9 to log diagnostics
         if (Input.GetKeyDown(KeyCode.F9))
         {

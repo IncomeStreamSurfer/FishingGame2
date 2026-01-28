@@ -326,7 +326,8 @@ public class MainMenu : MonoBehaviour
         }
 
         cachedVersionStyle.normal.textColor = new Color(0.4f, 0.35f, 0.35f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + safeArea.width - 260, safeArea.y + safeArea.height - 30, 250, 25), "OPEN TESTING v0.2", cachedVersionStyle);
+        string versionText = GameConfig.RELEASE_MODE ? $"v{GameConfig.VERSION}" : $"DEV BUILD v{GameConfig.VERSION}";
+        GUI.Label(new Rect(safeArea.x + safeArea.width - 260, safeArea.y + safeArea.height - 30, 250, 25), versionText, cachedVersionStyle);
 
         GUI.color = Color.white;
     }

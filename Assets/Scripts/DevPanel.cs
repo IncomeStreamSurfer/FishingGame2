@@ -43,12 +43,20 @@ public class DevPanel : MonoBehaviour
 
     void Awake()
     {
+        // Disable in release mode
+        if (GameConfig.RELEASE_MODE)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
 
     void Start()
     {
+        if (GameConfig.RELEASE_MODE) return;
         Invoke("Initialize", 0.5f);
     }
 

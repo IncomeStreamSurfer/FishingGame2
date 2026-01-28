@@ -40,6 +40,13 @@ public class ConsoleCommands : MonoBehaviour
 
     void Awake()
     {
+        // Disable in release mode
+        if (GameConfig.RELEASE_MODE)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         if (Instance == null)
         {
             Instance = this;
@@ -53,6 +60,8 @@ public class ConsoleCommands : MonoBehaviour
 
     void Start()
     {
+        if (GameConfig.RELEASE_MODE) return;
+
         InitializeCommands();
         CreateTextures();
         CalculateRects();
