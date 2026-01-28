@@ -593,6 +593,17 @@ public class DayNightCycle : MonoBehaviour
         return currentDay;
     }
 
+    public float GetTimeOfDay()
+    {
+        return currentTimeOfDay / 24f; // Returns 0-1
+    }
+
+    public void SetCurrentDay(int day)
+    {
+        currentDay = Mathf.Max(1, day);
+        SaveDayCounter();
+    }
+
     public void ResetDayCounter()
     {
         currentDay = 1;

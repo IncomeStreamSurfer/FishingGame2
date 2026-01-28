@@ -96,6 +96,9 @@ public class AutoSetup
         GameObject gc = new GameObject("GameCache");
         gc.AddComponent<GameCache>();
 
+        GameObject saveSystem = new GameObject("SaveSystem");
+        saveSystem.AddComponent<SaveSystem>();
+
         GameObject fs = new GameObject("FishingSystem");
         fs.AddComponent<FishingSystem>();
 

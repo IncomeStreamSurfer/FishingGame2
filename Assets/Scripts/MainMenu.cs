@@ -11,8 +11,14 @@ public class MainMenu : MonoBehaviour
     public static MainMenu Instance { get; private set; }
     public static bool GameStarted { get; set; } = false;
 
-    private enum MenuState { Main, Settings }
+    private enum MenuState { Main, Settings, BackupCodes }
     private MenuState currentState = MenuState.Main;
+
+    // Backup code input
+    private string backupCodeInput = "";
+    private string backupCodeOutput = "";
+    private bool showCopySuccess = false;
+    private float copySuccessTimer = 0f;
 
     // Settings
     private float musicVolume = 0.7f;
@@ -252,6 +258,16 @@ public class MainMenu : MonoBehaviour
                 currentState = MenuState.Main;
             }
         }
+
+        // Copy success timer
+        if (showCopySuccess)
+        {
+            copySuccessTimer -= Time.deltaTime;
+            if (copySuccessTimer <= 0f)
+            {
+                showCopySuccess = false;
+            }
+        }
     }
 
     void CalculateSafeArea()
@@ -303,6 +319,9 @@ public class MainMenu : MonoBehaviour
                 break;
             case MenuState.Settings:
                 DrawSettingsMenu();
+                break;
+            case MenuState.BackupCodes:
+                DrawBackupCodesMenu();
                 break;
         }
 
@@ -474,19 +493,247 @@ public class MainMenu : MonoBehaviour
         float buttonX = centerX - buttonWidth / 2;
         float startY = safeArea.y + safeArea.height * 0.12f + 310f;
 
-        if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "START GAME"))
+        int buttonIndex = 0;
+
+        // Check if save exists
+        bool hasSave = SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData;
+
+        if (hasSave)
         {
-            StartNewGame();
+            // Draw save preview
+            DrawSavePreview(centerX, startY - 120f);
+
+            // Continue button
+            if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "CONTINUE"))
+            {
+                ContinueGame();
+            }
+            buttonIndex++;
         }
 
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing), buttonWidth, buttonHeight), "SETTINGS"))
+        // New Game button
+        string newGameText = hasSave ? "NEW GAME" : "START GAME";
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), newGameText))
+        {
+            if (hasSave)
+            {
+                // Confirm new game will delete save
+                StartNewGame();
+            }
+            else
+            {
+                StartNewGame();
+            }
+        }
+        buttonIndex++;
+
+        // Backup Codes button
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), "BACKUP CODES"))
+        {
+            currentState = MenuState.BackupCodes;
+            if (SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData)
+            {
+                backupCodeOutput = SaveSystem.Instance.ExportSaveCode();
+            }
+        }
+        buttonIndex++;
+
+        // Settings button
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), "SETTINGS"))
         {
             currentState = MenuState.Settings;
         }
+        buttonIndex++;
 
-        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * 2, buttonWidth, buttonHeight), "QUIT"))
+        // Quit button
+        if (DrawMenuButton(new Rect(buttonX, startY + (buttonHeight + buttonSpacing) * buttonIndex, buttonWidth, buttonHeight), "QUIT"))
         {
             QuitGame();
+        }
+    }
+
+    void DrawSavePreview(float centerX, float y)
+    {
+        if (SaveSystem.Instance == null) return;
+
+        var (timeAlive, day, timeOfDay, saveDate) = SaveSystem.Instance.GetSaveInfo();
+        Texture2D screenshot = SaveSystem.Instance.GetScreenshot();
+
+        float previewWidth = 280;
+        float previewHeight = 100;
+        float previewX = centerX - previewWidth / 2;
+
+        // Background
+        GUI.DrawTexture(new Rect(previewX - 2, y - 2, previewWidth + 4, previewHeight + 4), GetTexture("panelBorder"));
+        GUI.DrawTexture(new Rect(previewX, y, previewWidth, previewHeight), GetTexture("panelBg"));
+
+        // Screenshot
+        float screenshotWidth = 120;
+        float screenshotHeight = 68;
+        if (screenshot != null)
+        {
+            GUI.DrawTexture(new Rect(previewX + 8, y + 16, screenshotWidth, screenshotHeight), screenshot);
+        }
+        else
+        {
+            GUI.DrawTexture(new Rect(previewX + 8, y + 16, screenshotWidth, screenshotHeight), GetTexture("waterDark"));
+        }
+
+        // Save info
+        GUIStyle infoStyle = new GUIStyle();
+        infoStyle.fontSize = 12;
+        infoStyle.normal.textColor = Color.white;
+
+        float infoX = previewX + screenshotWidth + 20;
+        float infoY = y + 12;
+
+        // Time alive
+        int mins = (int)(timeAlive / 60);
+        int secs = (int)(timeAlive % 60);
+        string timeStr = mins >= 60 ? $"{mins / 60}:{mins % 60:D2}:{secs:D2}" : $"{mins}:{secs:D2}";
+        GUI.Label(new Rect(infoX, infoY, 140, 20), $"Time: {timeStr}", infoStyle);
+        infoY += 18;
+
+        // Day
+        GUI.Label(new Rect(infoX, infoY, 140, 20), $"Day {day}", infoStyle);
+        infoY += 18;
+
+        // Time of day
+        float hour = timeOfDay * 24f;
+        int hourInt = (int)hour;
+        string ampm = hourInt >= 12 ? "PM" : "AM";
+        int hour12 = hourInt % 12;
+        if (hour12 == 0) hour12 = 12;
+        GUI.Label(new Rect(infoX, infoY, 140, 20), $"{hour12}:00 {ampm}", infoStyle);
+        infoY += 18;
+
+        // Save date
+        infoStyle.fontSize = 10;
+        infoStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+        GUI.Label(new Rect(infoX, infoY, 140, 20), saveDate, infoStyle);
+    }
+
+    void DrawBackupCodesMenu()
+    {
+        float panelWidth = 550;
+        float panelHeight = 450;
+        float panelX = safeArea.x + (safeArea.width - panelWidth) / 2;
+        float panelY = safeArea.y + (safeArea.height - panelHeight) / 2;
+
+        GUI.DrawTexture(new Rect(panelX - 3, panelY - 3, panelWidth + 6, panelHeight + 6), GetTexture("panelBorder"));
+        GUI.DrawTexture(new Rect(panelX, panelY, panelWidth, panelHeight), GetTexture("panelBg"));
+
+        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
+        headerStyle.fontSize = 24;
+        headerStyle.fontStyle = FontStyle.Bold;
+        headerStyle.alignment = TextAnchor.MiddleCenter;
+        headerStyle.normal.textColor = new Color(0.8f, 0.9f, 1f);
+        GUI.Label(new Rect(panelX, panelY + 15, panelWidth, 40), "BACKUP CODES", headerStyle);
+
+        if (DrawCloseButton(new Rect(panelX + panelWidth - 40, panelY + 10, 30, 30)))
+        {
+            currentState = MenuState.Main;
+        }
+
+        float contentY = panelY + 70;
+
+        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+        labelStyle.fontSize = 14;
+        labelStyle.normal.textColor = Color.white;
+
+        GUIStyle infoStyle = new GUIStyle(GUI.skin.label);
+        infoStyle.fontSize = 11;
+        infoStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+        infoStyle.wordWrap = true;
+
+        // Export section
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 25), "EXPORT YOUR SAVE", labelStyle);
+        contentY += 25;
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 35), "Copy this code to save your progress. You can paste it later to restore.", infoStyle);
+        contentY += 40;
+
+        // Export code display
+        GUIStyle codeStyle = new GUIStyle(GUI.skin.textArea);
+        codeStyle.fontSize = 10;
+        codeStyle.wordWrap = true;
+
+        string displayCode = string.IsNullOrEmpty(backupCodeOutput) ? "No save data to export" : backupCodeOutput;
+        GUI.TextArea(new Rect(panelX + 20, contentY, panelWidth - 40, 60), displayCode, codeStyle);
+        contentY += 70;
+
+        // Copy button
+        if (DrawMenuButton(new Rect(panelX + panelWidth / 2 - 80, contentY, 160, 35), "COPY TO CLIPBOARD"))
+        {
+            if (!string.IsNullOrEmpty(backupCodeOutput))
+            {
+                GUIUtility.systemCopyBuffer = backupCodeOutput;
+                showCopySuccess = true;
+                copySuccessTimer = 2f;
+            }
+        }
+        contentY += 45;
+
+        if (showCopySuccess)
+        {
+            GUIStyle successStyle = new GUIStyle(GUI.skin.label);
+            successStyle.fontSize = 12;
+            successStyle.alignment = TextAnchor.MiddleCenter;
+            successStyle.normal.textColor = new Color(0.3f, 1f, 0.5f);
+            GUI.Label(new Rect(panelX, contentY - 10, panelWidth, 20), "Copied to clipboard!", successStyle);
+        }
+
+        contentY += 20;
+
+        // Divider
+        GUI.DrawTexture(new Rect(panelX + 20, contentY, panelWidth - 40, 2), GetTexture("panelBorder"));
+        contentY += 20;
+
+        // Import section
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 25), "IMPORT A SAVE", labelStyle);
+        contentY += 25;
+        GUI.Label(new Rect(panelX + 20, contentY, panelWidth - 40, 35), "Paste a backup code below to restore your progress.", infoStyle);
+        contentY += 40;
+
+        // Import code input
+        backupCodeInput = GUI.TextArea(new Rect(panelX + 20, contentY, panelWidth - 40, 60), backupCodeInput, codeStyle);
+        contentY += 70;
+
+        // Import button
+        if (DrawMenuButton(new Rect(panelX + panelWidth / 2 - 80, contentY, 160, 35), "IMPORT SAVE"))
+        {
+            if (!string.IsNullOrEmpty(backupCodeInput))
+            {
+                if (SaveSystem.Instance != null && SaveSystem.Instance.ImportSaveCode(backupCodeInput))
+                {
+                    backupCodeOutput = backupCodeInput;
+                    backupCodeInput = "";
+                    currentState = MenuState.Main;
+                }
+                else
+                {
+                    backupCodeInput = "INVALID CODE - Try again";
+                }
+            }
+        }
+    }
+
+    void ContinueGame()
+    {
+        if (SaveSystem.Instance != null)
+        {
+            GameStarted = true;
+            EnableGameSystems();
+
+            // Load the save after a short delay to let systems initialize
+            Invoke("LoadSaveData", 0.3f);
+        }
+    }
+
+    void LoadSaveData()
+    {
+        if (SaveSystem.Instance != null)
+        {
+            SaveSystem.Instance.LoadGame();
         }
     }
 
@@ -618,6 +865,12 @@ public class MainMenu : MonoBehaviour
 
     void StartNewGame()
     {
+        // Delete save data for fresh start
+        if (SaveSystem.Instance != null)
+        {
+            SaveSystem.Instance.DeleteSave();
+        }
+
         // Reset PlayerPrefs for new game (except achievements)
         PlayerPrefs.SetInt("PlayerXP", 0);
         PlayerPrefs.SetInt("PlayerLevel", 1);

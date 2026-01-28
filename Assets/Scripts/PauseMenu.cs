@@ -281,6 +281,12 @@ public class PauseMenu : MonoBehaviour
         Time.timeScale = 1f;
         IsPaused = false;
 
+        // Save game before quitting to menu
+        if (SaveSystem.Instance != null)
+        {
+            SaveSystem.Instance.SaveGame();
+        }
+
         // Full restart - reload the scene like pressing stop/play in editor
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }

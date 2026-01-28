@@ -407,6 +407,13 @@ public class FishBuffSystem : MonoBehaviour
         return buffInventory.ContainsKey(type) ? buffInventory[type] : 0;
     }
 
+    // Set buff count in inventory (for save/load)
+    public void SetBuffCount(FishBuffType type, int count)
+    {
+        buffInventory[type] = Mathf.Max(0, count);
+        SaveBuffData();
+    }
+
     // Get buff data by type
     public FishBuff GetBuffData(FishBuffType type)
     {

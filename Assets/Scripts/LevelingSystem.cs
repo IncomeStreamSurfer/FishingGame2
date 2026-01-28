@@ -176,6 +176,11 @@ public class LevelingSystem : MonoBehaviour
         return currentXP;
     }
 
+    public int GetCurrentLevel()
+    {
+        return currentLevel;
+    }
+
     public long GetXPForLevel(int level)
     {
         if (level < 1) return 0;
