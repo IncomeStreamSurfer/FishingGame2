@@ -1,0 +1,8 @@
+{
+    "smtpServer": "smtp.gmail.com",
+    "smtpPort": 587,
+    "senderEmail": "YOUR_GAME_EMAIL@gmail.com",
+    "senderPassword": "YOUR_APP_PASSWORD_HERE",
+    "recipientEmail": "WHERE_TO_RECEIVE@gmail.com",
+    "enableSsl": true
+}
