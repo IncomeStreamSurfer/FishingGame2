@@ -445,21 +445,13 @@ public class MainMenu : MonoBehaviour
         // Skull
         DrawSkull(centerX - 15, titleY + 125 + bobOffset, 30f * pulseScale, menuAlpha);
 
-        // Tagline
-        GUIStyle tagStyle = new GUIStyle();
-        tagStyle.fontSize = 18;
-        tagStyle.fontStyle = FontStyle.Italic;
-        tagStyle.alignment = TextAnchor.MiddleCenter;
-        tagStyle.normal.textColor = new Color(0.8f, 0.85f, 0.9f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x, titleY + 235 + bobOffset, safeArea.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
-
-        // Open testing label
+        // Open testing label - small, bottom of screen
         GUIStyle openTestingStyle = new GUIStyle();
-        openTestingStyle.fontSize = 14;
+        openTestingStyle.fontSize = 11;
         openTestingStyle.fontStyle = FontStyle.Bold;
-        openTestingStyle.alignment = TextAnchor.MiddleCenter;
-        openTestingStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x, titleY + 168 + bobOffset, safeArea.width, 18), "[ OPEN TESTING - Tropical Island ]", openTestingStyle);
+        openTestingStyle.alignment = TextAnchor.LowerLeft;
+        openTestingStyle.normal.textColor = new Color(0.3f, 0.9f, 0.5f, menuAlpha * 0.6f);
+        GUI.Label(new Rect(safeArea.x + 10, safeArea.y + safeArea.height - 25, 200, 20), "OPEN TESTING", openTestingStyle);
     }
 
     void DrawRotatedRect(Rect rect, float angle)
