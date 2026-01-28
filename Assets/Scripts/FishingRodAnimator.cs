@@ -110,7 +110,12 @@ public class FishingRodAnimator : MonoBehaviour
     {
         // Performance: Use targeted Find by name instead of searching all GameObjects
         // This is only called once at Start() so impact is minimal, but still faster
-        string[] strayObjectNames = { "Bobber", "BobberTop", "BobberBottom", "SplashRing", "WaterDroplet", "FootRipple", "WaterRipple" };
+        string[] strayObjectNames = {
+            "Bobber", "BobberTop", "BobberBottom", "SplashRing", "WaterDroplet",
+            "FootRipple", "WaterRipple", "SmokePuff", "RodSmoke", "RodGlow",
+            "CaughtFish", "RareCaughtFish", "SpecialFish", "GoldenStarfish",
+            "CentralSplash", "SplashDroplet"
+        };
 
         foreach (string objName in strayObjectNames)
         {
@@ -812,9 +817,10 @@ public class FishingRodAnimator : MonoBehaviour
     {
         while (rodSmokeEffect != null)
         {
-            // Spawn a smoke puff
+            // Spawn a smoke puff - PARENT IT so it gets cleaned up with the effect
             GameObject puff = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             puff.name = "SmokePuff";
+            puff.transform.SetParent(rodSmokeEffect.transform); // Parent to smoke effect for cleanup
             puff.transform.position = rodSmokeEffect.transform.position + Random.insideUnitSphere * 0.1f;
             puff.transform.localScale = Vector3.one * Random.Range(0.03f, 0.06f);
             Object.Destroy(puff.GetComponent<Collider>());
@@ -881,13 +887,25 @@ public class FishingRodAnimator : MonoBehaviour
     {
         if (rodSmokeEffect != null)
         {
-            // Destroy all child smoke puffs
+            // Stop all smoke coroutines first
+            StopCoroutine("SpawnSmokeParticles");
+            StopCoroutine("AnimateSmokePuff");
+
+            // Destroy all child smoke puffs (now properly parented)
             foreach (Transform child in rodSmokeEffect.transform)
             {
                 Object.Destroy(child.gameObject);
             }
             Object.Destroy(rodSmokeEffect);
             rodSmokeEffect = null;
+        }
+
+        // Also cleanup any stray smoke puffs that might have escaped
+        GameObject strayPuff = GameObject.Find("SmokePuff");
+        while (strayPuff != null)
+        {
+            Object.Destroy(strayPuff);
+            strayPuff = GameObject.Find("SmokePuff");
         }
     }
 

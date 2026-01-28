@@ -111,16 +111,7 @@ public class SaveSystem : MonoBehaviour
 
     void Update()
     {
-        // Auto-save while game is active
-        if (MainMenu.GameStarted)
-        {
-            autoSaveTimer += Time.deltaTime;
-            if (autoSaveTimer >= AUTO_SAVE_INTERVAL)
-            {
-                autoSaveTimer = 0f;
-                AutoSave();
-            }
-        }
+        // Auto-save removed - manual save only
     }
 
     /// <summary>
