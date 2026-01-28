@@ -65,8 +65,8 @@ public class FishingSystem : MonoBehaviour
     private AudioSource jackpotAudioSource;
 
     // Gold Find system (fishing up gold instead of fish)
-    private const float GOLD_FIND_CHANCE = 15f; // 15% chance to find gold instead of fish
-    private const float RARE_CHEST_CHANCE = 1f; // 1% of gold finds = 1000g rare chest
+    private const float GOLD_FIND_CHANCE = 50f; // 50% chance to find gold instead of fish
+    private const float RARE_CHEST_CHANCE = 1f; // 1% of gold finds = 1000g JACKPOT with casino celebration!
     private bool showingGoldFindPopup = false;
     private string goldFindText = "";
     private int goldFindAmount = 0;
@@ -599,8 +599,8 @@ public class FishingSystem : MonoBehaviour
         }
         else
         {
-            // Normal gold find: 1-50 gold
-            int goldAmount = Random.Range(1, 51);
+            // Normal gold find: 1-250 gold
+            int goldAmount = Random.Range(1, 251);
             TriggerNormalGoldFind(goldAmount);
         }
 
@@ -625,15 +625,15 @@ public class FishingSystem : MonoBehaviour
         goldFindPopupTimer = GOLD_FIND_POPUP_DURATION;
         StartCoroutine(GoldFindPopupCountdown());
 
-        // Play small coin sound
+        // Play casino coin sounds - more for bigger amounts
         if (goldFindAudioSource != null)
         {
-            goldFindAudioSource.PlayOneShot(GenerateSmallCoinSound(), 0.6f);
+            goldFindAudioSource.PlayOneShot(GenerateCasinoCoinSound(amount), 0.7f);
         }
 
-        // Spawn gold coins from water
-        // Small amount (<25): few coins, 25+: more coins
-        int coinCount = amount < 25 ? 5 : 10;
+        // Spawn gold coins from water - scales with amount
+        // Small (<50): 8 coins, Medium (50-150): 15 coins, Large (150+): 25 coins
+        int coinCount = amount < 50 ? 8 : (amount < 150 ? 15 : 25);
         SpawnGoldCoinsFromWater(coinCount);
 
         if (UIManager.Instance != null)
@@ -648,7 +648,7 @@ public class FishingSystem : MonoBehaviour
 
     void TriggerRareChestFind()
     {
-        Debug.Log("RARE CHEST FOUND! 1000 GOLD!");
+        Debug.Log("JACKPOT! 1000 GOLD!");
 
         // Add gold
         if (GameManager.Instance != null)
@@ -658,29 +658,223 @@ public class FishingSystem : MonoBehaviour
 
         // Show special popup
         goldFindAmount = 1000;
-        goldFindText = "RARE CHEST FOUND!\n1000 GOLD!";
+        goldFindText = "JACKPOT!!!\n1000 GOLD!";
         isRareChest = true;
         showingGoldFindPopup = true;
-        goldFindPopupTimer = GOLD_FIND_POPUP_DURATION + 1f; // Longer display for rare
+        goldFindPopupTimer = GOLD_FIND_POPUP_DURATION + 2f; // Longer display for jackpot
         StartCoroutine(GoldFindPopupCountdown());
 
-        // Play casino jackpot sound
-        if (goldFindAudioSource != null && rareChestSound != null)
-        {
-            goldFindAudioSource.PlayOneShot(rareChestSound, 1.0f);
-        }
+        // Play MASSIVE casino jackpot celebration!
+        StartCoroutine(PlayJackpotCelebration());
 
-        // Spawn stream of gold coins from water
+        // Spawn MASSIVE stream of gold coins from water
         StartCoroutine(SpawnGoldCoinStream());
+        StartCoroutine(SpawnGoldCoinStream()); // Double stream!
 
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowLootNotification("RARE CHEST! +1000 GOLD!", new Color(1f, 0.7f, 0.1f));
+            UIManager.Instance.ShowLootNotification("JACKPOT!!! +1000 GOLD!", new Color(1f, 0.85f, 0.1f));
         }
 
         // Reset fishing state
         isFishing = false;
         StartCoroutine(ResetCooldown());
+    }
+
+    IEnumerator PlayJackpotCelebration()
+    {
+        // Play multiple casino sounds in sequence for big celebration
+        if (goldFindAudioSource != null)
+        {
+            // Initial jackpot bell
+            goldFindAudioSource.PlayOneShot(GenerateJackpotBellSound(), 1.0f);
+            yield return new WaitForSeconds(0.3f);
+
+            // Slot machine win sound
+            goldFindAudioSource.PlayOneShot(GenerateSlotMachineWinSound(), 0.9f);
+            yield return new WaitForSeconds(0.5f);
+
+            // Coin shower sounds
+            for (int i = 0; i < 5; i++)
+            {
+                goldFindAudioSource.PlayOneShot(GenerateCoinShowerSound(), 0.7f);
+                yield return new WaitForSeconds(0.2f);
+            }
+
+            // Final fanfare
+            goldFindAudioSource.PlayOneShot(GenerateVictoryFanfareSound(), 0.8f);
+        }
+    }
+
+    AudioClip GenerateJackpotBellSound()
+    {
+        int sampleRate = 44100;
+        float duration = 1.0f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            // Multiple bell frequencies for rich sound
+            float bell = Mathf.Sin(2f * Mathf.PI * 880f * t) * 0.4f;  // A5
+            bell += Mathf.Sin(2f * Mathf.PI * 1108f * t) * 0.3f;       // C#6
+            bell += Mathf.Sin(2f * Mathf.PI * 1320f * t) * 0.25f;      // E6
+            bell += Mathf.Sin(2f * Mathf.PI * 1760f * t) * 0.15f;      // A6
+
+            // Bell decay envelope
+            float envelope = Mathf.Exp(-t * 4f);
+            samples[i] = bell * envelope;
+        }
+
+        AudioClip clip = AudioClip.Create("JackpotBell", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateSlotMachineWinSound()
+    {
+        int sampleRate = 44100;
+        float duration = 1.5f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            // Rising arpeggio
+            float[] notes = { 523f, 659f, 784f, 1047f, 1319f, 1568f }; // C major arpeggio
+            float sound = 0f;
+
+            for (int n = 0; n < notes.Length; n++)
+            {
+                float noteStart = n * 0.15f;
+                float noteT = t - noteStart;
+                if (noteT > 0 && noteT < 0.5f)
+                {
+                    float noteEnv = Mathf.Sin((noteT / 0.5f) * Mathf.PI) * Mathf.Exp(-noteT * 3f);
+                    sound += Mathf.Sin(2f * Mathf.PI * notes[n] * t) * noteEnv * 0.2f;
+                }
+            }
+
+            // Add shimmer
+            sound += Mathf.Sin(2f * Mathf.PI * 2000f * t) * Mathf.Exp(-t * 5f) * 0.1f;
+
+            samples[i] = Mathf.Clamp(sound, -0.9f, 0.9f);
+        }
+
+        AudioClip clip = AudioClip.Create("SlotWin", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateCoinShowerSound()
+    {
+        int sampleRate = 44100;
+        float duration = 0.4f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+
+            // Multiple high-pitched coin sounds
+            float sound = 0f;
+            for (int c = 0; c < 8; c++)
+            {
+                float coinStart = c * 0.03f + Random.Range(0f, 0.02f);
+                float coinT = t - coinStart;
+                if (coinT > 0 && coinT < 0.15f)
+                {
+                    float freq = 2000f + c * 300f + Random.Range(-100f, 100f);
+                    float coinEnv = Mathf.Exp(-coinT * 20f);
+                    sound += Mathf.Sin(2f * Mathf.PI * freq * coinT) * coinEnv * 0.15f;
+                }
+            }
+
+            samples[i] = Mathf.Clamp(sound, -0.9f, 0.9f);
+        }
+
+        AudioClip clip = AudioClip.Create("CoinShower", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateVictoryFanfareSound()
+    {
+        int sampleRate = 44100;
+        float duration = 2.0f;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float progress = (float)i / sampleCount;
+
+            float sound = 0f;
+
+            // Triumphant brass chord
+            float chordEnv = Mathf.Sin(progress * Mathf.PI) * (1f - progress * 0.3f);
+
+            // C major 7 chord
+            sound += Mathf.Sin(2f * Mathf.PI * 261f * t) * chordEnv * 0.25f;  // C4
+            sound += Mathf.Sin(2f * Mathf.PI * 329f * t) * chordEnv * 0.2f;   // E4
+            sound += Mathf.Sin(2f * Mathf.PI * 392f * t) * chordEnv * 0.2f;   // G4
+            sound += Mathf.Sin(2f * Mathf.PI * 523f * t) * chordEnv * 0.15f;  // C5
+            sound += Mathf.Sin(2f * Mathf.PI * 659f * t) * chordEnv * 0.1f;   // E5
+
+            // Add brightness
+            sound += Mathf.Sin(2f * Mathf.PI * 1047f * t) * chordEnv * 0.08f; // C6
+
+            samples[i] = Mathf.Clamp(sound, -0.9f, 0.9f);
+        }
+
+        AudioClip clip = AudioClip.Create("VictoryFanfare", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    AudioClip GenerateCasinoCoinSound(int amount)
+    {
+        int sampleRate = 44100;
+        // Duration scales with amount - bigger finds = longer celebration
+        float duration = amount < 50 ? 0.3f : (amount < 150 ? 0.5f : 0.8f);
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        int coinCount = amount < 50 ? 3 : (amount < 150 ? 6 : 10);
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float sound = 0f;
+
+            // Multiple coin clinks
+            for (int c = 0; c < coinCount; c++)
+            {
+                float coinStart = c * (duration / coinCount);
+                float coinT = t - coinStart;
+                if (coinT > 0 && coinT < 0.15f)
+                {
+                    float freq = 1800f + c * 200f;
+                    float coinEnv = Mathf.Exp(-coinT * 15f);
+                    sound += Mathf.Sin(2f * Mathf.PI * freq * coinT) * coinEnv * 0.2f;
+                    sound += Mathf.Sin(2f * Mathf.PI * freq * 2.5f * coinT) * coinEnv * 0.1f;
+                }
+            }
+
+            samples[i] = Mathf.Clamp(sound, -0.9f, 0.9f);
+        }
+
+        AudioClip clip = AudioClip.Create("CasinoCoin", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
     }
 
     void SpawnGoldCoinsFromWater(int coinCount)
