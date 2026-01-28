@@ -235,8 +235,9 @@ public class FishInventoryPanel : MonoBehaviour
     {
         if (!MainMenu.GameStarted || !initialized) return;
 
-        // Toggle with F key - ALWAYS available, even near BBQ or other interactables
-        if (Input.GetKeyDown(KeyCode.F))
+        // Toggle with F key - but NOT when near cooking fire (F opens cooking UI there)
+        bool nearCookingFire = CookingFire.Instance != null && CookingFire.Instance.IsPlayerNearby();
+        if (Input.GetKeyDown(KeyCode.F) && !nearCookingFire)
         {
             isOpen = !isOpen;
             scrollPos = 0f;

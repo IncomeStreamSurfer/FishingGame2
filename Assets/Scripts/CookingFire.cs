@@ -509,6 +509,7 @@ public class CookingFire : MonoBehaviour
     }
 
     public bool IsOpen() => isOpen;
+    public bool IsPlayerNearby() => playerNearby;
 
     void OnGUI()
     {
@@ -726,14 +727,20 @@ public class CookingFire : MonoBehaviour
         {
             FishBuffSystem.Instance.AddBuffToInventory(buffType);
 
+            // Grant 1000 XP for cooking
+            if (LevelingSystem.Instance != null)
+            {
+                LevelingSystem.Instance.AddXP(1000);
+            }
+
             // Show notification
             if (UIManager.Instance != null)
             {
                 string buffName = fishBuffNames.TryGetValue(fishId, out string desc) ? desc.Split('-')[0].Trim() : "Buff";
-                UIManager.Instance.ShowLootNotification($"Cooked {GetFishDisplayName(fishId)}! {buffName} added to hotbar.", new Color(1f, 0.8f, 0.3f));
+                UIManager.Instance.ShowLootNotification($"Cooked {GetFishDisplayName(fishId)}! +1000 XP! {buffName} added to hotbar.", new Color(1f, 0.8f, 0.3f));
             }
 
-            Debug.Log($"Cooked {fishId} into {buffType} buff!");
+            Debug.Log($"Cooked {fishId} into {buffType} buff! +1000 XP");
         }
     }
 

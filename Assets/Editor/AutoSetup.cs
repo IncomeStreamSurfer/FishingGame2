@@ -2486,6 +2486,12 @@ public class AutoSetup
         // Drop Rates Sign removed - user requested deletion
         // CreateDropRatesSign();
 
+        // Beach Cooking Fire - cook special fish for buffs and 1000 XP
+        GameObject cookingFire = new GameObject("BeachCookingFire");
+        cookingFire.transform.position = new Vector3(-25f, 1.5f, 35f);  // On the beach near the dock
+        cookingFire.transform.rotation = Quaternion.Euler(0, 45, 0);
+        cookingFire.AddComponent<CookingFire>();
+
         // Shoulder Parrot system (spawns when purchased from shop)
         GameObject parrotSystem = new GameObject("ShoulderParrot");
         parrotSystem.AddComponent<ShoulderParrot>();
