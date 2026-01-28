@@ -380,83 +380,71 @@ public class MainMenu : MonoBehaviour
 
     void DrawTitle()
     {
-        float bobOffset = Mathf.Sin(titleBob * 1.5f) * 5f;
-        float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 3f;
+        float bobOffset = Mathf.Sin(titleBob * 1.5f) * 4f;
+        float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 2f;
         float pulseScale = 1f + Mathf.Sin(skullPulse * 2f) * 0.02f;
 
         float centerX = safeArea.x + safeArea.width / 2;
-        float titleY = safeArea.y + safeArea.height * 0.05f; // Moved up
+        float titleY = safeArea.y + safeArea.height * 0.03f;
 
-        // Smaller background glow
-        GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.2f * menuAlpha);
-        GUI.DrawTexture(new Rect(centerX - 220, titleY + 20 + bobOffset, 440, 120), GetTexture("white"));
+        // Background glow - sized to fit text
+        GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.15f * menuAlpha);
+        GUI.DrawTexture(new Rect(centerX - 160, titleY + 10 + bobOffset, 320, 130), GetTexture("white"));
 
-        GUI.color = new Color(1f, 0.3f, 0.1f, 0.1f * menuAlpha);
-        GUI.DrawTexture(new Rect(centerX - 180, titleY + 30 + bobOffset, 360, 90), GetTexture("white"));
-
-        // Smaller crossed lines
-        GUI.color = new Color(0.3f, 0.25f, 0.2f, 0.6f * menuAlpha);
-        DrawRotatedRect(new Rect(centerX - 120, titleY + 28 + bobOffset, 240, 5), 12f);
-        DrawRotatedRect(new Rect(centerX - 120, titleY + 28 + bobOffset, 240, 5), -12f);
-
-        // FISH - smaller
+        // FISH
         GUIStyle fishStyle = new GUIStyle();
-        fishStyle.fontSize = 56;
+        fishStyle.fontSize = 48;
         fishStyle.fontStyle = FontStyle.Bold;
         fishStyle.alignment = TextAnchor.MiddleCenter;
 
-        GUI.color = new Color(0f, 0f, 0f, 0.9f * menuAlpha);
-        fishStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 27 + bobOffset, safeArea.width, 60), "FISH", fishStyle);
+        // Shadow
+        fishStyle.normal.textColor = new Color(0f, 0f, 0f, 0.8f * menuAlpha);
+        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 12 + bobOffset, safeArea.width, 50), "FISH", fishStyle);
 
-        GUI.color = new Color(1, 1, 1, menuAlpha);
+        // Main text
         fishStyle.normal.textColor = new Color(1.0f, 0.2f, 0.15f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 25 + bobOffset, safeArea.width, 60), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 10 + bobOffset, safeArea.width, 50), "FISH", fishStyle);
 
-        // OR - smaller
+        // OR
         GUIStyle orStyle = new GUIStyle();
-        orStyle.fontSize = 22;
+        orStyle.fontSize = 18;
         orStyle.fontStyle = FontStyle.BoldAndItalic;
         orStyle.alignment = TextAnchor.MiddleCenter;
-
-        orStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 1, titleY + 73 + bobOffset, safeArea.width, 30), "OR", orStyle);
-
         orStyle.normal.textColor = new Color(1.0f, 1.0f, 1.0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 72 + bobOffset, safeArea.width, 30), "OR", orStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 55 + bobOffset, safeArea.width, 24), "OR", orStyle);
 
-        // DIE - smaller
+        // DIE
         GUIStyle dieStyle = new GUIStyle();
-        dieStyle.fontSize = 62;
+        dieStyle.fontSize = 52;
         dieStyle.fontStyle = FontStyle.Bold;
         dieStyle.alignment = TextAnchor.MiddleCenter;
 
-        GUI.color = new Color(0, 0, 0, 0.9f * menuAlpha);
-        dieStyle.normal.textColor = new Color(0, 0, 0, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 87 + bobOffset, safeArea.width, 65), "DIE", dieStyle);
+        // Shadow
+        dieStyle.normal.textColor = new Color(0f, 0f, 0f, 0.8f * menuAlpha);
+        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 72 + bobOffset, safeArea.width, 55), "DIE", dieStyle);
 
+        // Main text with pulse
         float diePulse = 0.85f + Mathf.Sin(skullPulse * 3f) * 0.15f;
-        GUI.color = new Color(1, 1, 1, menuAlpha);
         dieStyle.normal.textColor = new Color(0.9f * diePulse, 0.1f, 0.1f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 85 + bobOffset, safeArea.width, 65), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 70 + bobOffset, safeArea.width, 55), "DIE", dieStyle);
 
-        // Smaller skull
-        DrawSkull(centerX - 10, titleY + 78 + bobOffset, 18f * pulseScale, menuAlpha);
+        // Skull between O and R
+        DrawSkull(centerX - 8, titleY + 62 + bobOffset, 14f * pulseScale, menuAlpha);
 
-        // Tagline - smaller
+        // Tagline
         GUIStyle tagStyle = new GUIStyle();
-        tagStyle.fontSize = 13;
+        tagStyle.fontSize = 11;
         tagStyle.fontStyle = FontStyle.Italic;
         tagStyle.alignment = TextAnchor.MiddleCenter;
-        tagStyle.normal.textColor = new Color(0.8f, 0.85f, 0.9f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x, titleY + 148 + bobOffset, safeArea.width, 22), "\"In these waters, only the hungry survive.\"", tagStyle);
+        tagStyle.normal.textColor = new Color(0.75f, 0.8f, 0.85f, menuAlpha);
+        GUI.Label(new Rect(safeArea.x, titleY + 125 + bobOffset, safeArea.width, 18), "\"In these waters, only the hungry survive.\"", tagStyle);
 
-        // Open testing label - smaller
+        // Open testing label
         GUIStyle openTestingStyle = new GUIStyle();
-        openTestingStyle.fontSize = 11;
+        openTestingStyle.fontSize = 10;
         openTestingStyle.fontStyle = FontStyle.Bold;
         openTestingStyle.alignment = TextAnchor.MiddleCenter;
-        openTestingStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, menuAlpha);
+        openTestingStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, menuAlpha * 0.8f);
         GUI.Label(new Rect(safeArea.x, titleY + 168 + bobOffset, safeArea.width, 18), "[ OPEN TESTING - Tropical Island ]", openTestingStyle);
     }
 
@@ -498,7 +486,7 @@ public class MainMenu : MonoBehaviour
 
         float centerX = safeArea.x + safeArea.width / 2;
         float buttonX = centerX - buttonWidth / 2;
-        float startY = safeArea.y + safeArea.height * 0.38f;
+        float startY = safeArea.y + safeArea.height * 0.32f;
 
         // Check if save exists
         bool hasSave = SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData;
