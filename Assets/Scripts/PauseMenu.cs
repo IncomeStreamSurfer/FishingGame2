@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 
 /// <summary>
@@ -279,29 +280,9 @@ public class PauseMenu : MonoBehaviour
     {
         Time.timeScale = 1f;
         IsPaused = false;
-        fadeAlpha = 0f;
-        targetAlpha = 0f;
-        currentState = PauseState.Main;
 
-        // Properly return to menu with fade-in reset
-        if (MainMenu.Instance != null)
-        {
-            MainMenu.Instance.ReturnToMenu();
-        }
-        else
-        {
-            MainMenu.GameStarted = false;
-        }
-
-        if (GameCache.IsPlayerValid())
-        {
-            GameCache.Player.position = new Vector3(0, 2, 0);
-        }
-
-        if (PlayerHealth.Instance != null)
-        {
-            PlayerHealth.Instance.SetHealth(100f);
-        }
+        // Full restart - reload the scene like pressing stop/play in editor
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void OnDestroy()

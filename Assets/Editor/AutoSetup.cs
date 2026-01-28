@@ -221,11 +221,9 @@ public class AutoSetup
         // Create 4 mystical portals on the beach
         CreatePortals();
 
-        // Create the Ice Realm (at offset position)
-        CreateIceRealm();
-
-        // Create the Jungle Realm (at offset position)
-        CreateJungleRealm();
+        // DISABLED - Ice and Jungle realms removed
+        // CreateIceRealm();
+        // CreateJungleRealm();
 
         // Create clothing shop island with Granny
         CreateClothingShopIsland();
@@ -413,8 +411,8 @@ public class AutoSetup
         // Add palm trees scattered on sand
         AddPalmTreesOnSand(ground.transform, groundY);
 
-        // Add warning signs on sand
-        AddWarningSigns(ground.transform, groundY);
+        // DISABLED - readable signs removed (too messy)
+        // AddWarningSigns(ground.transform, groundY);
 
         // Add more bushes on outer grass areas
         AddOuterBushes(ground.transform, groundY);
@@ -1512,17 +1510,16 @@ public class AutoSetup
         dockSign.transform.localPosition = new Vector3(dockWidth / 2 + 1.5f, 0, 20f); // Right side of dock, in the water
         dockSign.transform.localRotation = Quaternion.Euler(0, -15f, 0); // Angled slightly toward dock
 
-        // Tall wooden post that goes deep into water
-        Material signPostMat = new Material(Shader.Find("Standard"));
-        signPostMat.color = new Color(0.35f, 0.25f, 0.15f); // Dark weathered wood
-
-        GameObject signPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        signPost.name = "TallPost";
-        signPost.transform.SetParent(dockSign.transform);
-        signPost.transform.localPosition = new Vector3(0, 1.0f, 0); // Post center - extends from -2.5 to 4.5
-        signPost.transform.localScale = new Vector3(0.2f, 3.5f, 0.2f); // 7 meters tall (3.5 * 2)
-        signPost.GetComponent<Renderer>().sharedMaterial = signPostMat;
-        Object.DestroyImmediate(signPost.GetComponent<Collider>());
+        // DISABLED - TallPost removed
+        // Material signPostMat = new Material(Shader.Find("Standard"));
+        // signPostMat.color = new Color(0.35f, 0.25f, 0.15f);
+        // GameObject signPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        // signPost.name = "TallPost";
+        // signPost.transform.SetParent(dockSign.transform);
+        // signPost.transform.localPosition = new Vector3(0, 1.0f, 0);
+        // signPost.transform.localScale = new Vector3(0.2f, 3.5f, 0.2f);
+        // signPost.GetComponent<Renderer>().sharedMaterial = signPostMat;
+        // Object.DestroyImmediate(signPost.GetComponent<Collider>());
 
         // Sign board at top
         Material signBoardMat = new Material(Shader.Find("Standard"));
@@ -1536,10 +1533,10 @@ public class AutoSetup
         signBoard.GetComponent<Renderer>().sharedMaterial = signBoardMat;
         Object.DestroyImmediate(signBoard.GetComponent<Collider>());
 
-        // Add readable sign text
-        ReadableSign dockReadable = signBoard.AddComponent<ReadableSign>();
-        dockReadable.signTitle = "DOCK RULES";
-        dockReadable.signMessage = "No diving! Watch for jellyfish. Fish responsibly.";
+        // DISABLED - readable signs removed
+        // ReadableSign dockReadable = signBoard.AddComponent<ReadableSign>();
+        // dockReadable.signTitle = "DOCK RULES";
+        // dockReadable.signMessage = "No diving! Watch for jellyfish. Fish responsibly.";
     }
 
     static void CreateRamp()

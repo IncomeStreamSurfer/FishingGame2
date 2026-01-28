@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 
 /// <summary>
@@ -46,14 +47,26 @@ public class TimeAliveTracker : MonoBehaviour
 
         // Subscribe to game over event
         PlayerHealth.OnGameOver += OnPlayerDeath;
+
+        // Subscribe to scene loaded to reset on game restart
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void OnDestroy()
     {
         PlayerHealth.OnGameOver -= OnPlayerDeath;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
         if (bgTex != null) Destroy(bgTex);
         if (skullTex != null) Destroy(skullTex);
         if (Instance == this) Instance = null;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Reset timer state when scene reloads (quit to menu)
+        timeAlive = 0f;
+        isTracking = false;
+        gameStartedThisSession = false;
     }
 
     void InitializeGUI()
