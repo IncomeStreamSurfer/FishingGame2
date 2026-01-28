@@ -173,9 +173,9 @@ public class PollBooth : MonoBehaviour
         isWindowOpen = false;
         Time.timeScale = savedTimeScale; // Restore time
 
-        // Lock cursor back if needed
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // Keep cursor visible - this is a point and click game
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
         Debug.Log("Poll Booth closed - game resumed");
     }

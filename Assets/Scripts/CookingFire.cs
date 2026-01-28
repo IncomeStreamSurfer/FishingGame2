@@ -503,8 +503,9 @@ public class CookingFire : MonoBehaviour
     void CloseCookingUI()
     {
         isOpen = false;
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // Keep cursor visible - this is a point and click game
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         Debug.Log("Cooking fire closed");
     }
 

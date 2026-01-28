@@ -1507,39 +1507,11 @@ public class AutoSetup
         torch.transform.localPosition = new Vector3(-1.5f, dockHeight + 0.15f, dockEndZ - 1.5f); // End of dock, moved left
         torch.AddComponent<DockTorch>(); // Component creates its own model and handles lighting
 
-        // === TALL SIGNPOST planted in water next to dock ===
-        GameObject dockSign = new GameObject("DockSignpost");
-        dockSign.transform.SetParent(dockParent.transform);
-        dockSign.transform.localPosition = new Vector3(dockWidth / 2 + 1.5f, 0, 20f); // Right side of dock, in the water
-        dockSign.transform.localRotation = Quaternion.Euler(0, -15f, 0); // Angled slightly toward dock
-
-        // DISABLED - TallPost removed
-        // Material signPostMat = new Material(Shader.Find("Standard"));
-        // signPostMat.color = new Color(0.35f, 0.25f, 0.15f);
-        // GameObject signPost = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        // signPost.name = "TallPost";
-        // signPost.transform.SetParent(dockSign.transform);
-        // signPost.transform.localPosition = new Vector3(0, 1.0f, 0);
-        // signPost.transform.localScale = new Vector3(0.2f, 3.5f, 0.2f);
-        // signPost.GetComponent<Renderer>().sharedMaterial = signPostMat;
-        // Object.DestroyImmediate(signPost.GetComponent<Collider>());
-
-        // Sign board at top
-        Material signBoardMat = new Material(Shader.Find("Standard"));
-        signBoardMat.color = new Color(0.9f, 0.85f, 0.7f); // Weathered white/tan
-
-        GameObject signBoard = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        signBoard.name = "SignBoard";
-        signBoard.transform.SetParent(dockSign.transform);
-        signBoard.transform.localPosition = new Vector3(0, 4.2f, 0); // Near top of post
-        signBoard.transform.localScale = new Vector3(1.2f, 0.7f, 0.08f);
-        signBoard.GetComponent<Renderer>().sharedMaterial = signBoardMat;
-        Object.DestroyImmediate(signBoard.GetComponent<Collider>());
-
-        // DISABLED - readable signs removed
-        // ReadableSign dockReadable = signBoard.AddComponent<ReadableSign>();
-        // dockReadable.signTitle = "DOCK RULES";
-        // dockReadable.signMessage = "No diving! Watch for jellyfish. Fish responsibly.";
+        // === DISABLED - Dock signpost completely removed ===
+        // GameObject dockSign = new GameObject("DockSignpost");
+        // dockSign.transform.SetParent(dockParent.transform);
+        // dockSign.transform.localPosition = new Vector3(dockWidth / 2 + 1.5f, 0, 20f);
+        // dockSign.transform.localRotation = Quaternion.Euler(0, -15f, 0);
     }
 
     static void CreateRamp()
