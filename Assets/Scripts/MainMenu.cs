@@ -380,78 +380,84 @@ public class MainMenu : MonoBehaviour
 
     void DrawTitle()
     {
-        float bobOffset = Mathf.Sin(titleBob * 1.5f) * 8f;
-        float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 5f;
+        float bobOffset = Mathf.Sin(titleBob * 1.5f) * 5f;
+        float shakeX = Mathf.Sin(titleBob * 12f) * lightningFlash * 3f;
         float pulseScale = 1f + Mathf.Sin(skullPulse * 2f) * 0.02f;
 
         float centerX = safeArea.x + safeArea.width / 2;
-        float titleY = safeArea.y + safeArea.height * 0.12f;
+        float titleY = safeArea.y + safeArea.height * 0.05f; // Moved up
 
-        GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.25f * menuAlpha);
-        GUI.DrawTexture(new Rect(centerX - 350, titleY + 30 + bobOffset, 700, 180), GetTexture("white"));
+        // Smaller background glow
+        GUI.color = new Color(0.8f, 0.1f, 0.05f, 0.2f * menuAlpha);
+        GUI.DrawTexture(new Rect(centerX - 220, titleY + 20 + bobOffset, 440, 120), GetTexture("white"));
 
-        GUI.color = new Color(1f, 0.3f, 0.1f, 0.15f * menuAlpha);
-        GUI.DrawTexture(new Rect(centerX - 300, titleY + 50 + bobOffset, 600, 140), GetTexture("white"));
+        GUI.color = new Color(1f, 0.3f, 0.1f, 0.1f * menuAlpha);
+        GUI.DrawTexture(new Rect(centerX - 180, titleY + 30 + bobOffset, 360, 90), GetTexture("white"));
 
-        GUI.color = new Color(0.3f, 0.25f, 0.2f, 0.8f * menuAlpha);
-        DrawRotatedRect(new Rect(centerX - 180, titleY + 40 + bobOffset, 360, 8), 15f);
-        DrawRotatedRect(new Rect(centerX - 180, titleY + 40 + bobOffset, 360, 8), -15f);
+        // Smaller crossed lines
+        GUI.color = new Color(0.3f, 0.25f, 0.2f, 0.6f * menuAlpha);
+        DrawRotatedRect(new Rect(centerX - 120, titleY + 28 + bobOffset, 240, 5), 12f);
+        DrawRotatedRect(new Rect(centerX - 120, titleY + 28 + bobOffset, 240, 5), -12f);
 
+        // FISH - smaller
         GUIStyle fishStyle = new GUIStyle();
-        fishStyle.fontSize = 90;
+        fishStyle.fontSize = 56;
         fishStyle.fontStyle = FontStyle.Bold;
         fishStyle.alignment = TextAnchor.MiddleCenter;
 
         GUI.color = new Color(0f, 0f, 0f, 0.9f * menuAlpha);
         fishStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 3, titleY + 43 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX - 3, titleY + 43 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 27 + bobOffset, safeArea.width, 60), "FISH", fishStyle);
 
         GUI.color = new Color(1, 1, 1, menuAlpha);
         fishStyle.normal.textColor = new Color(1.0f, 0.2f, 0.15f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 40 + bobOffset, safeArea.width, 100), "FISH", fishStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 25 + bobOffset, safeArea.width, 60), "FISH", fishStyle);
 
+        // OR - smaller
         GUIStyle orStyle = new GUIStyle();
-        orStyle.fontSize = 36;
+        orStyle.fontSize = 22;
         orStyle.fontStyle = FontStyle.BoldAndItalic;
         orStyle.alignment = TextAnchor.MiddleCenter;
 
         orStyle.normal.textColor = new Color(0f, 0f, 0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 117 + bobOffset, safeArea.width, 50), "OR", orStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX + 1, titleY + 73 + bobOffset, safeArea.width, 30), "OR", orStyle);
 
         orStyle.normal.textColor = new Color(1.0f, 1.0f, 1.0f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 115 + bobOffset, safeArea.width, 50), "OR", orStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 72 + bobOffset, safeArea.width, 30), "OR", orStyle);
 
+        // DIE - smaller
         GUIStyle dieStyle = new GUIStyle();
-        dieStyle.fontSize = 100;
+        dieStyle.fontSize = 62;
         dieStyle.fontStyle = FontStyle.Bold;
         dieStyle.alignment = TextAnchor.MiddleCenter;
 
         GUI.color = new Color(0, 0, 0, 0.9f * menuAlpha);
         dieStyle.normal.textColor = new Color(0, 0, 0, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX + 4, titleY + 139 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
-        GUI.Label(new Rect(safeArea.x + shakeX - 4, titleY + 139 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX + 2, titleY + 87 + bobOffset, safeArea.width, 65), "DIE", dieStyle);
 
         float diePulse = 0.85f + Mathf.Sin(skullPulse * 3f) * 0.15f;
         GUI.color = new Color(1, 1, 1, menuAlpha);
         dieStyle.normal.textColor = new Color(0.9f * diePulse, 0.1f, 0.1f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 135 + bobOffset, safeArea.width, 110), "DIE", dieStyle);
+        GUI.Label(new Rect(safeArea.x + shakeX, titleY + 85 + bobOffset, safeArea.width, 65), "DIE", dieStyle);
 
-        DrawSkull(centerX - 15, titleY + 125 + bobOffset, 30f * pulseScale, menuAlpha);
+        // Smaller skull
+        DrawSkull(centerX - 10, titleY + 78 + bobOffset, 18f * pulseScale, menuAlpha);
 
+        // Tagline - smaller
         GUIStyle tagStyle = new GUIStyle();
-        tagStyle.fontSize = 18;
+        tagStyle.fontSize = 13;
         tagStyle.fontStyle = FontStyle.Italic;
         tagStyle.alignment = TextAnchor.MiddleCenter;
         tagStyle.normal.textColor = new Color(0.8f, 0.85f, 0.9f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x, titleY + 235 + bobOffset, safeArea.width, 30), "\"In these waters, only the hungry survive.\"", tagStyle);
+        GUI.Label(new Rect(safeArea.x, titleY + 148 + bobOffset, safeArea.width, 22), "\"In these waters, only the hungry survive.\"", tagStyle);
 
+        // Open testing label - smaller
         GUIStyle openTestingStyle = new GUIStyle();
-        openTestingStyle.fontSize = 14;
+        openTestingStyle.fontSize = 11;
         openTestingStyle.fontStyle = FontStyle.Bold;
         openTestingStyle.alignment = TextAnchor.MiddleCenter;
         openTestingStyle.normal.textColor = new Color(0.3f, 1f, 0.5f, menuAlpha);
-        GUI.Label(new Rect(safeArea.x, titleY + 265 + bobOffset, safeArea.width, 25), "[ OPEN TESTING - Tropical Island ]", openTestingStyle);
+        GUI.Label(new Rect(safeArea.x, titleY + 168 + bobOffset, safeArea.width, 18), "[ OPEN TESTING - Tropical Island ]", openTestingStyle);
     }
 
     void DrawRotatedRect(Rect rect, float angle)
@@ -486,13 +492,13 @@ public class MainMenu : MonoBehaviour
 
     void DrawMainMenu()
     {
-        float buttonWidth = 200;
-        float buttonHeight = 40;
-        float buttonSpacing = 8;
+        float buttonWidth = 160;
+        float buttonHeight = 32;
+        float buttonSpacing = 6;
 
         float centerX = safeArea.x + safeArea.width / 2;
         float buttonX = centerX - buttonWidth / 2;
-        float startY = safeArea.y + safeArea.height * 0.52f;
+        float startY = safeArea.y + safeArea.height * 0.38f;
 
         // Check if save exists
         bool hasSave = SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData;
@@ -500,17 +506,18 @@ public class MainMenu : MonoBehaviour
         if (hasSave)
         {
             // Draw save preview panel centered above buttons
-            DrawSavePreview(centerX, startY - 100f);
+            DrawSavePreview(centerX, startY - 75f);
 
-            // CONTINUE - prominent button for existing players
-            if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "CONTINUE"))
+            // CONTINUE and NEW GAME side by side
+            float dualBtnWidth = 78;
+            float dualBtnX = centerX - (dualBtnWidth * 2 + 4) / 2;
+
+            if (DrawMenuButton(new Rect(dualBtnX, startY, dualBtnWidth, buttonHeight), "CONTINUE"))
             {
                 ContinueGame();
             }
-            startY += buttonHeight + buttonSpacing;
 
-            // New Game (smaller, since they have a save)
-            if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "NEW GAME"))
+            if (DrawMenuButton(new Rect(dualBtnX + dualBtnWidth + 4, startY, dualBtnWidth, buttonHeight), "NEW GAME"))
             {
                 StartNewGame();
             }
@@ -518,7 +525,7 @@ public class MainMenu : MonoBehaviour
         }
         else
         {
-            // START GAME - prominent for new players
+            // START GAME - centered for new players
             if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "START GAME"))
             {
                 StartNewGame();
@@ -526,18 +533,16 @@ public class MainMenu : MonoBehaviour
             startY += buttonHeight + buttonSpacing;
         }
 
-        // Secondary buttons in a row
-        float smallBtnWidth = 95;
-        float smallBtnSpacing = 10;
-        float rowX = centerX - (smallBtnWidth * 2 + smallBtnSpacing) / 2;
+        // Settings and Backup side by side - same width as above
+        float smallBtnWidth = 78;
+        float rowX = centerX - (smallBtnWidth * 2 + 4) / 2;
 
-        // Settings and Backup Codes side by side
         if (DrawMenuButton(new Rect(rowX, startY, smallBtnWidth, buttonHeight), "SETTINGS"))
         {
             currentState = MenuState.Settings;
         }
 
-        if (DrawMenuButton(new Rect(rowX + smallBtnWidth + smallBtnSpacing, startY, smallBtnWidth, buttonHeight), "BACKUP"))
+        if (DrawMenuButton(new Rect(rowX + smallBtnWidth + 4, startY, smallBtnWidth, buttonHeight), "BACKUP"))
         {
             currentState = MenuState.BackupCodes;
             if (SaveSystem.Instance != null && SaveSystem.Instance.HasSaveData)
@@ -545,9 +550,9 @@ public class MainMenu : MonoBehaviour
                 backupCodeOutput = SaveSystem.Instance.ExportSaveCode();
             }
         }
-        startY += buttonHeight + buttonSpacing + 5;
+        startY += buttonHeight + buttonSpacing;
 
-        // Quit at bottom, centered
+        // Quit - same width, centered
         if (DrawMenuButton(new Rect(buttonX, startY, buttonWidth, buttonHeight), "QUIT"))
         {
             QuitGame();
@@ -561,23 +566,20 @@ public class MainMenu : MonoBehaviour
         var (timeAlive, day, timeOfDay, saveDate) = SaveSystem.Instance.GetSaveInfo();
         Texture2D screenshot = SaveSystem.Instance.GetScreenshot();
 
-        // Compact preview - fits nicely above buttons
-        float previewWidth = 220; // Same width as buttons for symmetry
-        float previewHeight = 75;
+        // Compact preview - matches button width
+        float previewWidth = 160;
+        float previewHeight = 55;
         float previewX = centerX - previewWidth / 2;
 
         // Background with subtle border
-        GUI.DrawTexture(new Rect(previewX - 2, y - 2, previewWidth + 4, previewHeight + 4), GetTexture("panelBorder"));
+        GUI.DrawTexture(new Rect(previewX - 1, y - 1, previewWidth + 2, previewHeight + 2), GetTexture("panelBorder"));
         GUI.DrawTexture(new Rect(previewX, y, previewWidth, previewHeight), GetTexture("panelBg"));
 
-        // Small screenshot on the left (80x45 for 16:9)
-        float screenshotWidth = 80;
-        float screenshotHeight = 45;
-        float screenshotX = previewX + 8;
+        // Small screenshot on the left (53x30 for 16:9)
+        float screenshotWidth = 53;
+        float screenshotHeight = 30;
+        float screenshotX = previewX + 5;
         float screenshotY = y + (previewHeight - screenshotHeight) / 2;
-
-        // Screenshot border
-        GUI.DrawTexture(new Rect(screenshotX - 1, screenshotY - 1, screenshotWidth + 2, screenshotHeight + 2), GetTexture("panelBorder"));
 
         if (screenshot != null)
         {
@@ -590,32 +592,27 @@ public class MainMenu : MonoBehaviour
 
         // Save info - compact layout on right side
         GUIStyle infoStyle = new GUIStyle();
-        infoStyle.fontSize = 11;
+        infoStyle.fontSize = 9;
         infoStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
 
-        float infoX = previewX + screenshotWidth + 18;
-        float infoY = y + 10;
+        float infoX = previewX + screenshotWidth + 10;
+        float infoY = y + 8;
 
         // Time alive
         int mins = (int)(timeAlive / 60);
         int secs = (int)(timeAlive % 60);
         string timeStr = mins >= 60 ? $"{mins / 60}h {mins % 60}m" : $"{mins}m {secs}s";
-        GUI.Label(new Rect(infoX, infoY, 120, 16), timeStr, infoStyle);
-        infoY += 16;
+        GUI.Label(new Rect(infoX, infoY, 90, 14), timeStr, infoStyle);
+        infoY += 13;
 
-        // Day and time of day on same line
-        float hour = timeOfDay * 24f;
-        int hourInt = (int)hour;
-        string ampm = hourInt >= 12 ? "PM" : "AM";
-        int hour12 = hourInt % 12;
-        if (hour12 == 0) hour12 = 12;
-        GUI.Label(new Rect(infoX, infoY, 120, 16), $"Day {day} - {hour12}{ampm}", infoStyle);
-        infoY += 16;
+        // Day
+        GUI.Label(new Rect(infoX, infoY, 90, 14), $"Day {day}", infoStyle);
+        infoY += 13;
 
         // Save date - smaller
-        infoStyle.fontSize = 9;
+        infoStyle.fontSize = 8;
         infoStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-        GUI.Label(new Rect(infoX, infoY, 120, 14), saveDate, infoStyle);
+        GUI.Label(new Rect(infoX, infoY, 90, 12), saveDate, infoStyle);
     }
 
     void DrawBackupCodesMenu()

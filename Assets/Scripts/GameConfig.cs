@@ -15,7 +15,7 @@ public static class GameConfig
     /// - Console Commands (~, F1) are disabled
     /// - Debug overlays are hidden
     /// </summary>
-    public const bool RELEASE_MODE = false;  // <-- CHANGE TO true FOR RELEASE
+    public const bool RELEASE_MODE = true;  // RELEASE BUILD FOR ITCH.IO
 
     /// <summary>
     /// Game version shown in menus
